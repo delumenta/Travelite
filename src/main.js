@@ -67,16 +67,23 @@ function foodCollectionView(){
   const links=new globalThis.Map(state.savedFood.map(x=>[Number(x.restaurant_id),x]));
   const country=state.trip?.country||'your destination';
   const all=state.restaurants.filter(x=>x.status==='active'&&inTripCountry(x));
-  const mine=state.foodTab==='mine';
+
+  /*
+    Navigation owns the mode:
+    - Explore > Food & drink = Discover
+    - Saved > Food = My Food
+  */
+  const savedMode=state.tab==='saved';
   const exploreMode=state.tab==='explore';
+  const mine=savedMode;
 
   let source=mine
     ? all.filter(x=>links.has(Number(x.id)))
     : all;
 
   /*
-    Match the Japan food page:
-    eaten restaurants stay out of the normal My Food view,
+    Same behaviour as the Japan food page:
+    eaten restaurants are hidden from the normal Saved > Food list,
     but remain available through the dedicated Eaten filter.
   */
   if(mine && state.foodFilter!=='eaten'){
@@ -187,6 +194,20 @@ function foodCollectionView(){
     cards=items.map(x=>foodCard(x,links.get(Number(x.id)))).join('');
   }
 
+  const places=state.savedPlaces
+    .map(s=>state.places.find(p=>p.id===s.place_id))
+    .filter(Boolean);
+
+  const savedKinds=savedMode
+    ? `<div class="filter-row">
+        ${[
+          ['all',`All saved · ${places.length+state.savedFood.length}`],
+          ['place',`Places · ${places.length}`],
+          ['food',`Food · ${state.savedFood.length}`]
+        ].map(([k,v])=>`<button data-action="saved-filter" data-value="${k}" class="${state.savedKind===k?'selected':''}">${v}</button>`).join('')}
+      </div>`
+    : '';
+
   const exploreKinds=exploreMode
     ? `<div class="filter-row explore-food-kinds">
         ${[['all','All discoveries'],['place','Places'],['food','Food & drink']]
@@ -196,18 +217,24 @@ function foodCollectionView(){
       </div>`
     : '';
 
-  return `${title(
-    exploreMode?'DISCOVER THE POSSIBILITIES':'FOOD & DRINK',
-    exploreMode?'Food & drink.':'Food for the journey.',
-    `Browse restaurants in ${esc(country)}, with the same filters and food list you use in your Japan planner.`,
-    `<button class="btn outline" data-action="food-mode" data-value="nearby">${icon('Navigation')} Within 300 m</button>
-     <button class="btn primary" data-action="add-food">${icon('Plus')} Add food</button>`
-  )}
+  const heading=savedMode
+    ? title(
+        'A COLLECTION OF POSSIBILITIES',
+        'The things you love.',
+        'Every place worth remembering, ready when you are.',
+        `<button class="btn outline" data-action="tab" data-value="explore">${icon('Compass')} Explore more</button>`
+      )
+    : title(
+        'DISCOVER THE POSSIBILITIES',
+        'Food & drink.',
+        `Browse restaurants in ${esc(country)}, ready to save to your trip.`,
+        `<button class="btn outline" data-action="food-mode" data-value="nearby">${icon('Navigation')} Within 300 m</button>
+         <button class="btn primary" data-action="add-food">${icon('Plus')} Add food</button>`
+      );
+
+  return `${heading}
+  ${savedKinds}
   ${exploreKinds}
-  <div class="jfood-tabs">
-    <button data-action="food-tab" data-value="mine" class="${mine?'active':''}">❤️ My Food</button>
-    <button data-action="food-tab" data-value="discover" class="${!mine?'active':''}">🔎 Discover</button>
-  </div>
   <div class="jfood-filters">
     <div class="jfood-chips">
       <button data-action="food-city" data-value="" class="${!city?'active':''}">All cities</button>
@@ -235,7 +262,7 @@ function foodCollectionView(){
     </div>
   </div>
   <div class="jfood-results-head">
-    <strong>${mine?'❤️ My Food':'🔎 Discover'}</strong>
+    <strong>${mine?'❤️ My Food':'🔎 Discover Food'}</strong>
     <span>${items.length} restaurant${items.length===1?'':'s'}${mine&&state.foodFilter!=='eaten'?' · eaten hidden':''}</span>
   </div>
   <div class="jfood-list">
@@ -244,7 +271,7 @@ function foodCollectionView(){
       <h3>${mine&&state.foodFilter==='all'?'No uneaten food saved yet':state.foodFilter==='eaten'?'Nothing marked as eaten yet':'No restaurants match these filters'}</h3>
       <p>${mine&&state.foodFilter==='all'?'Discover restaurants and save the ones you want to try.':state.foodFilter==='eaten'?'Mark a restaurant as Eaten after you visit it.':'Try another city, area, food type or search.'}</p>
       ${mine&&state.foodFilter==='all'
-        ? `<button class="btn primary" data-action="food-tab" data-value="discover">Discover food ${icon('ArrowRight')}</button>`
+        ? `<button class="btn primary" data-action="go-discover-food">Discover food ${icon('ArrowRight')}</button>`
         : `<button class="btn outline" data-action="food-clear">Clear filters</button>`}
     </div>`}
   </div>`;
@@ -325,7 +352,43 @@ function exploreView(){
       `<div class="empty-list">${icon('Search')}<h3>No matches in ${esc(state.trip?.country||'this destination')} yet</h3><p>Try another search, or add a place of your own.</p></div>`}
   </div>`;
 }
-function savedView(){let food=state.savedFood.map(s=>state.restaurants.find(r=>r.id===s.restaurant_id)).filter(Boolean).map(x=>({...x,__kind:'food'})),places=state.savedPlaces.map(s=>state.places.find(p=>p.id===s.place_id)).filter(Boolean).map(x=>({...x,__kind:'place'})),items=[...places,...food].filter(x=>state.savedKind==='all'||x.__kind===state.savedKind);return `${title('A COLLECTION OF POSSIBILITIES','The things you love.','Every place worth remembering, ready when you are.',`<button class="btn outline" data-action="tab" data-value="explore">${icon('Compass')} Explore more</button>`)}<div class="filter-row">${[['all',`All saved · ${places.length+food.length}`],['place',`Places · ${places.length}`],['food',`Food · ${food.length}`]].map(([k,v])=>`<button data-action="saved-filter" data-value="${k}" class="${state.savedKind===k?'selected':''}">${v}</button>`).join('')}</div><div class="catalog-grid">${items.length?items.map(x=>catalogItem(x,x.__kind)).join(''):`<div class="empty-list">${icon('Heart')}<h3>Good things are worth keeping.</h3><p>Save places and restaurants while exploring. They’ll appear here on every device.</p><button class="btn primary" data-action="tab" data-value="explore">Explore places ${icon('ArrowRight')}</button></div>`}</div>`;}
+function savedView(){
+  let food=state.savedFood
+    .map(s=>state.restaurants.find(r=>r.id===s.restaurant_id))
+    .filter(Boolean)
+    .map(x=>({...x,__kind:'food'}));
+
+  let places=state.savedPlaces
+    .map(s=>state.places.find(p=>p.id===s.place_id))
+    .filter(Boolean)
+    .map(x=>({...x,__kind:'place'}));
+
+  if(state.savedKind==='food'){
+    return foodCollectionView();
+  }
+
+  let items=[...places,...food]
+    .filter(x=>state.savedKind==='all'||x.__kind===state.savedKind);
+
+  return `${title(
+    'A COLLECTION OF POSSIBILITIES',
+    'The things you love.',
+    'Every place worth remembering, ready when you are.',
+    `<button class="btn outline" data-action="tab" data-value="explore">${icon('Compass')} Explore more</button>`
+  )}
+  <div class="filter-row">
+    ${[
+      ['all',`All saved · ${places.length+food.length}`],
+      ['place',`Places · ${places.length}`],
+      ['food',`Food · ${food.length}`]
+    ].map(([k,v])=>`<button data-action="saved-filter" data-value="${k}" class="${state.savedKind===k?'selected':''}">${v}</button>`).join('')}
+  </div>
+  <div class="catalog-grid">
+    ${items.length
+      ? items.map(x=>catalogItem(x,x.__kind)).join('')
+      : `<div class="empty-list">${icon('Heart')}<h3>Good things are worth keeping.</h3><p>Save places and restaurants while exploring. They’ll appear here on every device.</p><button class="btn primary" data-action="tab" data-value="explore">Explore places ${icon('ArrowRight')}</button></div>`}
+  </div>`;
+}
 function bookingsView(){let rows=[...state.bookings].sort((a,b)=>(a.booking_date||'9999').localeCompare(b.booking_date||'9999'));return `${title('ALL THE DETAILS, ONE PLACE','Your bookings.','The confirmations and little details that make the journey smooth.',`<button class="btn primary" data-action="new-booking">${icon('Plus')} Add booking</button>`)}<div class="bookings-layout"><div class="stack">${rows.length?rows.map(x=>`<article class="booking-card"><div class="booking-icon">${icon(({accommodation:'BedDouble',restaurant:'Utensils',transport:'TrainFront',car:'Route',ticket:'Ticket',activity:'Compass'})[x.booking_type]||'Ticket')}</div><div class="booking-detail"><span class="catalog-kind">${esc(x.booking_type||'BOOKING')} · ${esc(x.status||'PLANNED')}</span><h3>${esc(x.title)}</h3><p>${[fmtDay(x.booking_date),time(x.start_time),x.location_name].filter(Boolean).map(esc).join(' · ')||'Date to be decided'}</p>${x.confirmation_number?`<div class="confirm-no">Confirmation ${esc(x.confirmation_number)}</div>`:''}<div class="booking-actions">${x.booking_url&&/^https:\/\//.test(x.booking_url)?`<a href="${esc(x.booking_url)}" target="_blank" rel="noopener noreferrer">Open booking ${icon('ArrowUpRight')}</a>`:''}<button data-action="edit-booking" data-id="${x.id}">Edit ${icon('ArrowRight')}</button></div></div></article>`).join(''):`<div class="empty-list">${icon('Ticket')}<h3>Keep the important things together.</h3><p>Add hotels, transport, tickets, and reservations. You’ll have the details when you need them.</p><button class="btn primary" data-action="new-booking">${icon('Plus')} Add your first booking</button></div>`}</div><div class="aside-card"><div class="eyebrow">A LITTLE PEACE OF MIND</div><h3>Ready when you are.</h3><p>Confirmation numbers and links are saved with your trip, so they’re easy to find on the move.</p></div></div>`;}
 function expensesView(){let groups={};state.expenses.forEach(x=>groups[x.currency||'SGD']=(groups[x.currency||'SGD']||0)+Number(x.amount||0));return `${title('SPEND WELL, REMEMBER MORE','Trip spending.','Keep track of what you spend, in the currency you actually paid.',`<button class="btn primary" data-action="new-expense">${icon('Plus')} Add expense</button>`)}<div class="expense-totals">${Object.entries(groups).length?Object.entries(groups).map(([c,n])=>`<div class="total-card"><span>TOTAL IN ${esc(c)}</span><b>${esc(c)} ${n.toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2})}</b><small>${state.expenses.filter(x=>(x.currency||'SGD')===c).length} recorded expenses</small></div>`).join(''):`<div class="total-card"><span>YOUR TRIP, YOUR WAY</span><b>Start with a small spend.</b><small>Expenses appear here once you add them.</small></div>`}</div><div class="stack">${[...state.expenses].sort((a,b)=>(b.expense_date||'').localeCompare(a.expense_date||'')).map(x=>`<article class="expense-row"><div class="expense-icon">${icon(x.category==='food'?'Utensils':x.category==='transport'?'TrainFront':x.category==='accommodation'?'BedDouble':'Wallet')}</div><div><b>${esc(x.title)}</b><small>${esc(fmtDay(x.expense_date))} · ${esc(x.category)}</small></div><strong>${esc(x.currency||'SGD')} ${Number(x.amount).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong><button data-action="edit-expense" data-id="${x.id}" aria-label="Edit expense">${icon('Pencil')}</button></article>`).join('')}</div>`;}
 function modalView(){let m=state.modal;let heading={tripPicker:'Your trips',newTrip:'Create a trip',editTrip:'Edit your trip',deleteTrip:'Delete trip',stop:'Plan a stop',booking:'Booking details',expense:'Record an expense',catalog:'Add a discovery',profile:'Your account',confirm:'One more thing',password:'Choose a new password',photoReview:'Photo checks'}[m.type]||'Details';return `<div class="overlay" data-action="close-modal"><div class="modal ${m.type==='tripPicker'?'trip-modal':''}" ><div class="modal-head"><div><div class="eyebrow">TRAVELITE</div><h2>${heading}</h2></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon('X')}</button></div>${modalContent(m)}</div></div>`;}
@@ -417,13 +480,14 @@ case 'google-select':{const result=state.googleResults[Number(el.dataset.index)]
 case 'tab':state.tab=v;state.mobileMenu=false;state.search='';render();window.scrollTo(0,0);break;
 case 'toggle-schedule':state.scheduleExpanded=!state.scheduleExpanded;render();break;
 case 'explore-kind':if(v==='food'){state.tab='explore';state.kind='food';state.foodMode='collection';state.foodFilter='all';state.foodTab='discover';}else{state.tab='explore';state.kind='place';}render();window.scrollTo(0,0);break;
-case 'food-saved':state.tab='explore';state.kind='food';state.foodMode='collection';state.foodFilter='all';state.foodTab='mine';render();window.scrollTo(0,0);break;
+case 'food-saved':state.tab='saved';state.savedKind='food';state.foodMode='collection';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';render();window.scrollTo(0,0);break;
 case 'food-finder':state.tab='food';state.foodMode='nearby';render();window.scrollTo(0,0);findNearbyFood();break;
 case 'food-mode':state.foodMode=v;render();if(v==='nearby'&&!state.foodLocation)findNearbyFood();break;
 case 'food-filter':state.foodFilter=v;render();break;
-case 'food-tab':state.foodTab=v;state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';render();break;
+case 'food-tab':if(v==='mine'){state.tab='saved';state.savedKind='food';}else{state.tab='explore';state.kind='food';}state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';render();window.scrollTo(0,0);break;
 case 'food-city':state.foodCity=v;state.foodArea='';state.foodCuisine='';render();break;
 case 'food-clear':state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';render();break;
+case 'go-discover-food':state.tab='explore';state.kind='food';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';render();window.scrollTo(0,0);break;
 case 'add-food':openModal('catalog');$('#catalog-kind').value='food';break;
 case 'food-pick':case 'food-flexible':{let link=state.savedFood.find(x=>Number(x.restaurant_id)===id);if(!link)break;let field=a==='food-pick'?'is_pick':'is_flexible';let result=await sb.from('trip_restaurants').update({[field]:!link[field]}).eq('id',link.id).eq('trip_id',state.trip.id).select().single();if(result.error)throw result.error;state.savedFood=state.savedFood.map(x=>x.id===link.id?result.data:x);render();break;}
 case 'food-eaten':{let link=state.savedFood.find(x=>Number(x.restaurant_id)===id);if(!link)break;let value=!link.is_eaten;let result=await sb.from('trip_restaurants').update({is_eaten:value,eaten_at:value?new Date().toISOString():null}).eq('id',link.id).eq('trip_id',state.trip.id).select().single();if(result.error)throw result.error;state.savedFood=state.savedFood.map(x=>x.id===link.id?result.data:x);render();break;}
@@ -431,7 +495,7 @@ case 'food-refresh':findNearbyFood();break;
 case 'save-nearby':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId);if(!result)break;openModal('catalog');state.catalogSelection=result;$('#catalog-kind').value='food';for(const key of ['name','city','area','address','maps_url'])if($('#catalog-form').elements[key])$('#catalog-form').elements[key].value=result[key]||'';break;}
 case 'day':state.day=v;render();break;
 case 'filter':if(v==='food'&&state.kind!=='food'){state.foodTab='discover';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}state.kind=v;render();break;
-case 'saved-filter':state.savedKind=v;render();break;
+case 'saved-filter':state.savedKind=v;if(v==='food'){state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}render();break;
 case 'menu':state.mobileMenu=true;render();break;
 case 'close-menu':state.mobileMenu=false;render();break;
 case 'trip-picker':openModal('tripPicker');break;
