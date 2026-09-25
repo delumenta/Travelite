@@ -24,7 +24,7 @@ Deno.serve(async (req: Request) => {
     const { data: auth, error: authError } = await viewer.auth.getUser(jwt);
     if (authError || !auth.user) return json({ error: 'Sign in first.' }, 401);
 
-    const apiKey = Deno.env.get('GOOGLE_PLACES_API_KEY') || Deno.env.get('GOOGLE_MAPS_API_KEY');
+    const apiKey = Deno.env.get('GOOGLE_PLACES_SERVER_API_KEY') || Deno.env.get('GOOGLE_PLACES_API_KEY') || Deno.env.get('GOOGLE_MAPS_API_KEY');
     if (!apiKey) return json({ error: 'Google Places is not configured.' }, 503);
 
     const body = await req.json().catch(() => ({}));
@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
           },
           body: JSON.stringify({
             textQuery: [row.name, row.city, row.country].filter(Boolean).join(', '),
-            maxResultCount: 1,
+            pageSize: 1,
             languageCode: 'en',
           }),
           signal: AbortSignal.timeout(12000),
