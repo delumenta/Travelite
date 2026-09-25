@@ -65,6 +65,7 @@ Deno.serve(async (req: Request) => {
         website_url: p.websiteUri || null,
         phone: p.nationalPhoneNumber || null,
         place_type: p.primaryType || 'attraction',
+        result_kind: ['restaurant','cafe','bakery','bar','food_court','meal_takeaway','meal_delivery'].includes(p.primaryType) ? 'food' : 'place',
         cuisine: kind === 'food' ? (p.primaryType || null) : null,
       };
     }) });
