@@ -66,7 +66,8 @@ function placePhotoMarkup(place){
   if(!place.image_url||!/^https:\/\//i.test(place.image_url))return icon('MapPin');
   const credit=place.image_author||'Wikimedia Commons';
   const href=place.image_source_url&&/^https:\/\//i.test(place.image_source_url)?place.image_source_url:'https://commons.wikimedia.org/';
-  return `<img src="${esc(place.image_url)}" alt="${esc(place.name)}" loading="lazy"><a class="place-photo-credit" href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${esc(`${credit} · ${place.image_license||'photo'}`)}">© ${esc(credit)}</a>`;
+  const licenseUrl=place.image_license_url&&/^https:\/\//i.test(place.image_license_url)?place.image_license_url:href;
+  return `<img src="${esc(place.image_url)}" alt="${esc(place.name)}" loading="lazy"><span class="place-photo-credit"><a href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="Photo by ${esc(credit)}">Photo: ${esc(credit)}</a> · <a href="${esc(licenseUrl)}" target="_blank" rel="noopener noreferrer">${esc(place.image_license||'Source')}</a></span>`;
 }
 function hydratePlacePhotos(){
   const targets=[...document.querySelectorAll('.catalog-art[data-place-id]:not(.has-photo)')];
