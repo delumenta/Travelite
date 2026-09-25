@@ -625,7 +625,7 @@ function planView(){
       </aside>
     </div>`;
 }
-const photoAttempts=const photoAttempts=new Set(), photoQueue=[], photoQueued=new Set();
+const photoAttempts=new Set(), photoQueue=[], photoQueued=new Set();
 let photoLoading=0;
 async function drainPlacePhotos(){
   while(photoLoading<2&&photoQueue.length){
