@@ -345,14 +345,14 @@ function dayRows(date=state.day){
 }
 function dayRouteUrl(rows){
   const points=(rows||[]).map(x=>{
-    if(x.latitude!=null&&x.longitude!=null)return \`\${x.latitude},\${x.longitude}\`;
+    if(x.latitude!=null&&x.longitude!=null)return `${x.latitude},${x.longitude}`;
     return x.address||x.location_name||x.title||'';
   }).filter(Boolean);
   if(points.length===0)return '';
-  if(points.length===1)return \`https://www.google.com/maps/search/?api=1&query=\${encodeURIComponent(points[0])}\`;
+  if(points.length===1)return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(points[0])}`;
   const origin=points[0],destination=points[points.length-1],waypoints=points.slice(1,-1).slice(0,8);
-  let url=\`https://www.google.com/maps/dir/?api=1&origin=\${encodeURIComponent(origin)}&destination=\${encodeURIComponent(destination)}\`;
-  if(waypoints.length)url+=\`&waypoints=\${encodeURIComponent(waypoints.join('|'))}\`;
+  let url=`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+  if(waypoints.length)url+=`&waypoints=${encodeURIComponent(waypoints.join('|'))}`;
   return url;
 }
 function addCatalogMatches(){
@@ -380,11 +380,11 @@ function addCatalogMatches(){
 function addResultRow(x,kind=x.__kind||'place',source=x.__source||'catalog'){
   const meta=[x.area||x.city||x.location,x.city&&x.area?x.city:null].filter(Boolean).join(' · ')||x.address||x.country||'';
   const hasPhoto=source==='catalog'&&kind==='place'&&placePhotoIsStored(x);
-  return \`<button class="add-result-row" data-action="add-preview" data-kind="\${kind}" data-source="\${source}" \${source==='catalog'?\`data-id="\${x.id}"\`:\`data-index="\${x.__googleIndex}"\`}>
-    <span class="add-result-art \${hasPhoto?'has-photo':''}" \${hasPhoto?\`data-place-id="\${x.id}"\`:''}>\${hasPhoto?placePhotoMarkup(x):icon(kind==='food'?'Utensils':'MapPin')}</span>
-    <span class="add-result-copy"><b>\${esc(x.name)}</b><small>\${esc(meta)}</small><em>\${source==='catalog'?'Travelite':'Google Maps'}</em></span>
-    \${icon('ChevronRight')}
-  </button>\`;
+  return `<button class="add-result-row" data-action="add-preview" data-kind="${kind}" data-source="${source}" ${source==='catalog'?`data-id="${x.id}"`:`data-index="${x.__googleIndex}"`}>
+    <span class="add-result-art ${hasPhoto?'has-photo':''}" ${hasPhoto?`data-place-id="${x.id}"`:''}>${hasPhoto?placePhotoMarkup(x):icon(kind==='food'?'Utensils':'MapPin')}</span>
+    <span class="add-result-copy"><b>${esc(x.name)}</b><small>${esc(meta)}</small><em>${source==='catalog'?'Travelite':'Google Maps'}</em></span>
+    ${icon('ChevronRight')}
+  </button>`;
 }
 function addPreviewView(x){
   if(!x)return '';
@@ -393,61 +393,61 @@ function addPreviewView(x){
     ? (source==='catalog'&&state.savedFood.some(s=>Number(s.restaurant_id)===Number(x.id)))
     : (source==='catalog'&&state.savedPlaces.some(s=>Number(s.place_id)===Number(x.id)));
   const photo=source==='catalog'&&kind==='place'&&placePhotoIsStored(x)
-    ? \`<div class="add-preview-photo" data-place-id="\${x.id}">\${placePhotoMarkup(x)}</div>\`
-    : \`<div class="add-preview-photo add-preview-placeholder">\${icon(kind==='food'?'Utensils':'MapPin')}</div>\`;
-  return \`<div class="add-preview">
-    <button class="add-back" data-action="add-preview-back">\${icon('ArrowLeft')} Back to results</button>
-    \${photo}
-    <div class="add-preview-kicker">\${kind==='food'?'FOOD & DRINK':'PLACE'} · \${source==='catalog'?'TRAVELITE':'GOOGLE MAPS'}</div>
-    <h3>\${esc(x.name)}</h3>
-    <p>\${icon('MapPin')} \${esc(x.area||x.city||x.address||state.trip?.country||'')}</p>
-    \${x.description?\`<div class="add-preview-desc">\${esc(x.description)}</div>\`:''}
-    <a class="add-map-link" href="\${esc(maps(x))}" target="_blank" rel="noopener noreferrer">\${icon('Navigation')} Open in Maps \${icon('ArrowUpRight')}</a>
+    ? `<div class="add-preview-photo" data-place-id="${x.id}">${placePhotoMarkup(x)}</div>`
+    : `<div class="add-preview-photo add-preview-placeholder">${icon(kind==='food'?'Utensils':'MapPin')}</div>`;
+  return `<div class="add-preview">
+    <button class="add-back" data-action="add-preview-back">${icon('ArrowLeft')} Back to results</button>
+    ${photo}
+    <div class="add-preview-kicker">${kind==='food'?'FOOD & DRINK':'PLACE'} · ${source==='catalog'?'TRAVELITE':'GOOGLE MAPS'}</div>
+    <h3>${esc(x.name)}</h3>
+    <p>${icon('MapPin')} ${esc(x.area||x.city||x.address||state.trip?.country||'')}</p>
+    ${x.description?`<div class="add-preview-desc">${esc(x.description)}</div>`:''}
+    <a class="add-map-link" href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer">${icon('Navigation')} Open in Maps ${icon('ArrowUpRight')}</a>
     <div class="add-preview-actions">
-      <button class="btn primary" data-action="add-selection-day">\${icon('CalendarPlus')} Add to this day</button>
-      <button class="btn outline \${saved?'is-saved':''}" data-action="save-selection">\${icon(saved?'Check':'Heart')} \${saved?'Saved':'Save for later'}</button>
+      <button class="btn primary" data-action="add-selection-day">${icon('CalendarPlus')} Add to this day</button>
+      <button class="btn outline ${saved?'is-saved':''}" data-action="save-selection">${icon(saved?'Check':'Heart')} ${saved?'Saved':'Save for later'}</button>
     </div>
-  </div>\`;
+  </div>`;
 }
 function addToDayView(){
   if(state.addSelection)return addPreviewView(state.addSelection);
   const matches=addCatalogMatches();
   const q=state.addSearch.trim();
   const google=state.googleResults.map((x,i)=>({...x,__source:'google',__kind:x.__kind||(state.addKind==='food'?'food':'place'),__googleIndex:i}));
-  return \`<div class="add-sheet">
-    <div class="add-day-context">\${icon('CalendarDays')} <span><small>ADDING TO</small><b>\${esc(fmtDate(state.day,{weekday:'long',day:'numeric',month:'long'}))}</b></span></div>
+  return `<div class="add-sheet">
+    <div class="add-day-context">${icon('CalendarDays')} <span><small>ADDING TO</small><b>${esc(fmtDate(state.day,{weekday:'long',day:'numeric',month:'long'}))}</b></span></div>
     <div class="add-search-wrap">
-      \${icon('Search')}
-      <input id="add-day-search" type="search" value="\${esc(state.addSearch)}" placeholder="Fushimi Inari, ramen near Gion…" autocomplete="off">
-      \${state.addSearch?\`<button data-action="add-clear-search" aria-label="Clear search">\${icon('X')}</button>\`:''}
+      ${icon('Search')}
+      <input id="add-day-search" type="search" value="${esc(state.addSearch)}" placeholder="Fushimi Inari, ramen near Gion…" autocomplete="off">
+      ${state.addSearch?`<button data-action="add-clear-search" aria-label="Clear search">${icon('X')}</button>`:''}
     </div>
     <div class="add-kind-row">
-      \${[['all','All'],['place','Places'],['food','Food']].map(([k,l])=>\`<button data-action="add-kind" data-value="\${k}" class="\${state.addKind===k?'active':''}">\${l}</button>\`).join('')}
-      <button data-action="add-nearby" class="add-nearby">\${icon('Navigation')} Near me</button>
+      ${[['all','All'],['place','Places'],['food','Food']].map(([k,l])=>`<button data-action="add-kind" data-value="${k}" class="${state.addKind===k?'active':''}">${l}</button>`).join('')}
+      <button data-action="add-nearby" class="add-nearby">${icon('Navigation')} Near me</button>
     </div>
     <div class="add-results-block">
-      <div class="add-results-head"><b>\${q?'From your Travelite collection':'Saved for later'}</b><span>\${matches.length}</span></div>
-      \${matches.length?matches.map(x=>addResultRow(x)).join(''):\`<div class="add-empty">\${icon('Search')}<p>\${q?'Nothing in your collection matches yet.':'Save ideas and they will appear here.'}</p></div>\`}
+      <div class="add-results-head"><b>${q?'From your Travelite collection':'Saved for later'}</b><span>${matches.length}</span></div>
+      ${matches.length?matches.map(x=>addResultRow(x)).join(''):`<div class="add-empty">${icon('Search')}<p>${q?'Nothing in your collection matches yet.':'Save ideas and they will appear here.'}</p></div>`}
     </div>
-    \${q.length>=3?\`<div class="add-google-block">
-      <div class="add-results-head"><b>More from Google</b><span>\${state.googleBusy?'Searching…':google.length?google.length:''}</span></div>
-      \${state.googleBusy?\`<div class="add-empty">\${icon('LoaderCircle','spin')}<p>Searching Google Places…</p></div>\`:google.length?google.map(x=>addResultRow(x,x.__kind,'google')).join(''):\`<button class="google-fallback" data-action="add-google-search">\${icon('Search')} Search Google for “\${esc(q)}” \${icon('ArrowRight')}</button>\`}
-    </div>\`:''}
-    <button class="add-custom-stop" data-action="new-custom-stop">\${icon('Plus')} Add a custom note or stop</button>
-  </div>\`;
+    ${q.length>=3?`<div class="add-google-block">
+      <div class="add-results-head"><b>More from Google</b><span>${state.googleBusy?'Searching…':google.length?google.length:''}</span></div>
+      ${state.googleBusy?`<div class="add-empty">${icon('LoaderCircle','spin')}<p>Searching Google Places…</p></div>`:google.length?google.map(x=>addResultRow(x,x.__kind,'google')).join(''):`<button class="google-fallback" data-action="add-google-search">${icon('Search')} Search Google for “${esc(q)}” ${icon('ArrowRight')}</button>`}
+    </div>`:''}
+    <button class="add-custom-stop" data-action="new-custom-stop">${icon('Plus')} Add a custom note or stop</button>
+  </div>`;
 }
 function planView(){
   let t=state.trip,days=dayList(t);
   if(!state.day||!days.includes(state.day))state.day=days.find(d=>d>=today())||days[0]||today();
   let rows=dayRows(state.day),dayNo=days.indexOf(state.day)+1,route=dayRouteUrl(rows);
-  return \`\${title('THE PLAN','Build one day at a time.', 'Search, drop it onto the day, then nudge the order until it feels right.', \`<button class="btn primary" data-action="new-stop">\${icon('Plus')} Add place</button>\`)}
-  <div class="day-strip">\${days.length?days.map((d,i)=>\`<button class="day-pill \${state.day===d?'active':''}" data-action="day" data-value="\${d}"><small>DAY \${String(i+1).padStart(2,'0')}</small><b>\${fmtDate(d,{weekday:'short'})}</b><span>\${fmtDate(d,{day:'numeric',month:'short'})}</span><i class="\${state.schedule.some(x=>x.schedule_date===d)?'has-stops':''}"></i></button>\`).join(''):\`<div class="empty-note">Add dates to this trip to build its itinerary. <button data-action="edit-trip">Add dates \${icon('ArrowRight')}</button></div>\`}</div>
+  return `${title('THE PLAN','Build one day at a time.', 'Search, drop it onto the day, then nudge the order until it feels right.', `<button class="btn primary" data-action="new-stop">${icon('Plus')} Add place</button>`)}
+  <div class="day-strip">${days.length?days.map((d,i)=>`<button class="day-pill ${state.day===d?'active':''}" data-action="day" data-value="${d}"><small>DAY ${String(i+1).padStart(2,'0')}</small><b>${fmtDate(d,{weekday:'short'})}</b><span>${fmtDate(d,{day:'numeric',month:'short'})}</span><i class="${state.schedule.some(x=>x.schedule_date===d)?'has-stops':''}"></i></button>`).join(''):`<div class="empty-note">Add dates to this trip to build its itinerary. <button data-action="edit-trip">Add dates ${icon('ArrowRight')}</button></div>`}</div>
   <div class="plan-layout"><div>
-    <div class="day-heading"><div><div class="eyebrow">\${dayNo>0?\`DAY \${String(dayNo).padStart(2,'0')} · \${fmtDate(state.day,{weekday:'long',day:'numeric',month:'long'})}\`:'YOUR DAY'}</div><h2>\${rows.length?\`\${rows.length} \${rows.length===1?'stop':'stops'} planned\`:'A day to make your own.'}</h2></div><div class="day-heading-actions">\${route?\`<a class="icon-action" href="\${esc(route)}" target="_blank" rel="noopener noreferrer">\${icon('Map')} Day map</a>\`:''}<button class="icon-action" data-action="assistant">\${icon('Sparkles')} Ask Assist</button></div></div>
-    <div class="timeline">\${rows.length?rows.map((x,i)=>\`<article class="stop"><div class="stop-rail"><span>\${time(x.start_time)||String(i+1).padStart(2,'0')}</span><i></i></div><div class="stop-card"><div class="stop-card-top"><span class="stop-order">\${i+1}</span><span class="type-chip">\${icon(x.item_type==='restaurant'?'Utensils':x.item_type==='transport'?'TrainFront':x.item_type==='accommodation'?'BedDouble':'MapPin')} \${esc(x.item_type||'stop')}</span>\${x.is_optional?'<span class="optional">OPTIONAL</span>':''}<span class="stop-reorder"><button data-action="move-stop" data-id="\${x.id}" data-value="-1" \${i===0?'disabled':''} aria-label="Move up">↑</button><button data-action="move-stop" data-id="\${x.id}" data-value="1" \${i===rows.length-1?'disabled':''} aria-label="Move down">↓</button></span></div><h3>\${esc(x.title)}</h3>\${x.location_name||x.address?\`<p>\${icon('MapPin')} \${esc(x.location_name||x.address)}</p>\`:''}\${x.description?\`<p class="stop-desc">\${esc(x.description)}</p>\`:''}<div class="stop-actions"><a href="\${esc(maps(x))}" target="_blank" rel="noopener noreferrer">\${icon('Navigation')} Maps</a><button data-action="edit-stop" data-id="\${x.id}">\${icon('Clock3')} Time / details</button>\${!x.is_locked?\`<button data-action="delete-stop" data-id="\${x.id}" class="quiet-danger">\${icon('Trash2')}</button>\`:''}</div></div></article>\`).join(''):\`<div class="empty-plan"><span>\${icon('Sunrise')}</span><h3>Start with one place.</h3><p>Search your collection or Google and drop something straight onto this day. You do not need to save it first.</p><button class="btn primary" data-action="new-stop">\${icon('Plus')} Add a place</button><button class="text-link" data-action="tab" data-value="saved">Use something saved \${icon('ArrowRight')}</button></div>\`}
-      <button class="add-timeline" data-action="new-stop">\${icon('Plus')} Add another place</button>
+    <div class="day-heading"><div><div class="eyebrow">${dayNo>0?`DAY ${String(dayNo).padStart(2,'0')} · ${fmtDate(state.day,{weekday:'long',day:'numeric',month:'long'})}`:'YOUR DAY'}</div><h2>${rows.length?`${rows.length} ${rows.length===1?'stop':'stops'} planned`:'A day to make your own.'}</h2></div><div class="day-heading-actions">${route?`<a class="icon-action" href="${esc(route)}" target="_blank" rel="noopener noreferrer">${icon('Map')} Day map</a>`:''}<button class="icon-action" data-action="assistant">${icon('Sparkles')} Ask Assist</button></div></div>
+    <div class="timeline">${rows.length?rows.map((x,i)=>`<article class="stop"><div class="stop-rail"><span>${time(x.start_time)||String(i+1).padStart(2,'0')}</span><i></i></div><div class="stop-card"><div class="stop-card-top"><span class="stop-order">${i+1}</span><span class="type-chip">${icon(x.item_type==='restaurant'?'Utensils':x.item_type==='transport'?'TrainFront':x.item_type==='accommodation'?'BedDouble':'MapPin')} ${esc(x.item_type||'stop')}</span>${x.is_optional?'<span class="optional">OPTIONAL</span>':''}<span class="stop-reorder"><button data-action="move-stop" data-id="${x.id}" data-value="-1" ${i===0?'disabled':''} aria-label="Move up">↑</button><button data-action="move-stop" data-id="${x.id}" data-value="1" ${i===rows.length-1?'disabled':''} aria-label="Move down">↓</button></span></div><h3>${esc(x.title)}</h3>${x.location_name||x.address?`<p>${icon('MapPin')} ${esc(x.location_name||x.address)}</p>`:''}${x.description?`<p class="stop-desc">${esc(x.description)}</p>`:''}<div class="stop-actions"><a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer">${icon('Navigation')} Maps</a><button data-action="edit-stop" data-id="${x.id}">${icon('Clock3')} Time / details</button>${!x.is_locked?`<button data-action="delete-stop" data-id="${x.id}" class="quiet-danger">${icon('Trash2')}</button>`:''}</div></div></article>`).join(''):`<div class="empty-plan"><span>${icon('Sunrise')}</span><h3>Start with one place.</h3><p>Search your collection or Google and drop something straight onto this day. You do not need to save it first.</p><button class="btn primary" data-action="new-stop">${icon('Plus')} Add a place</button><button class="text-link" data-action="tab" data-value="saved">Use something saved ${icon('ArrowRight')}</button></div>`}
+      <button class="add-timeline" data-action="new-stop">${icon('Plus')} Add another place</button>
     </div>
-  </div><aside class="plan-aside"><div class="aside-card"><div class="eyebrow">THIS DAY</div><h3>Plan first. Save only if you want to.</h3><p>Add places directly to \${esc(fmtDate(state.day,{weekday:'long'}))}. Saved is only your wishlist for later.</p>\${route?\`<a href="\${esc(route)}" target="_blank" rel="noopener noreferrer">\${icon('Map')} Open the day in Maps \${icon('ArrowRight')}</a>\`:''}<button data-action="new-stop">\${icon('Plus')} Add to this day \${icon('ArrowRight')}</button></div>\${state.bookings.filter(b=>b.booking_date===state.day).length?\`<div class="aside-card bookings-today"><div class="eyebrow">ON THIS DAY</div>\${state.bookings.filter(b=>b.booking_date===state.day).map(b=>\`<p>\${icon('Ticket')} \${esc(b.title)}</p>\`).join('')}</div>\`:''}</aside></div>\`;
+  </div><aside class="plan-aside"><div class="aside-card"><div class="eyebrow">THIS DAY</div><h3>Plan first. Save only if you want to.</h3><p>Add places directly to ${esc(fmtDate(state.day,{weekday:'long'}))}. Saved is only your wishlist for later.</p>${route?`<a href="${esc(route)}" target="_blank" rel="noopener noreferrer">${icon('Map')} Open the day in Maps ${icon('ArrowRight')}</a>`:''}<button data-action="new-stop">${icon('Plus')} Add to this day ${icon('ArrowRight')}</button></div>${state.bookings.filter(b=>b.booking_date===state.day).length?`<div class="aside-card bookings-today"><div class="eyebrow">ON THIS DAY</div>${state.bookings.filter(b=>b.booking_date===state.day).map(b=>`<p>${icon('Ticket')} ${esc(b.title)}</p>`).join('')}</div>`:''}</aside></div>`;
 }
 const photoAttempts=new Set(), photoQueue=[], photoQueued=new Set();
 let photoLoading=0;
@@ -692,14 +692,14 @@ async function addSelectionToDay(selection){
   state.googleResults=[];
   state.tab='plan';
   await loadTripData();
-  toast(\`Added to \${fmtDate(state.day,{weekday:'short',day:'numeric',month:'short'})}.\`);
+  toast(`Added to ${fmtDate(state.day,{weekday:'short',day:'numeric',month:'short'})}.`);
 }
 async function saveSelectionForLater(selection){
   const {kind,row}=await ensureCatalogSelection(selection);
   const isFood=kind==='food',table=isFood?'trip_restaurants':'trip_places',column=isFood?'restaurant_id':'place_id';
   const existing=(isFood?state.savedFood:state.savedPlaces).find(x=>Number(x[column])===Number(row.id));
   if(!existing){
-    const result=await sb.from(table).upsert({trip_id:state.trip.id,[column]:row.id},{onConflict:\`trip_id,\${column}\`});
+    const result=await sb.from(table).upsert({trip_id:state.trip.id,[column]:row.id},{onConflict:`trip_id,${column}`});
     if(result.error)throw result.error;
     toast('Saved for later.');
   }else toast('Already saved for later.');
