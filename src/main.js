@@ -61,7 +61,65 @@ function foodHasTabelog(r){
   );
 }
 
-function foodCard(r,link){let scheduled=state.schedule.filter(x=>Number(x.restaurant_id)===Number(r.id)).sort((a,b)=>String(a.schedule_date).localeCompare(String(b.schedule_date))),eaten=!!link?.is_eaten,price=r.price||r.dinner_price||r.lunch_price,place=[r.area||r.location,r.city].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(' · ');let badge=(label,kind)=>`<span class="jfood-badge ${kind}">${label}</span>`;return `<article class="jfood-card ${eaten?'is-eaten':''}"><div class="jfood-card-head"><div class="jfood-mark">${icon('Utensils')}</div><div class="jfood-title"><h3>${esc(r.name)}</h3>${r.name_japanese?`<small lang="ja">${esc(r.name_japanese)}</small>`:''}<p>${icon('MapPin')} ${esc(place||r.country||'Explore')}</p></div></div><div class="jfood-badges">${badge(esc(r.cuisine||'Food & drink'),'cuisine')}${link?.is_pick?badge('⭐ Pick','pick'):''}${link?.is_flexible?badge('🌙 Flexible','flex'):''}${r.is_tabelog_top100?badge('🏆 Top 100','top'):''}${r.is_hot?badge('🔥 Hot','hot'):''}${scheduled.length?badge('📅 Scheduled','scheduled'):''}${eaten?badge(`✓ Eaten${link.eaten_at?' · '+esc(fmtDate(link.eaten_at.slice(0,10))):''}`,'eaten'):''}${price?badge(esc(price),'price'):''}${r.tabelog_rating!=null?badge(`⭐ ${esc(r.tabelog_rating)} Tabelog`,'rating'):''}</div>${scheduled.length?`<div class="jfood-plan">${scheduled.map(x=>`📅 ${esc(fmtDate(x.schedule_date))}${x.start_time?' · '+esc(time(x.start_time)):''}`).join(' &nbsp; ')}</div>`:''}${r.description?`<p class="jfood-description">${esc(r.description)}</p>`:''}<div class="jfood-actions"><a href="${esc(maps(r))}" target="_blank" rel="noopener noreferrer">${icon('MapPin')} Map</a>${r.tabelog_url?.startsWith('https://')?`<a href="${esc(r.tabelog_url)}" target="_blank" rel="noopener noreferrer">🏆 Tabelog</a>`:''}${r.booking_url?.startsWith('https://')?`<a href="${esc(r.booking_url)}" target="_blank" rel="noopener noreferrer">Book</a>`:''}${link?`<button data-action="food-pick" data-id="${r.id}">${link.is_pick?'★ Pick':'☆ Pick'}</button><button data-action="food-flexible" data-id="${r.id}">${link.is_flexible?'🌙 Flex':'+ Flex'}</button><button data-action="food-eaten" data-id="${r.id}">${eaten?'↶ Undo eaten':'✓ Eaten'}</button><button data-action="save-catalog" data-kind="food" data-id="${r.id}">Remove</button>`:`<button data-action="save-catalog" data-kind="food" data-id="${r.id}">+ My Food</button>`}</div></article>`;}
+function foodCard(r,link){
+  const scheduled=state.schedule
+    .filter(x=>Number(x.restaurant_id)===Number(r.id))
+    .sort((a,b)=>String(a.schedule_date).localeCompare(String(b.schedule_date)));
+  const eaten=!!link?.is_eaten;
+  const price=r.price||r.dinner_price||r.lunch_price;
+  const place=[r.area||r.location,r.city]
+    .filter(Boolean)
+    .filter((v,i,a)=>a.indexOf(v)===i)
+    .join(' · ');
+  const savedMode=state.tab==='saved';
+  const badge=(label,kind)=>`<span class="jfood-badge ${kind}">${label}</span>`;
+
+  const saveAction=savedMode
+    ? `${link
+        ? `<button class="jfood-remove" data-action="save-catalog" data-kind="food" data-id="${r.id}">Remove from Saved</button>`
+        : ''}`
+    : `${link
+        ? `<button class="jfood-saved-state" type="button" disabled>✓ Saved</button>`
+        : `<button data-action="save-catalog" data-kind="food" data-id="${r.id}">♡ Save</button>`}`;
+
+  const manageActions=savedMode && link
+    ? `<button data-action="food-pick" data-id="${r.id}">${link.is_pick?'★ Pick':'☆ Pick'}</button>
+       <button data-action="food-flexible" data-id="${r.id}">${link.is_flexible?'🌙 Flex':'+ Flex'}</button>
+       <button data-action="food-eaten" data-id="${r.id}">${eaten?'↶ Undo eaten':'✓ Eaten'}</button>`
+    : '';
+
+  return `<article class="jfood-card ${eaten?'is-eaten':''}">
+    <div class="jfood-card-head">
+      <div class="jfood-mark">${icon('Utensils')}</div>
+      <div class="jfood-title">
+        <h3>${esc(r.name)}</h3>
+        ${r.name_japanese?`<small lang="ja">${esc(r.name_japanese)}</small>`:''}
+        <p>${icon('MapPin')} ${esc(place||r.country||'Explore')}</p>
+      </div>
+    </div>
+    <div class="jfood-badges">
+      ${badge(esc(r.cuisine||'Food & drink'),'cuisine')}
+      ${link?.is_pick?badge('⭐ Pick','pick'):''}
+      ${link?.is_flexible?badge('🌙 Flexible','flex'):''}
+      ${foodIsTop100(r)?badge('🏆 Top 100','top'):''}
+      ${foodIsHot(r)?badge('🔥 Hot','hot'):''}
+      ${scheduled.length?badge('📅 Scheduled','scheduled'):''}
+      ${eaten?badge(`✓ Eaten${link.eaten_at?' · '+esc(fmtDate(link.eaten_at.slice(0,10))):''}`,'eaten'):''}
+      ${price?badge(esc(price),'price'):''}
+      ${r.tabelog_rating!=null?badge(`⭐ ${esc(r.tabelog_rating)} Tabelog`,'rating'):''}
+    </div>
+    ${scheduled.length?`<div class="jfood-plan">${scheduled.map(x=>`📅 ${esc(fmtDate(x.schedule_date))}${x.start_time?' · '+esc(time(x.start_time)):''}`).join(' &nbsp; ')}</div>`:''}
+    ${r.description?`<p class="jfood-description">${esc(r.description)}</p>`:''}
+    <div class="jfood-actions">
+      <a href="${esc(maps(r))}" target="_blank" rel="noopener noreferrer">${icon('MapPin')} Map</a>
+      ${r.tabelog_url?.startsWith('https://')?`<a href="${esc(r.tabelog_url)}" target="_blank" rel="noopener noreferrer">🏆 Tabelog</a>`:''}
+      ${r.booking_url?.startsWith('https://')?`<a href="${esc(r.booking_url)}" target="_blank" rel="noopener noreferrer">Book</a>`:''}
+      <button data-action="schedule-catalog" data-kind="food" data-id="${r.id}">${icon('CalendarPlus')} Add to plan</button>
+      ${manageActions}
+      ${saveAction}
+    </div>
+  </article>`;
+}
 function foodSection(label,list,links){return list.length?`<section class="jfood-section"><h2>${label}<span>${list.length}</span></h2>${list.map(x=>foodCard(x,links.get(Number(x.id)))).join('')}</section>`:'';}
 function foodCollectionView(){
   const links=new globalThis.Map(state.savedFood.map(x=>[Number(x.restaurant_id),x]));
@@ -236,11 +294,15 @@ function foodCollectionView(){
   ${savedKinds}
   ${exploreKinds}
   <div class="jfood-filters">
-    <div class="jfood-chips">
+    <div class="jfood-filter-head">
+      <span>FILTERS</span>
+      <button data-action="food-clear" class="jfood-filter-reset" type="button">Reset</button>
+    </div>
+    <div class="jfood-chips jfood-city-chips">
       <button data-action="food-city" data-value="" class="${!city?'active':''}">All cities</button>
       ${cities.map(c=>`<button data-action="food-city" data-value="${esc(c)}" class="${city===c?'active':''}">${esc(c)}</button>`).join('')}
     </div>
-    <div class="jfood-chips">
+    <div class="jfood-chips jfood-status-chips">
       ${filters.map(([key,label])=>`<button data-action="food-filter" data-value="${key}" class="${state.foodFilter===key?'active':''}">${label}</button>`).join('')}
     </div>
     <div class="jfood-fields">
