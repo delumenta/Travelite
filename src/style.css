@@ -258,3 +258,91 @@ html[data-theme="dark"] .jfood-remove{background:#2a191d!important;border-color:
   .add-preview-actions{grid-template-columns:1fr}
   .modal:has(.add-sheet){width:100%;max-height:88vh;border-radius:22px 22px 0 0;margin-top:auto}
 }
+
+
+/* =========================================================
+   HOME + PLAN ROLE SPLIT / AROUND THIS STOP
+========================================================= */
+.plan-workspace{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:24px;align-items:start}
+.plan-day-panel{min-width:0}
+.plan-day-strip{margin-bottom:12px;padding-bottom:12px}
+.plan-timeline{max-width:none}
+.plan-stop .stop-card{padding:17px 18px 14px;border-radius:15px;box-shadow:0 1px 0 rgba(30,57,45,.02)}
+.plan-stop .stop-card h3{font-size:17px;letter-spacing:-.25px;margin-top:10px}
+.plan-stop .stop-actions{gap:14px;flex-wrap:wrap}
+.plan-stop .stop-actions a,.plan-stop .stop-actions button{min-height:28px;padding:0 2px}
+.plan-add-top{background:#edf5ed;border:1px solid #d8e8d7!important;border-radius:9px;padding:8px 10px!important}
+.plan-tools{display:grid;gap:13px;position:sticky;top:98px}
+.plan-summary-card,.plan-helper-card{border:1px solid #e2e9e0;border-radius:16px;background:#fff;padding:19px}
+.plan-summary-card{background:linear-gradient(145deg,#f5f9f2,#edf5eb)}
+.plan-summary-card>strong{display:block;font:800 17px Manrope,sans-serif;color:#2e4e40;margin:8px 0 15px}
+.plan-summary-numbers{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.plan-summary-numbers span{border:1px solid #dfe9dc;border-radius:10px;background:#ffffff9c;padding:10px;color:#819184;font-size:9px;text-transform:uppercase;font-weight:800;letter-spacing:.7px}
+.plan-summary-numbers b{display:block;color:#294b3d;font:800 21px Manrope,sans-serif;letter-spacing:-.6px;margin-bottom:2px}
+.plan-summary-link{display:flex;align-items:center;gap:7px;margin-top:13px;color:#426e50;font-size:11px;font-weight:800}
+.plan-summary-link svg{width:14px;height:14px}
+.plan-helper-card h3{font:800 16px/1.35 Manrope,sans-serif;color:#304f42;margin:10px 0 7px}
+.plan-helper-card p{color:#829087;font-size:11px;line-height:1.58;margin:0}
+.plan-helper-card>button{display:flex;align-items:center;gap:6px;border:0;background:none;color:#477559;font-size:10px;font-weight:800;padding:0;margin-top:13px}
+.plan-helper-card>button svg{width:13px;height:13px}
+.plan-helper-card.bookings-today p{display:flex;align-items:center;gap:7px;margin-top:9px}
+.plan-helper-card.bookings-today p svg{width:14px;height:14px}
+
+.modal:has(.around-sheet){width:min(700px,calc(100vw - 24px));max-height:min(820px,92vh);overflow:auto}
+.around-sheet{display:grid;gap:14px}
+.around-anchor{display:flex;gap:11px;align-items:center;padding:13px;border:1px solid #dfe9df;background:#f3f8f0;border-radius:14px}
+.around-anchor-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:#e3f0e2;color:#3e7355}
+.around-anchor-icon svg{width:19px;height:19px}
+.around-anchor>span:last-child{display:grid;gap:2px;min-width:0}
+.around-anchor small{font:800 8px Manrope,sans-serif;letter-spacing:1.3px;color:#8ca094}
+.around-anchor b{font-size:13px;color:#304c40;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.around-anchor em{font-size:10px;color:#8a998f;font-style:normal}
+.around-explainer{margin:0;color:#849188;font-size:10.5px;line-height:1.55}
+.around-results{display:grid;gap:9px}
+.around-card{border:1px solid #e5e9e3;border-radius:14px;background:#fff;padding:14px}
+.around-card-head{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;align-items:start}
+.around-rank{width:28px;height:28px;border-radius:9px;background:#edf5ed;color:#3f7556;display:grid;place-items:center;font-size:10px;font-weight:900}
+.around-card h3{margin:1px 0 3px;font:800 14px Manrope,sans-serif;color:#304a3e}
+.around-card-head p{margin:0;color:#93a098;font-size:10px;text-transform:capitalize}
+.around-signal{display:grid;gap:3px;margin:10px 0 11px;padding:9px 10px;border-radius:10px;background:#f7f6f2}
+.around-signal b{color:#b16b54;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.55px}
+.around-signal span{color:#858e88;font-size:10.5px;line-height:1.45}
+.around-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.around-actions a,.around-actions button{border:0;background:none;color:#477559;display:flex;align-items:center;gap:5px;padding:4px 0;font-size:10px;font-weight:800}
+.around-actions svg{width:13px;height:13px}
+.around-actions .around-add{margin-left:auto;border-radius:8px;background:#1c5546;color:#fff;padding:8px 10px}
+.around-loading{min-height:160px}
+
+html[data-theme="dark"] .plan-summary-card,
+html[data-theme="dark"] .plan-helper-card,
+html[data-theme="dark"] .around-card{background:#1f1c21;border-color:#393238;color:#eee7e8}
+html[data-theme="dark"] .plan-summary-card{background:linear-gradient(145deg,#202621,#1c211d)}
+html[data-theme="dark"] .plan-summary-card>strong,
+html[data-theme="dark"] .plan-summary-numbers b,
+html[data-theme="dark"] .plan-helper-card h3,
+html[data-theme="dark"] .around-card h3,
+html[data-theme="dark"] .around-anchor b{color:#f4eeee}
+html[data-theme="dark"] .plan-summary-numbers span{background:#242a25;border-color:#354139}
+html[data-theme="dark"] .around-anchor{background:#202720;border-color:#39453b}
+html[data-theme="dark"] .around-anchor-icon{background:#2b382d}
+html[data-theme="dark"] .around-signal{background:#292529}
+
+@media(max-width:980px){
+  .plan-workspace{grid-template-columns:1fr}
+  .plan-tools{position:static;grid-template-columns:1fr 1fr}
+  .plan-helper-card.bookings-today{grid-column:1/-1}
+}
+@media(max-width:700px){
+  .plan-tools{grid-template-columns:1fr}
+  .plan-day-strip{margin-left:-2px;margin-right:-2px}
+  .plan-stop.stop{grid-template-columns:42px minmax(0,1fr);gap:9px}
+  .plan-stop .stop-rail{padding-top:18px}
+  .plan-stop .stop-rail i{right:-10px}
+  .plan-stop .stop-rail:after{right:-17px;top:20px}
+  .plan-stop .stop-card{padding:14px 13px 12px;margin-bottom:11px}
+  .plan-stop .stop-actions{gap:10px}
+  .plan-stop .stop-actions a,.plan-stop .stop-actions button{font-size:9.5px}
+  .add-timeline{width:calc(100% - 51px);margin-left:51px}
+  .modal:has(.around-sheet){width:100%;max-height:88vh;border-radius:22px 22px 0 0;margin-top:auto}
+  .around-actions .around-add{width:100%;justify-content:center;margin-left:0}
+}
