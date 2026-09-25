@@ -11,8 +11,7 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
 const fields = [
   'places.id', 'places.displayName', 'places.formattedAddress',
   'places.addressComponents', 'places.location', 'places.types',
-  'places.primaryType', 'places.googleMapsUri', 'places.websiteUri',
-  'places.nationalPhoneNumber',
+  'places.primaryType', 'places.googleMapsUri',
 ].join(',');
 const addressPart = (parts: any[], types: string[]) =>
   parts?.find((part: any) => types.some(type => part.types?.includes(type)))?.longText ?? null;
@@ -62,8 +61,6 @@ Deno.serve(async (req: Request) => {
         latitude: p.location?.latitude ?? null,
         longitude: p.location?.longitude ?? null,
         maps_url: p.googleMapsUri || `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(p.id)}`,
-        website_url: p.websiteUri || null,
-        phone: p.nationalPhoneNumber || null,
         place_type: p.primaryType || 'attraction',
         result_kind: ['restaurant','cafe','bakery','bar','food_court','meal_takeaway','meal_delivery'].includes(p.primaryType) ? 'food' : 'place',
         cuisine: kind === 'food' ? (p.primaryType || null) : null,
