@@ -30,7 +30,7 @@ async function commonsFile(fileName:string) {
 }
 async function processPlace(admin:any, place:any) {
   const search = new URL('https://www.wikidata.org/w/api.php');
-  Object.entries({action:'wbsearchentities',format:'json',language:'en',limit:'10',search:[place.name,place.city,place.country].filter(Boolean).join(' ')}).forEach(([key,value])=>search.searchParams.set(key,value));
+  Object.entries({action:'wbsearchentities',format:'json',language:'en',limit:'10',search:place.name}).forEach(([key,value])=>search.searchParams.set(key,value));
   const searchData=await api(search.toString());
   const ids=(searchData.search||[]).map((item:any)=>item.id).filter(Boolean);
   if(!ids.length) return {status:'missing',reason:'No exact Wikidata place found.'};
