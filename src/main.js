@@ -50,7 +50,7 @@ function trackItem(eventType,item,kind,context,metadata={}){
   trackDiscovery(eventType,{
     kind,
     entityId,
-    provider:item?.provider||item?.__source||null,
+    provider:item?.provider||(item?.__source==='google'?'google':'travelite'),
     providerPlaceId:item?.provider_place_id||null,
     context,
     metadata
@@ -871,7 +871,7 @@ case 'add-food':openModal('catalog');$('#catalog-kind').value='food';break;
 case 'food-pick':case 'food-flexible':{let link=state.savedFood.find(x=>Number(x.restaurant_id)===id);if(!link)break;let field=a==='food-pick'?'is_pick':'is_flexible';let result=await sb.from('trip_restaurants').update({[field]:!link[field]}).eq('id',link.id).eq('trip_id',state.trip.id).select().single();if(result.error)throw result.error;state.savedFood=state.savedFood.map(x=>x.id===link.id?result.data:x);render();break;}
 case 'food-eaten':{let link=state.savedFood.find(x=>Number(x.restaurant_id)===id);if(!link)break;let value=!link.is_eaten;let result=await sb.from('trip_restaurants').update({is_eaten:value,eaten_at:value?new Date().toISOString():null}).eq('id',link.id).eq('trip_id',state.trip.id).select().single();if(result.error)throw result.error;state.savedFood=state.savedFood.map(x=>x.id===link.id?result.data:x);if(value){const restaurant=state.restaurants.find(x=>Number(x.id)===id);trackDiscovery('marked_eaten',{kind:'food',entityId:id,provider:restaurant?.provider||null,providerPlaceId:restaurant?.provider_place_id||null,context:'saved_food'});}render();break;}
 case 'food-refresh':findNearbyFood();break;
-case 'nearby-map':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId)||state.restaurants.find(x=>Number(x.id)===id);if(result)trackDiscovery('nearby_result_clicked',{kind:'food',entityId:result.saved||!result.provider_place_id?Number(result.id)||null:null,provider:result.provider||'google',providerPlaceId:result.provider_place_id||null,context:'food_finder',metadata:{action:'maps',distance_m:result.distance??null}});window.open(el.href||maps(result),'_blank','noopener,noreferrer');break;}
+case 'nearby-map':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId)||state.restaurants.find(x=>Number(x.id)===id);if(result)trackDiscovery('nearby_result_clicked',{kind:'food',entityId:result.saved||!result.provider_place_id?Number(result.id)||null:null,provider:result.provider||(result.saved?'travelite':'google'),providerPlaceId:result.provider_place_id||null,context:'food_finder',metadata:{action:'maps',distance_m:result.distance??null}});window.open(el.href||maps(result),'_blank','noopener,noreferrer');break;}
 case 'save-nearby':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId);if(!result)break;trackDiscovery('nearby_result_clicked',{kind:'food',provider:'google',providerPlaceId:result.provider_place_id,context:'food_finder',metadata:{action:'save',distance_m:result.distance??null}});openModal('catalog');state.catalogSelection=result;$('#catalog-kind').value='food';for(const key of ['name','city','area','address','maps_url'])if($('#catalog-form').elements[key])$('#catalog-form').elements[key].value=result[key]||'';break;}
 case 'day':state.day=v;render();break;
 case 'filter':if(v==='food'&&state.kind!=='food'){state.foodTab='discover';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}state.kind=v;render();break;
