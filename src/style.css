@@ -141,3 +141,9 @@ html[data-theme="dark"] .jfood-tabs{border-color:#383034}html[data-theme="dark"]
 html[data-theme="dark"] .jfood-chips button,html[data-theme="dark"] .jfood-fields select,html[data-theme="dark"] .jfood-fields input,html[data-theme="dark"] .jfood-card,html[data-theme="dark"] .jfood-actions a,html[data-theme="dark"] .jfood-actions button{background:#1f1c21;border-color:#393238;color:#eee7e8}
 html[data-theme="dark"] .jfood-chips button.active{background:#753139;border-color:#a54e57;color:#fff}html[data-theme="dark"] .jfood-title h3,html[data-theme="dark"] .jfood-results-head strong{color:#fff3f3}html[data-theme="dark"] .jfood-section h2{color:#e2adb0}html[data-theme="dark"] .jfood-mark{background:#432a30;color:#ffa8ad}html[data-theme="dark"] .jfood-badge{background:#332b31;border-color:#54434a;color:#e7d7db}
 @media(max-width:650px){.jfood-fields{grid-template-columns:1fr 1fr}.jfood-search-label{grid-column:1/-1}.jfood-tabs button{flex:1}.jfood-card{padding:12px}.jfood-actions a,.jfood-actions button{min-height:34px}}
+
+/* Place photographs saved in Supabase Storage */
+.catalog-art.has-photo{position:relative;overflow:hidden;background:#e5e5e5}
+.catalog-art.has-photo img{width:100%;height:100%;position:absolute;inset:0;object-fit:cover;display:block}
+.catalog-art .place-photo-credit{position:absolute;bottom:0;left:0;right:0;color:white;background:linear-gradient(transparent,#000a);font-size:8px;line-height:1.15;padding:15px 3px 3px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;z-index:1}
+.catalog-art .place-photo-credit a{color:white;text-decoration:none}.catalog-art .place-photo-credit a:hover{text-decoration:underline}
