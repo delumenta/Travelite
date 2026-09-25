@@ -26,22 +26,25 @@ Deno.serve(async (req: Request) => {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) return json({ error: 'Sign in to search places.' }, 401);
   const body = await req.json().catch(() => ({}));
+  const nearby = body.nearby === true;
   const query = String(body.query || '').trim().slice(0, 120);
   const kind = body.kind === 'food' ? 'food' : 'place';
   const destination = String(body.destination || '').trim().slice(0, 80);
-  if (query.length < 3) return json({ error: 'Enter at least three letters.' }, 400);
+  if (!nearby && query.length < 3) return json({ error: 'Enter at least three letters.' }, 400);
   const apiKey = Deno.env.get('GOOGLE_PLACES_API_KEY') || Deno.env.get('GOOGLE_MAPS_API_KEY');
   if (!apiKey) return json({ error: 'Google Places is not configured.' }, 503);
+  const latitude = Number(body.latitude), longitude = Number(body.longitude);
+  if (nearby && (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)) return json({ error: 'Valid location is required.' }, 400);
   const textQuery = destination && !query.toLowerCase().includes(destination.toLowerCase())
     ? `${query} ${destination}` : query;
   try {
-    const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    const response = await fetch(nearby ? 'https://places.googleapis.com/v1/places:searchNearby' : 'https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': apiKey, 'X-Goog-FieldMask': fields },
-      body: JSON.stringify({ textQuery, maxResultCount: 8, languageCode: 'en' }),
+      body: JSON.stringify(nearby ? {includedTypes:['restaurant','cafe','bakery'],maxResultCount:20,rankPreference:'DISTANCE',languageCode:'en',locationRestriction:{circle:{center:{latitude,longitude},radius:300}}} : { textQuery, maxResultCount: 8, languageCode: 'en' }),
     });
     if (!response.ok) {
-      console.error('Google Places Text Search failed', response.status, await response.text());
+      console.error('Google Places search failed', response.status, await response.text());
       return json({ error: 'Google search is unavailable right now. Try again shortly.' }, 502);
     }
     const data = await response.json();
