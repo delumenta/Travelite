@@ -1,0 +1,2 @@
+alter table public.places add column if not exists image_url text, add column if not exists image_source_url text, add column if not exists image_author text, add column if not exists image_license text, add column if not exists image_license_url text;
+insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types) values ('place-photos','place-photos',true,5000000,array['image/jpeg','image/png','image/webp']) on conflict (id) do nothing;
