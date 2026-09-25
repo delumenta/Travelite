@@ -11,14 +11,24 @@ Deno.serve(async(req:Request)=>{
     const viewer=createClient(url,Deno.env.get('SUPABASE_ANON_KEY')!);
     const {data:auth,error:authError}=await viewer.auth.getUser(jwt);
     if(authError||!auth.user)return json({error:'Sign in first.'},401);
-    const {place_id,action}=await req.json();
+    const {place_id,action,image_data,mime}=await req.json();
     const id=Number(place_id);
-    if(!Number.isSafeInteger(id)||id<1||!['approve','reject','missing'].includes(action))return json({error:'Invalid review request.'},400);
+    if(!Number.isSafeInteger(id)||id<1||!['approve','reject','missing','upload'].includes(action))return json({error:'Invalid review request.'},400);
     const admin=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const {data:place,error}=await admin.from('places').select('id,image_status,image_candidate_url,image_candidate_source_url,image_candidate_author,image_candidate_license,image_candidate_license_url').eq('id',id).single();
     if(error||!place)return json({error:'Place not found.'},404);
     let update:any;
-    if(action==='approve'){
+    if(action==='upload'){
+      if(typeof image_data!=='string'||!['image/jpeg','image/png','image/webp'].includes(mime))return json({error:'Choose a JPG, PNG, or WebP image.'},400);
+      const raw=atob(image_data);
+      if(raw.length<15000||raw.length>5000000)return json({error:'The image must be between 15 KB and 5 MB.'},400);
+      const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+      const ext=mime==='image/png'?'png':mime==='image/webp'?'webp':'jpg';
+      const path=`places/${id}.${ext}`;
+      const upload=await admin.storage.from('place-photos').upload(path,bytes,{contentType:mime,upsert:true});
+      if(upload.error)throw upload.error;
+      update={image_url:admin.storage.from('place-photos').getPublicUrl(path).data.publicUrl,image_source_url:null,image_author:'User upload',image_license:'User supplied',image_license_url:null,image_status:'stored',image_review_reason:null,image_candidate_url:null,image_candidate_source_url:null,image_candidate_author:null,image_candidate_license:null,image_candidate_license_url:null};
+    } else if(action==='approve'){
       if(place.image_status!=='review'||!place.image_candidate_url)return json({error:'No review image to approve.'},409);
       const image=await fetch(place.image_candidate_url,{signal:AbortSignal.timeout(12000)});
       if(!image.ok)throw Error('Could not download the review image.');
