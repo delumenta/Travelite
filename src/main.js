@@ -402,7 +402,7 @@ case 'food-eaten':{let link=state.savedFood.find(x=>Number(x.restaurant_id)===id
 case 'food-refresh':findNearbyFood();break;
 case 'save-nearby':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId);if(!result)break;openModal('catalog');state.catalogSelection=result;$('#catalog-kind').value='food';for(const key of ['name','city','area','address','maps_url'])if($('#catalog-form').elements[key])$('#catalog-form').elements[key].value=result[key]||'';break;}
 case 'day':state.day=v;render();break;
-case 'filter':state.kind=v;render();break;
+case 'filter':if(v==='food'&&state.kind!=='food'){state.foodTab='discover';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}state.kind=v;render();break;
 case 'saved-filter':state.savedKind=v;render();break;
 case 'menu':state.mobileMenu=true;render();break;
 case 'close-menu':state.mobileMenu=false;render();break;
