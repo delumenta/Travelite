@@ -31,7 +31,7 @@ Deno.serve(async (req: Request) => {
   const kind = body.kind === 'food' ? 'food' : 'place';
   const destination = String(body.destination || '').trim().slice(0, 80);
   if (!nearby && query.length < 3) return json({ error: 'Enter at least three letters.' }, 400);
-  const apiKey = Deno.env.get('GOOGLE_PLACES_API_KEY') || Deno.env.get('GOOGLE_MAPS_API_KEY');
+  const apiKey = Deno.env.get('GOOGLE_PLACES_SERVER_API_KEY') || Deno.env.get('GOOGLE_PLACES_API_KEY') || Deno.env.get('GOOGLE_MAPS_API_KEY');
   if (!apiKey) return json({ error: 'Google Places is not configured.' }, 503);
   const latitude = Number(body.latitude), longitude = Number(body.longitude);
   if (nearby && (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)) return json({ error: 'Valid location is required.' }, 400);
@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
     const response = await fetch(nearby ? 'https://places.googleapis.com/v1/places:searchNearby' : 'https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': apiKey, 'X-Goog-FieldMask': fields },
-      body: JSON.stringify(nearby ? {includedTypes:['restaurant','cafe','bakery'],maxResultCount:20,rankPreference:'DISTANCE',languageCode:'en',locationRestriction:{circle:{center:{latitude,longitude},radius:300}}} : { textQuery, maxResultCount: 8, languageCode: 'en' }),
+      body: JSON.stringify(nearby ? {includedTypes:['restaurant','cafe','bakery'],maxResultCount:20,rankPreference:'DISTANCE',languageCode:'en',locationRestriction:{circle:{center:{latitude,longitude},radius:300}}} : { textQuery, pageSize: 8, languageCode: 'en' }),
     });
     if (!response.ok) {
       console.error('Google Places search failed', response.status, await response.text());
