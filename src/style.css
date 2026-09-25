@@ -117,10 +117,27 @@ html[data-theme="dark"] .trip-delete-button:hover,html[data-theme="dark"] .trip-
 .hero-photo-credit{left:auto;right:16px;text-align:right}
 @media(max-width:650px){.hero-photo-credit{left:auto;right:12px}}
 
-/* Stored photos in Explore */
-.catalog-art.has-photo{position:relative;overflow:hidden;background:#e5e5e5}
-.catalog-art.has-photo img{width:100%;height:100%;position:absolute;inset:0;object-fit:cover;display:block}
-.catalog-art .place-photo-credit{position:absolute;bottom:0;left:0;right:0;color:white;background:linear-gradient(transparent,#000a);font-size:8px;line-height:1.15;padding:15px 3px 3px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;z-index:1}
-.catalog-art .place-photo-credit:hover{text-decoration:underline}
-
-.catalog-art .place-photo-credit a{color:white;text-decoration:none}.catalog-art .place-photo-credit a:hover{text-decoration:underline}
+/* Food collection follows the compact My Food / Discover hierarchy from Japan. */
+.jfood-tabs{display:flex;gap:8px;margin:0 0 14px;border-bottom:1px solid #e7dede;padding-bottom:9px}
+.jfood-tabs button{border:1px solid transparent;border-radius:9px;background:transparent;color:#827676;padding:11px 16px;font-weight:800;font-size:12px}
+.jfood-tabs button.active{background:#aa4747;color:white}
+.jfood-filters{display:grid;gap:10px;margin-bottom:20px}
+.jfood-chips{display:flex;gap:7px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+.jfood-chips button{flex:none;border:1px solid #e5dcdc;background:#fffdfa;border-radius:99px;padding:9px 13px;color:#54484a;font-weight:800;font-size:11px}
+.jfood-chips button.active{background:#3d262b;border-color:#3d262b;color:#fff}
+.jfood-fields{display:grid;grid-template-columns:minmax(130px,1fr) minmax(130px,1fr) minmax(200px,1.6fr);gap:9px}
+.jfood-fields label{color:#8b797d;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px}
+.jfood-fields select,.jfood-fields input{display:block;width:100%;margin-top:5px;height:42px;border:1px solid #e5dcdc;border-radius:8px;background:#fffdfa;color:#362d31;padding:0 10px;font-size:12px;letter-spacing:normal;text-transform:none}
+.jfood-results-head{display:flex;justify-content:space-between;align-items:center;margin:22px 0 12px;color:#442c31}
+.jfood-results-head strong{font:800 17px Manrope,sans-serif}.jfood-results-head span{font-size:11px;color:#938486}
+.jfood-list{max-width:940px}.jfood-section{margin-bottom:26px}.jfood-section h2{display:flex;align-items:center;gap:8px;font:800 12px Manrope,sans-serif;letter-spacing:.7px;text-transform:uppercase;color:#63383e;margin:20px 0 9px}.jfood-section h2 span{margin-left:auto;color:#9b898b;font-size:11px}
+.jfood-card{background:#fffdfa;border:1px solid #e8dddd;border-radius:13px;padding:14px 15px;margin:0 0 9px;color:#342f30}.jfood-card.is-eaten{opacity:.73}
+.jfood-card-head{display:flex;gap:12px}.jfood-mark{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:9px;background:#f9e9e7;color:#a9454c}.jfood-mark svg{width:18px}
+.jfood-title{min-width:0}.jfood-title h3{font:800 15px Manrope,sans-serif;letter-spacing:-.25px;margin:0 0 2px;color:#332b2e}.jfood-title small{display:block;color:#93878a;font-size:11px}.jfood-title p{display:flex;align-items:center;gap:4px;margin:5px 0 0;font-size:11px;color:#867f81}.jfood-title p svg{width:12px;height:12px}
+.jfood-badges{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0 0}.jfood-badge{border:1px solid #e7dfdf;border-radius:5px;background:#f8f5f3;padding:4px 6px;color:#725e62;font-size:10px;font-weight:800}.jfood-badge.pick,.jfood-badge.hot{color:#a73f47;background:#fff0ed;border-color:#f3ceca}.jfood-badge.top,.jfood-badge.rating{color:#8e672d;background:#fff6df;border-color:#eedcad}.jfood-badge.flex,.jfood-badge.scheduled{color:#476887;background:#eef5fb;border-color:#d7e4ef}.jfood-badge.eaten{color:#427d60;background:#e9f7ef;border-color:#d2e8da}
+.jfood-plan{border-left:2px solid #b8787e;margin:11px 0 0;padding:4px 9px;color:#72555b;font-size:11px}.jfood-description{font-size:11px;line-height:1.55;color:#777174;margin:10px 0 0}
+.jfood-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.jfood-actions a,.jfood-actions button{border:1px solid #e9dfe0;border-radius:7px;background:#fff;color:#72525a;padding:7px 9px;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800}.jfood-actions svg{width:13px;height:13px}.jfood-actions a:hover,.jfood-actions button:hover{border-color:#d47e83;color:#a73f47}
+html[data-theme="dark"] .jfood-tabs{border-color:#383034}html[data-theme="dark"] .jfood-tabs button{color:#cbbec2}html[data-theme="dark"] .jfood-tabs button.active{color:#fff}
+html[data-theme="dark"] .jfood-chips button,html[data-theme="dark"] .jfood-fields select,html[data-theme="dark"] .jfood-fields input,html[data-theme="dark"] .jfood-card,html[data-theme="dark"] .jfood-actions a,html[data-theme="dark"] .jfood-actions button{background:#1f1c21;border-color:#393238;color:#eee7e8}
+html[data-theme="dark"] .jfood-chips button.active{background:#753139;border-color:#a54e57;color:#fff}html[data-theme="dark"] .jfood-title h3,html[data-theme="dark"] .jfood-results-head strong{color:#fff3f3}html[data-theme="dark"] .jfood-section h2{color:#e2adb0}html[data-theme="dark"] .jfood-mark{background:#432a30;color:#ffa8ad}html[data-theme="dark"] .jfood-badge{background:#332b31;border-color:#54434a;color:#e7d7db}
+@media(max-width:650px){.jfood-fields{grid-template-columns:1fr 1fr}.jfood-search-label{grid-column:1/-1}.jfood-tabs button{flex:1}.jfood-card{padding:12px}.jfood-actions a,.jfood-actions button{min-height:34px}}
