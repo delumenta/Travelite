@@ -26,36 +26,6 @@ const inTripCountry = row => { const destination=canonicalCountry(state.trip?.co
 const cover = trip => { if (trip?.cover_image_url && /^https:\/\//.test(trip.cover_image_url)) return trip.cover_image_url; const saved=state.countryPhotos[countryKey(trip?.country)]; if(saved?.image_url)return saved.image_url; const destination=`${trip?.country||''} ${trip?.name||''}`.toLowerCase(); const images=[[/\b(italy|italia|rome|roma|venice|venezia|florence|firenze|milan|milano|cinque terre)\b/,'photo-1459085184239-463574c08a08'],[/japan|日本|tokyo|kyoto|osaka/i,'photo-1493976040374-85c8e12f0c0e'],[/taiwan|臺灣|台湾|taipei/i,'photo-1470004914212-05527e49370b']]; const image=images.find(([pattern])=>pattern.test(destination))?.[1]||'photo-1488646953014-85cb44e25828'; return `https://images.unsplash.com/${image}?w=1400&q=85`; };
 const coverCredit = trip => { if(trip?.cover_image_url)return '';const p=state.countryPhotos[countryKey(trip?.country)];return p?.source_page?.startsWith('https://commons.wikimedia.org/')?`<a class="hero-photo-credit" href="${esc(p.source_page)}" target="_blank" rel="noopener noreferrer">Photo: ${esc(p.author)} · ${esc(p.license)}</a>`:''; };
 const toast = (msg, error=false) => { let el=$('#toast'); if (!el) {el=document.createElement('div');el.id='toast';document.body.appendChild(el)} el.textContent=msg;el.className=error?'show error':'show';clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.className='',4000); };
-const analyticsSessionId = globalThis.crypto?.randomUUID?.() || null;
-function trackDiscovery(eventType,{kind=null,entityId=null,provider=null,providerPlaceId=null,context='app',metadata={}}={}){
-  if(!state.user)return;
-  const payload={
-    user_id:state.user.id,
-    trip_id:state.trip?.id||null,
-    session_id:analyticsSessionId,
-    event_type:eventType,
-    entity_kind:kind,
-    entity_id:entityId,
-    provider,
-    provider_place_id:providerPlaceId,
-    context,
-    metadata:metadata&&typeof metadata==='object'?metadata:{}
-  };
-  void sb.from('discovery_events').insert(payload).then(({error})=>{
-    if(error)console.warn('Travelite analytics event skipped',error.message);
-  }).catch(()=>{});
-}
-function trackItem(eventType,item,kind,context,metadata={}){
-  const entityId=item?.__source==='google'?null:(item?.id??null);
-  trackDiscovery(eventType,{
-    kind,
-    entityId,
-    provider:item?.provider||(item?.__source==='google'?'google':'travelite'),
-    providerPlaceId:item?.provider_place_id||null,
-    context,
-    metadata
-  });
-}
 const state = {user:null,trips:[],trip:null,tab:'plan',day:null,schedule:[],bookings:[],expenses:[],places:[],restaurants:[],savedPlaces:[],savedFood:[],search:'',kind:'all',savedKind:'all',modal:null,authMode:'login',loading:true,assistant:[],threadId:null,assistantBusy:false,assistantOpen:false,mobileMenu:false,nearbyFood:[],foodBusy:false,foodLocation:null,foodError:'',foodMode:'collection',foodFilter:'all',foodTab:'mine',foodCity:'',foodArea:'',foodCuisine:'',foodSearch:'',scheduleExpanded:false,theme:localStorage.getItem('travelite.theme')==='dark'?'dark':'light',googleResults:[],catalogSelection:null,googleBusy:false,countryPhotos:{},addSearch:'',addKind:'all',addSelection:null,addNearby:false};
 document.documentElement.dataset.theme=state.theme;
 function drawIcons(){ createIcons({icons,attrs:{'stroke-width':1.85}}); }
@@ -88,7 +58,6 @@ async function findNearbyFood(){
   state.foodBusy=true;
   state.foodError='';
   render();
-  trackDiscovery('nearby_opened',{context:'food_finder',metadata:{radius_m:300}});
   try{
     const position=await new Promise((resolve,reject)=>{
       if(!navigator.geolocation)return reject(new Error('Location is not available on this device.'));
@@ -111,14 +80,6 @@ async function findNearbyFood(){
         ? Math.round(distanceMeters(latitude,longitude,Number(row.latitude),Number(row.longitude)))
         : null
     })).sort((a,b)=>(a.distance??999999)-(b.distance??999999));
-    trackDiscovery('nearby_results_shown',{
-      context:'food_finder',
-      metadata:{
-        radius_m:300,
-        count:state.nearbyFood.length,
-        provider_place_ids:state.nearbyFood.map(x=>x.provider_place_id).filter(Boolean).slice(0,20)
-      }
-    });
   }catch(error){
     const denied=error?.code===1;
     state.foodError=denied?'Location permission is needed to find food around you.':(error?.message||'Could not find nearby food.');
@@ -776,7 +737,6 @@ async function addSelectionToDay(selection){
     [kind==='food'?'restaurant_id':'place_id']:row.id
   };
   await saveRow('schedule',payload);
-  trackItem('added_to_plan',{...row,__source:'catalog'},kind,'add_to_day',{schedule_date:state.day});
   state.modal=null;
   state.addSelection=null;
   state.googleResults=[];
@@ -791,7 +751,6 @@ async function saveSelectionForLater(selection){
   if(!existing){
     const result=await sb.from(table).upsert({trip_id:state.trip.id,[column]:row.id},{onConflict:`trip_id,${column}`});
     if(result.error)throw result.error;
-    trackItem('saved_for_later',{...row,__source:'catalog'},kind,'add_to_day');
     toast('Saved for later.');
   }else toast('Already saved for later.');
   state.modal=null;
@@ -870,11 +829,11 @@ case 'food-clear':state.foodFilter='all';state.foodCity='';state.foodArea='';sta
 case 'go-discover-food':state.tab='explore';state.kind='food';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';render();window.scrollTo(0,0);break;
 case 'add-food':openModal('catalog');$('#catalog-kind').value='food';break;
 case 'food-pick':case 'food-flexible':{let link=state.savedFood.find(x=>Number(x.restaurant_id)===id);if(!link)break;let field=a==='food-pick'?'is_pick':'is_flexible';let result=await sb.from('trip_restaurants').update({[field]:!link[field]}).eq('id',link.id).eq('trip_id',state.trip.id).select().single();if(result.error)throw result.error;state.savedFood=state.savedFood.map(x=>x.id===link.id?result.data:x);render();break;}
-case 'food-eaten':{let link=state.savedFood.find(x=>Number(x.restaurant_id)===id);if(!link)break;let value=!link.is_eaten;let result=await sb.from('trip_restaurants').update({is_eaten:value,eaten_at:value?new Date().toISOString():null}).eq('id',link.id).eq('trip_id',state.trip.id).select().single();if(result.error)throw result.error;state.savedFood=state.savedFood.map(x=>x.id===link.id?result.data:x);if(value){const restaurant=state.restaurants.find(x=>Number(x.id)===id);trackDiscovery('marked_eaten',{kind:'food',entityId:id,provider:restaurant?.provider||null,providerPlaceId:restaurant?.provider_place_id||null,context:'saved_food'});}render();break;}
+case 'food-eaten':{let link=state.savedFood.find(x=>Number(x.restaurant_id)===id);if(!link)break;let value=!link.is_eaten;let result=await sb.from('trip_restaurants').update({is_eaten:value,eaten_at:value?new Date().toISOString():null}).eq('id',link.id).eq('trip_id',state.trip.id).select().single();if(result.error)throw result.error;state.savedFood=state.savedFood.map(x=>x.id===link.id?result.data:x);render();break;}
 case 'food-refresh':findNearbyFood();break;
-case 'nearby-map':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId)||state.restaurants.find(x=>Number(x.id)===id);if(result)trackDiscovery('nearby_result_clicked',{kind:'food',entityId:result.saved||!result.provider_place_id?Number(result.id)||null:null,provider:result.provider||(result.saved?'travelite':'google'),providerPlaceId:result.provider_place_id||null,context:'food_finder',metadata:{action:'maps',distance_m:result.distance??null}});window.open(el.href||maps(result),'_blank','noopener,noreferrer');break;}
-case 'add-nearby-plan':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId)||state.restaurants.find(x=>Number(x.id)===id);if(!result)break;const selection={...result,__source:result.saved||!result.provider_place_id?'catalog':'google',__kind:'food'};trackDiscovery('nearby_result_clicked',{kind:'food',entityId:selection.__source==='catalog'?Number(selection.id)||null:null,provider:selection.provider||(selection.__source==='catalog'?'travelite':'google'),providerPlaceId:selection.provider_place_id||null,context:'food_finder',metadata:{action:'add_to_plan',distance_m:selection.distance??null}});await addSelectionToDay(selection);break;}
-case 'save-nearby':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId);if(!result)break;trackDiscovery('nearby_result_clicked',{kind:'food',provider:'google',providerPlaceId:result.provider_place_id,context:'food_finder',metadata:{action:'save',distance_m:result.distance??null}});await saveSelectionForLater({...result,__source:'google',__kind:'food'});break;}
+case 'nearby-map':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId)||state.restaurants.find(x=>Number(x.id)===id);if(result)window.open(el.href||maps(result),'_blank','noopener,noreferrer');break;}
+case 'add-nearby-plan':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId)||state.restaurants.find(x=>Number(x.id)===id);if(!result)break;const selection={...result,__source:result.saved||!result.provider_place_id?'catalog':'google',__kind:'food'};await addSelectionToDay(selection);break;}
+case 'save-nearby':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId);if(!result)break;await saveSelectionForLater({...result,__source:'google',__kind:'food'});break;}
 case 'day':state.day=v;render();break;
 case 'filter':if(v==='food'&&state.kind!=='food'){state.foodTab='discover';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}state.kind=v;render();break;
 case 'saved-filter':state.savedKind=v;if(v==='food'){state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}render();break;
@@ -891,7 +850,7 @@ case 'add-kind':state.addKind=v;state.googleResults=[];render();break;
 case 'add-clear-search':state.addSearch='';state.googleResults=[];render();setTimeout(()=>$('#add-day-search')?.focus(),0);break;
 case 'add-google-search':await searchAddGoogle();break;
 case 'add-nearby':await searchAddGoogle({nearby:true});break;
-case 'add-preview':{let selection=null;const source=el.dataset.source||'catalog',kind=el.dataset.kind||'place';if(source==='google'){selection=state.googleResults[Number(el.dataset.index)];if(selection)selection={...selection,__source:'google',__kind:kind};}else{selection=(kind==='food'?state.restaurants:state.places).find(x=>Number(x.id)===id);if(selection)selection={...selection,__source:'catalog',__kind:kind};}if(selection){state.addSelection=selection;trackItem('preview_opened',selection,kind,'add_to_day',{source});render();}break;}
+case 'add-preview':{let selection=null;const source=el.dataset.source||'catalog',kind=el.dataset.kind||'place';if(source==='google'){selection=state.googleResults[Number(el.dataset.index)];if(selection)selection={...selection,__source:'google',__kind:kind};}else{selection=(kind==='food'?state.restaurants:state.places).find(x=>Number(x.id)===id);if(selection)selection={...selection,__source:'catalog',__kind:kind};}if(selection){state.addSelection=selection;render();}break;}
 case 'add-preview-back':state.addSelection=null;render();setTimeout(()=>$('#add-day-search')?.focus(),0);break;
 case 'add-selection-day':await addSelectionToDay(state.addSelection);break;
 case 'save-selection':await saveSelectionForLater(state.addSelection);break;
@@ -913,7 +872,7 @@ case 'close-modal':state.modal=null;render();break;
 case 'assistant':state.assistantOpen=true;state.mobileMenu=false;state.modal=null;render();break;
 case 'assistant-close':state.assistantOpen=false;render();break;
 case 'schedule-catalog':{let kind=el.dataset.kind,src=(kind==='food'?state.restaurants:state.places).find(x=>x.id===id);if(!src)break;openModal('addToDay');state.addSelection={...src,__source:'catalog',__kind:kind};render();break;}
-case 'save-catalog':{let kind=el.dataset.kind,isFood=kind==='food',table=isFood?'trip_restaurants':'trip_places',column=isFood?'restaurant_id':'place_id',saved=(isFood?state.savedFood:state.savedPlaces).find(x=>x[column]===id);if(saved){let r=await sb.from(table).delete().eq('id',saved.id).eq('trip_id',state.trip.id);if(r.error)throw r.error;toast('Removed from saved.');}else{await saveRow(table,{trip_id:state.trip.id,[column]:id});const item=(isFood?state.restaurants:state.places).find(x=>Number(x.id)===id);trackDiscovery('saved_for_later',{kind,entityId:id,provider:item?.provider||null,providerPlaceId:item?.provider_place_id||null,context:state.tab||'catalog'});toast('Saved to your trip.');}await loadTripData();break;}
+case 'save-catalog':{let kind=el.dataset.kind,isFood=kind==='food',table=isFood?'trip_restaurants':'trip_places',column=isFood?'restaurant_id':'place_id',saved=(isFood?state.savedFood:state.savedPlaces).find(x=>x[column]===id);if(saved){let r=await sb.from(table).delete().eq('id',saved.id).eq('trip_id',state.trip.id);if(r.error)throw r.error;toast('Removed from saved.');}else{await saveRow(table,{trip_id:state.trip.id,[column]:id});toast('Saved to your trip.');}await loadTripData();break;}
 case 'delete-stop':case 'delete-booking':case 'delete-expense':state.modal={type:'confirm',target:a,id,message:`Delete this ${a.split('-')[1]}? This cannot be undone.`};render();break;
 case 'confirm-delete':{const target=state.modal.target,table=target==='delete-stop'?'schedule':target==='delete-booking'?'bookings':'trip_expenses';let r=await sb.from(table).delete().eq('id',state.modal.id).eq('trip_id',state.trip.id);if(r.error)throw r.error;state.modal=null;toast('Removed.');await loadTripData();break;}
 case 'assist-proposal':{let message=state.assistant[Number(el.dataset.message)],item=message?.actions?.[Number(el.dataset.index)];if(!item)break;if(item.kind==='map'){if(/^https:\/\//.test(item.url))window.open(item.url,'_blank','noopener,noreferrer');break;}if(!item.proposal_id)break;if(!confirm(item.confirmation_text||`Apply “${item.title||item.label}” to your trip?`))break;let {data,error}=await sb.functions.invoke('travel-assist',{body:{action:'apply',trip_id:state.trip.id,proposal_id:item.proposal_id}});if(error||data?.error)throw Error(data?.error||error?.message);item.label='Applied';item.proposal_id=null;state.assistant.push({role:'assistant',text:data.reply||'Done — I updated your trip.'});await loadTripData();toast('Trip updated.');break;}
