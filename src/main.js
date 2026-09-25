@@ -703,9 +703,9 @@ async function saveSelectionForLater(selection){
     if(result.error)throw result.error;
     toast('Saved for later.');
   }else toast('Already saved for later.');
-  await loadTripData();
   state.modal=null;
   state.addSelection=null;
+  await loadTripData();
 }
 async function searchAddGoogle({nearby=false}={}){
   if(state.googleBusy)return;
@@ -727,7 +727,7 @@ async function searchAddGoogle({nearby=false}={}){
     }else body.query=q;
     const {data,error}=await sb.functions.invoke('travelite-search',{body});
     if(error||data?.error)throw Error(data?.error||error?.message||'Google search is unavailable.');
-    state.googleResults=(data.results||[]).map(x=>({...x,__kind:body.kind==='food'?'food':'place'}));
+    state.googleResults=(data.results||[]).map(x=>({...x,__kind:x.result_kind||(body.kind==='food'?'food':'place')}));
   }catch(e){
     toast(e.message||'Could not search Google Places.',true);
   }finally{
