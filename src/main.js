@@ -40,10 +40,215 @@ function homeView(){let t=state.trip,dates=dayList(t),now=today(),current=dates.
 const distanceMeters=(a,b,c,d)=>{const rad=Math.PI/180,p1=a*rad,p2=c*rad,dp=(c-a)*rad,dl=(d-b)*rad,h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 12742000*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));};
 function foodView(){if(state.foodMode==='collection')return foodCollectionView();let loc=state.foodLocation, saved=state.savedFood.map(link=>state.restaurants.find(x=>x.id===link.restaurant_id)).filter(Boolean).filter(x=>loc&&Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude))&&x.latitude!=null&&x.longitude!=null).map(x=>({...x,distance:Math.round(distanceMeters(loc.latitude,loc.longitude,Number(x.latitude),Number(x.longitude))),saved:true})).filter(x=>x.distance<=300).sort((a,b)=>a.distance-b.distance);let google=state.nearbyFood.filter(x=>!saved.some(y=>y.provider_place_id&&y.provider_place_id===x.provider_place_id));return `${title('FOOD FINDER','A bite around the corner.','Restaurants within 300 m of your current location.',`<button class="btn outline" data-action="food-mode" data-value="collection">All food</button><button class="btn primary" data-action="food-refresh">${icon('Navigation')} Refresh location</button>`)}<div class="food-radius">${icon('MapPin')} 300 m radius · ${state.foodBusy?'Finding restaurants…':loc?'Nearest first':'Location needed'}</div>${state.foodError?`<div class="food-message">${esc(state.foodError)} <button data-action="food-refresh">Try again</button></div>`:''}${state.foodBusy?`<div class="loading">${icon('LoaderCircle','spin')}<p>Looking around you…</p></div>`:loc?`<div class="food-groups">${saved.length?`<h2>Your picks nearby</h2>${saved.map(x=>foodResult(x)).join('')}`:''}<h2>Restaurants around you</h2>${google.length?google.map(x=>foodResult(x)).join(''):'<p class="food-message">No other restaurants found within 300 m. Try again from another location.</p>'}</div>`:'<div class="empty-list">'+icon('Navigation')+'<h3>Find food near you.</h3><p>Allow location access to see restaurants within 300 m.</p><button class="btn primary" data-action="food-refresh">Find nearby food</button></div>'}`;}
 function foodGroupLabel(r){let c=String(r.cuisine||'').toLowerCase();if(/sushi|sashimi|omakase/.test(c))return 'Sushi';if(/ramen|udon|soba|noodle/.test(c))return 'Noodles';if(/yakitori|kushiyaki/.test(c))return 'Yakitori';if(/tonkatsu|katsu/.test(c))return 'Katsu';if(/oyakodon|donburi|rice/.test(c))return 'Rice';if(/tempura/.test(c))return 'Tempura';if(/unagi|eel|seafood|fish/.test(c))return 'Seafood';if(/curry/.test(c))return 'Curry';if(/izakaya|japanese pub/.test(c))return 'Izakaya';if(/cafe|coffee|dessert|sweet|bakery|pastry|wagashi/.test(c))return 'Cafe & sweets';return String(r.cuisine||'Other').split(/[,/]/)[0].trim()||'Other';}
+
+function foodIsTop100(r){
+  if(r?.is_tabelog_top100 === true || r?.is_top100 === true) return true;
+  const award=String(r?.tabelog_award||r?.award||r?.recognition||'').toLowerCase();
+  return award.includes('top 100') || award.includes('top100');
+}
+function foodIsHot(r){
+  if(r?.is_hot === true) return true;
+  const award=String(r?.tabelog_award||r?.award||r?.recognition||'').toLowerCase();
+  return award.includes('hot restaurant') || award.includes('hot');
+}
+function foodHasTabelog(r){
+  return Boolean(
+    r?.tabelog_url ||
+    r?.tabelog_rating != null ||
+    r?.is_tabelog ||
+    r?.tabelog ||
+    foodIsTop100(r)
+  );
+}
+
 function foodCard(r,link){let scheduled=state.schedule.filter(x=>Number(x.restaurant_id)===Number(r.id)).sort((a,b)=>String(a.schedule_date).localeCompare(String(b.schedule_date))),eaten=!!link?.is_eaten,price=r.price||r.dinner_price||r.lunch_price,place=[r.area||r.location,r.city].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(' · ');let badge=(label,kind)=>`<span class="jfood-badge ${kind}">${label}</span>`;return `<article class="jfood-card ${eaten?'is-eaten':''}"><div class="jfood-card-head"><div class="jfood-mark">${icon('Utensils')}</div><div class="jfood-title"><h3>${esc(r.name)}</h3>${r.name_japanese?`<small lang="ja">${esc(r.name_japanese)}</small>`:''}<p>${icon('MapPin')} ${esc(place||r.country||'Explore')}</p></div></div><div class="jfood-badges">${badge(esc(r.cuisine||'Food & drink'),'cuisine')}${link?.is_pick?badge('⭐ Pick','pick'):''}${link?.is_flexible?badge('🌙 Flexible','flex'):''}${r.is_tabelog_top100?badge('🏆 Top 100','top'):''}${r.is_hot?badge('🔥 Hot','hot'):''}${scheduled.length?badge('📅 Scheduled','scheduled'):''}${eaten?badge(`✓ Eaten${link.eaten_at?' · '+esc(fmtDate(link.eaten_at.slice(0,10))):''}`,'eaten'):''}${price?badge(esc(price),'price'):''}${r.tabelog_rating!=null?badge(`⭐ ${esc(r.tabelog_rating)} Tabelog`,'rating'):''}</div>${scheduled.length?`<div class="jfood-plan">${scheduled.map(x=>`📅 ${esc(fmtDate(x.schedule_date))}${x.start_time?' · '+esc(time(x.start_time)):''}`).join(' &nbsp; ')}</div>`:''}${r.description?`<p class="jfood-description">${esc(r.description)}</p>`:''}<div class="jfood-actions"><a href="${esc(maps(r))}" target="_blank" rel="noopener noreferrer">${icon('MapPin')} Map</a>${r.tabelog_url?.startsWith('https://')?`<a href="${esc(r.tabelog_url)}" target="_blank" rel="noopener noreferrer">🏆 Tabelog</a>`:''}${r.booking_url?.startsWith('https://')?`<a href="${esc(r.booking_url)}" target="_blank" rel="noopener noreferrer">Book</a>`:''}${link?`<button data-action="food-pick" data-id="${r.id}">${link.is_pick?'★ Pick':'☆ Pick'}</button><button data-action="food-flexible" data-id="${r.id}">${link.is_flexible?'🌙 Flex':'+ Flex'}</button><button data-action="food-eaten" data-id="${r.id}">${eaten?'↶ Undo eaten':'✓ Eaten'}</button><button data-action="save-catalog" data-kind="food" data-id="${r.id}">Remove</button>`:`<button data-action="save-catalog" data-kind="food" data-id="${r.id}">+ My Food</button>`}</div></article>`;}
 function foodSection(label,list,links){return list.length?`<section class="jfood-section"><h2>${label}<span>${list.length}</span></h2>${list.map(x=>foodCard(x,links.get(Number(x.id)))).join('')}</section>`:'';}
-function foodCollectionView(){const links=new Map(state.savedFood.map(x=>[Number(x.restaurant_id),x]));const country=state.trip?.country||'your destination';const all=state.restaurants.filter(x=>x.status==='active'&&inTripCountry(x));const mine=state.foodTab==='mine';const source=mine?all.filter(x=>links.has(Number(x.id))):all;const cities=[...new Set(source.map(x=>x.city).filter(Boolean))].sort((a,b)=>a.localeCompare(b));const city=state.foodCity,citySource=city?source.filter(x=>x.city===city):source;const areas=[...new Set(citySource.map(x=>x.area||x.location).filter(Boolean))].sort((a,b)=>a.localeCompare(b));const area=areas.includes(state.foodArea)?state.foodArea:'';const areaSource=area?citySource.filter(x=>(x.area||x.location)===area):citySource;const types=[...new Set(areaSource.map(foodGroupLabel))].sort((a,b)=>a.localeCompare(b));const type=types.includes(state.foodCuisine)?state.foodCuisine:'';const scheduledIds=new Set(state.schedule.filter(x=>x.restaurant_id!=null).map(x=>Number(x.restaurant_id)));let items=areaSource.filter(x=>!type||foodGroupLabel(x)===type).filter(x=>{const link=links.get(Number(x.id));switch(state.foodFilter){case 'picks':return !!link?.is_pick;case 'flexible':return !!link?.is_flexible;case 'scheduled':return scheduledIds.has(Number(x.id));case 'eaten':return !!link?.is_eaten;case 'tabelog':return !!(x.tabelog_url||x.tabelog_rating!=null||x.is_tabelog_top100);default:return true;}}).filter(x=>!state.foodSearch||[x.name,x.name_japanese,x.city,x.area,x.cuisine,x.description,x.tabelog_award].some(v=>String(v||'').toLowerCase().includes(state.foodSearch.toLowerCase()))).sort((a,b)=>Number(!!links.get(Number(b.id))?.is_pick)-Number(!!links.get(Number(a.id))?.is_pick)||Number(!!links.has(Number(b.id)))-Number(!!links.has(Number(a.id)))||Number(b.tabelog_rating||0)-Number(a.tabelog_rating||0));const filters=mine?[['all','All'],['picks','⭐ Picks'],['flexible','🌙 Flexible'],['scheduled','📅 Scheduled'],['eaten','✓ Eaten']]:[['all','All'],['tabelog','🏆 Tabelog'],['eaten','✓ Eaten']];let cards='';if(mine&&state.foodFilter==='all'&&items.length){const picks=items.filter(x=>links.get(Number(x.id))?.is_pick),scheduled=items.filter(x=>!links.get(Number(x.id))?.is_pick&&scheduledIds.has(Number(x.id))),flexible=items.filter(x=>!links.get(Number(x.id))?.is_pick&&!scheduledIds.has(Number(x.id))&&links.get(Number(x.id))?.is_flexible),saved=items.filter(x=>!links.get(Number(x.id))?.is_pick&&!scheduledIds.has(Number(x.id))&&!links.get(Number(x.id))?.is_flexible);cards=foodSection('⭐ Picks',picks,links)+foodSection('📅 Scheduled',scheduled,links)+foodSection('🌙 Flexible / Maybe',flexible,links)+foodSection('❤️ Saved',saved,links);}else cards=items.map(x=>foodCard(x,links.get(Number(x.id)))).join('');return `${title('FOOD & DRINK','Food for the journey.',`Browse restaurants in ${esc(country)}, or keep the ones you love close.`,`<button class="btn outline" data-action="food-mode" data-value="nearby">${icon('Navigation')} Within 300 m</button><button class="btn primary" data-action="add-food">${icon('Plus')} Add food</button>`)}<div class="jfood-tabs"><button data-action="food-tab" data-value="mine" class="${mine?'active':''}">❤️ My Food</button><button data-action="food-tab" data-value="discover" class="${!mine?'active':''}">🔎 Discover</button></div><div class="jfood-filters"><div class="jfood-chips"><button data-action="food-city" data-value="" class="${!city?'active':''}">All cities</button>${cities.map(c=>`<button data-action="food-city" data-value="${esc(c)}" class="${city===c?'active':''}">${esc(c)}</button>`).join('')}</div><div class="jfood-chips">${filters.map(([key,label])=>`<button data-action="food-filter" data-value="${key}" class="${state.foodFilter===key?'active':''}">${label}</button>`).join('')}</div><div class="jfood-fields"><label>Area<select data-food-select="area"><option value="">All areas</option>${areas.map(a=>`<option value="${esc(a)}" ${area===a?'selected':''}>${esc(a)}</option>`).join('')}</select></label><label>Food type<select data-food-select="cuisine"><option value="">All food</option>${types.map(t=>`<option value="${esc(t)}" ${type===t?'selected':''}>${esc(t)}</option>`).join('')}</select></label><label class="jfood-search-label">Search<input id="food-search" type="search" placeholder="Restaurant, food or neighbourhood…" value="${esc(state.foodSearch)}"></label></div></div><div class="jfood-results-head"><strong>${mine?'❤️ My Food':'🔎 Discover'}</strong><span>${items.length} restaurant${items.length===1?'':'s'}</span></div><div class="jfood-list">${cards||`<div class="empty-list">${icon('Utensils')}<h3>${mine&&state.foodFilter==='all'?'No food saved yet':'No restaurants match these filters'}</h3><p>${mine&&state.foodFilter==='all'?'Discover restaurants and save the ones you want to try.':'Try another city, area, food type or search.'}</p>${mine&&state.foodFilter==='all'?`<button class="btn primary" data-action="food-tab" data-value="discover">Discover food ${icon('ArrowRight')}</button>`:`<button class="btn outline" data-action="food-clear">Clear filters</button>`}</div>`}</div>`;}
+function foodCollectionView(){
+  const links=new Map(state.savedFood.map(x=>[Number(x.restaurant_id),x]));
+  const country=state.trip?.country||'your destination';
+  const all=state.restaurants.filter(x=>x.status==='active'&&inTripCountry(x));
+  const mine=state.foodTab==='mine';
+  const exploreMode=state.tab==='explore';
 
+  let source=mine
+    ? all.filter(x=>links.has(Number(x.id)))
+    : all;
+
+  /*
+    Match the Japan food page:
+    eaten restaurants stay out of the normal My Food view,
+    but remain available through the dedicated Eaten filter.
+  */
+  if(mine && state.foodFilter!=='eaten'){
+    source=source.filter(x=>!links.get(Number(x.id))?.is_eaten);
+  }
+
+  const cities=[...new Set(source.map(x=>x.city).filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b));
+  const city=state.foodCity;
+  const citySource=city?source.filter(x=>x.city===city):source;
+
+  const areas=[...new Set(citySource.map(x=>x.area||x.location).filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b));
+  const area=areas.includes(state.foodArea)?state.foodArea:'';
+  const areaSource=area
+    ? citySource.filter(x=>(x.area||x.location)===area)
+    : citySource;
+
+  const types=[...new Set(areaSource.map(foodGroupLabel))]
+    .filter(Boolean)
+    .sort((a,b)=>a.localeCompare(b));
+  const type=types.includes(state.foodCuisine)?state.foodCuisine:'';
+
+  const scheduledIds=new Set(
+    state.schedule
+      .filter(x=>x.restaurant_id!=null)
+      .map(x=>Number(x.restaurant_id))
+  );
+
+  let items=areaSource
+    .filter(x=>!type||foodGroupLabel(x)===type)
+    .filter(x=>{
+      const link=links.get(Number(x.id));
+      switch(state.foodFilter){
+        case 'picks': return !!link?.is_pick;
+        case 'flexible': return !!link?.is_flexible;
+        case 'scheduled': return scheduledIds.has(Number(x.id));
+        case 'eaten': return !!link?.is_eaten;
+        case 'tabelog': return foodHasTabelog(x);
+        case 'top100': return foodIsTop100(x);
+        case 'hot': return foodIsHot(x);
+        default: return true;
+      }
+    })
+    .filter(x=>
+      !state.foodSearch ||
+      [
+        x.name,
+        x.name_japanese,
+        x.city,
+        x.area,
+        x.location,
+        x.cuisine,
+        x.description,
+        x.tabelog_award,
+        x.award,
+        x.recognition
+      ].some(v=>String(v||'').toLowerCase().includes(state.foodSearch.toLowerCase()))
+    )
+    .sort((a,b)=>
+      Number(!!links.get(Number(b.id))?.is_pick)-Number(!!links.get(Number(a.id))?.is_pick) ||
+      Number(foodIsTop100(b))-Number(foodIsTop100(a)) ||
+      Number(foodIsHot(b))-Number(foodIsHot(a)) ||
+      Number(!!links.has(Number(b.id)))-Number(!!links.has(Number(a.id))) ||
+      Number(b.tabelog_rating||0)-Number(a.tabelog_rating||0)
+    );
+
+  const filters=mine
+    ? [
+        ['all','All'],
+        ['picks','⭐ Picks'],
+        ['flexible','🌙 Flexible'],
+        ['scheduled','📅 Scheduled'],
+        ['eaten','✓ Eaten']
+      ]
+    : [
+        ['all','All'],
+        ['tabelog','🏆 Tabelog'],
+        ['top100','🏆 Tabelog 100'],
+        ['hot','🔥 Hot'],
+        ['eaten','✓ Eaten']
+      ];
+
+  let cards='';
+  if(mine && state.foodFilter==='all' && items.length){
+    const picks=items.filter(x=>links.get(Number(x.id))?.is_pick);
+    const scheduled=items.filter(x=>
+      !links.get(Number(x.id))?.is_pick &&
+      scheduledIds.has(Number(x.id))
+    );
+    const flexible=items.filter(x=>
+      !links.get(Number(x.id))?.is_pick &&
+      !scheduledIds.has(Number(x.id)) &&
+      links.get(Number(x.id))?.is_flexible
+    );
+    const saved=items.filter(x=>
+      !links.get(Number(x.id))?.is_pick &&
+      !scheduledIds.has(Number(x.id)) &&
+      !links.get(Number(x.id))?.is_flexible
+    );
+
+    cards=
+      foodSection('⭐ Picks',picks,links)+
+      foodSection('📅 Scheduled',scheduled,links)+
+      foodSection('🌙 Flexible / Maybe',flexible,links)+
+      foodSection('❤️ Saved',saved,links);
+  }else{
+    cards=items.map(x=>foodCard(x,links.get(Number(x.id)))).join('');
+  }
+
+  const exploreKinds=exploreMode
+    ? `<div class="filter-row explore-food-kinds">
+        ${[['all','All discoveries'],['place','Places'],['food','Food & drink']]
+          .map(([k,v])=>`<button data-action="filter" data-value="${k}" class="${state.kind===k?'selected':''}">${v}</button>`)
+          .join('')}
+        <span>${items.length} restaurants</span>
+      </div>`
+    : '';
+
+  return `${title(
+    exploreMode?'DISCOVER THE POSSIBILITIES':'FOOD & DRINK',
+    exploreMode?'Food & drink.':'Food for the journey.',
+    `Browse restaurants in ${esc(country)}, with the same filters and food list you use in your Japan planner.`,
+    `<button class="btn outline" data-action="food-mode" data-value="nearby">${icon('Navigation')} Within 300 m</button>
+     <button class="btn primary" data-action="add-food">${icon('Plus')} Add food</button>`
+  )}
+  ${exploreKinds}
+  <div class="jfood-tabs">
+    <button data-action="food-tab" data-value="mine" class="${mine?'active':''}">❤️ My Food</button>
+    <button data-action="food-tab" data-value="discover" class="${!mine?'active':''}">🔎 Discover</button>
+  </div>
+  <div class="jfood-filters">
+    <div class="jfood-chips">
+      <button data-action="food-city" data-value="" class="${!city?'active':''}">All cities</button>
+      ${cities.map(c=>`<button data-action="food-city" data-value="${esc(c)}" class="${city===c?'active':''}">${esc(c)}</button>`).join('')}
+    </div>
+    <div class="jfood-chips">
+      ${filters.map(([key,label])=>`<button data-action="food-filter" data-value="${key}" class="${state.foodFilter===key?'active':''}">${label}</button>`).join('')}
+    </div>
+    <div class="jfood-fields">
+      <label>Area
+        <select data-food-select="area">
+          <option value="">All areas</option>
+          ${areas.map(a=>`<option value="${esc(a)}" ${area===a?'selected':''}>${esc(a)}</option>`).join('')}
+        </select>
+      </label>
+      <label>Food type
+        <select data-food-select="cuisine">
+          <option value="">All food</option>
+          ${types.map(t=>`<option value="${esc(t)}" ${type===t?'selected':''}>${esc(t)}</option>`).join('')}
+        </select>
+      </label>
+      <label class="jfood-search-label">Search
+        <input id="food-search" type="search" placeholder="Restaurant, food or neighbourhood…" value="${esc(state.foodSearch)}">
+      </label>
+    </div>
+  </div>
+  <div class="jfood-results-head">
+    <strong>${mine?'❤️ My Food':'🔎 Discover'}</strong>
+    <span>${items.length} restaurant${items.length===1?'':'s'}${mine&&state.foodFilter!=='eaten'?' · eaten hidden':''}</span>
+  </div>
+  <div class="jfood-list">
+    ${cards||`<div class="empty-list">
+      ${icon('Utensils')}
+      <h3>${mine&&state.foodFilter==='all'?'No uneaten food saved yet':state.foodFilter==='eaten'?'Nothing marked as eaten yet':'No restaurants match these filters'}</h3>
+      <p>${mine&&state.foodFilter==='all'?'Discover restaurants and save the ones you want to try.':state.foodFilter==='eaten'?'Mark a restaurant as Eaten after you visit it.':'Try another city, area, food type or search.'}</p>
+      ${mine&&state.foodFilter==='all'
+        ? `<button class="btn primary" data-action="food-tab" data-value="discover">Discover food ${icon('ArrowRight')}</button>`
+        : `<button class="btn outline" data-action="food-clear">Clear filters</button>`}
+    </div>`}
+  </div>`;
+}
 function planView(){let t=state.trip,days=dayList(t);if(!state.day||!days.includes(state.day))state.day=days[0]||today();let rows=state.schedule.filter(x=>x.schedule_date===state.day).sort((a,b)=>(a.sort_order-b.sort_order)||time(a.start_time).localeCompare(time(b.start_time)));let dayNo=days.indexOf(state.day)+1;return `${title('THE ITINERARY','Every day, your way.', 'Your trip, thoughtfully laid out one day at a time.', `<button class="btn primary" data-action="new-stop">${icon('Plus')} Add a stop</button>`)}<div class="day-strip">${days.length?days.map((d,i)=>`<button class="day-pill ${state.day===d?'active':''}" data-action="day" data-value="${d}"><small>DAY ${String(i+1).padStart(2,'0')}</small><b>${fmtDate(d,{weekday:'short'})}</b><span>${fmtDate(d,{day:'numeric',month:'short'})}</span><i class="${state.schedule.some(x=>x.schedule_date===d)?'has-stops':''}"></i></button>`).join(''):`<div class="empty-note">Add dates to this trip to build its itinerary. <button data-action="edit-trip">Add dates ${icon('ArrowRight')}</button></div>`}</div><div class="plan-layout"><div><div class="day-heading"><div><div class="eyebrow">${dayNo>0?`DAY ${String(dayNo).padStart(2,'0')} · ${fmtDate(state.day,{weekday:'long',day:'numeric',month:'long'})}`:'YOUR DAY'}</div><h2>${rows.length?`${rows.length} ${rows.length===1?'stop':'stops'} planned`:'A day to make your own.'}</h2></div><button class="icon-action" data-action="assistant">${icon('Sparkles')} Ask Assist</button></div><div class="timeline">${rows.length?rows.map((x,i)=>`<article class="stop"><div class="stop-rail"><span>${time(x.start_time)||'—'}</span><i></i></div><div class="stop-card"><div class="stop-card-top"><span class="type-chip">${icon(x.item_type==='restaurant'?'Utensils':x.item_type==='transport'?'TrainFront':x.item_type==='accommodation'?'BedDouble':'MapPin')} ${esc(x.item_type||'stop')}</span>${x.is_optional?'<span class="optional">OPTIONAL</span>':''}</div><h3>${esc(x.title)}</h3>${x.location_name||x.address?`<p>${icon('MapPin')} ${esc(x.location_name||x.address)}</p>`:''}${x.description?`<p class="stop-desc">${esc(x.description)}</p>`:''}<div class="stop-actions"><a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer">${icon('Navigation')} Directions</a><button data-action="edit-stop" data-id="${x.id}">${icon('Pencil')} Edit</button>${!x.is_locked?`<button data-action="delete-stop" data-id="${x.id}" class="quiet-danger">${icon('Trash2')}</button>`:''}</div></div></article>`).join(''):`<div class="empty-plan"><span>${icon('Sunrise')}</span><h3>Nothing on the calendar. Yet.</h3><p>Some of the best days start with a blank page. Add a place, a meal, or a moment.</p><button class="btn primary" data-action="new-stop">${icon('Plus')} Plan this day</button><button class="text-link" data-action="tab" data-value="explore">Explore ideas ${icon('ArrowRight')}</button></div>`}<button class="add-timeline" data-action="new-stop">${icon('Plus')} Add another stop</button></div></div><aside class="plan-aside"><div class="aside-card"><div class="eyebrow">GOOD TO KNOW</div><h3>Keep the day flowing.</h3><p>Open directions for each stop as you go. Your changes sync to your account automatically.</p><button data-action="assistant">${icon('Sparkles')} Ask Travel Assist ${icon('ArrowRight')}</button></div>${state.bookings.filter(b=>b.booking_date===state.day).length?`<div class="aside-card bookings-today"><div class="eyebrow">ON THIS DAY</div>${state.bookings.filter(b=>b.booking_date===state.day).map(b=>`<p>${icon('Ticket')} ${esc(b.title)}</p>`).join('')}</div>`:''}</aside></div>`;}
 const photoAttempts=new Set(), photoQueue=[], photoQueued=new Set();
 let photoLoading=0;
@@ -80,7 +285,46 @@ function hydratePlacePhotos(){
   targets.forEach(el=>observer.observe(el));
 }
 function catalogItem(x,kind){let saved=kind==='food'?state.savedFood.find(s=>s.restaurant_id===x.id):state.savedPlaces.find(s=>s.place_id===x.id);let meta=[x.area||x.city||x.location,x.cuisine||x.place_type].filter(Boolean).join(' · ');return `<article class="catalog-card"><div class="catalog-art ${kind==='food'?'food-art':'place-art'} ${kind==='place'&&placePhotoIsStored(x)?'has-photo':''}" ${kind==='place'?`data-place-id="${x.id}"`:''}>${kind==='place'&&placePhotoIsStored(x)?placePhotoMarkup(x):icon('MapPin')}</div><div class="catalog-info"><span class="catalog-kind">${kind==='food'?'FOOD & DRINK':'PLACE TO SEE'}</span><h3>${esc(x.name)}</h3><p>${icon('MapPin')} ${esc(meta||x.country||'Explore')}</p>${x.description?`<small>${esc(x.description.slice(0,125))}${x.description.length>125?'…':''}</small>`:''}<div class="catalog-actions"><button data-action="save-catalog" data-kind="${kind}" data-id="${x.id}" class="${saved?'is-saved':''}">${icon(saved?'Check':'Heart')} ${saved?'Saved':'Save'}</button><button data-action="schedule-catalog" data-kind="${kind}" data-id="${x.id}">${icon('CalendarPlus')} Add to plan</button><a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="View map">${icon('ArrowUpRight')}</a></div></div></article>`;}
-function exploreView(){let term=state.search.toLowerCase(),items=[...state.places.map(x=>({...x,__kind:'place'})),...state.restaurants.map(x=>({...x,__kind:'food'}))].filter(x=>x.status==='active'&&inTripCountry(x)&&(!term||[x.name,x.city,x.area,x.cuisine,x.place_type,x.country].some(v=>String(v||'').toLowerCase().includes(term)))&&(state.kind==='all'||x.__kind===state.kind));return `${title('DISCOVER THE POSSIBILITIES','Go where curiosity takes you.',`Places and food in ${state.trip?.country||'your destination'}, ready to add to your trip.`,`<button class="btn outline" data-action="add-catalog">${icon('Plus')} Add a place</button>`)}<div class="search-line"><div class="searchbox">${icon('Search')}<input id="catalog-search" placeholder="Search places, food, cities…" value="${esc(state.search)}" autocomplete="off"></div><button class="assist-discover" data-action="google-from-explore">${icon('Search')} Search Google</button><button class="assist-discover" data-action="assistant">${icon('Sparkles')} Ask for ideas</button></div><div class="filter-row">${[['all','All discoveries'],['place','Places'],['food','Food & drink']].map(([k,v])=>`<button data-action="filter" data-value="${k}" class="${state.kind===k?'selected':''}">${v}</button>`).join('')}<span>${items.length} discoveries</span></div><div class="catalog-grid" id="catalog-results">${items.slice(0,120).map(x=>catalogItem(x,x.__kind)).join('')||`<div class="empty-list">${icon('Search')}<h3>No matches in ${esc(state.trip?.country||'this destination')} yet</h3><p>Try another search, or add a place of your own.</p></div>`}</div>`;}
+function exploreView(){
+  if(state.kind==='food'){
+    return foodCollectionView();
+  }
+
+  let term=state.search.toLowerCase();
+  let items=[...state.places.map(x=>({...x,__kind:'place'})),...state.restaurants.map(x=>({...x,__kind:'food'}))]
+    .filter(x=>
+      x.status==='active' &&
+      inTripCountry(x) &&
+      (!term||[x.name,x.city,x.area,x.cuisine,x.place_type,x.country]
+        .some(v=>String(v||'').toLowerCase().includes(term))) &&
+      (state.kind==='all'||x.__kind===state.kind)
+    );
+
+  return `${title(
+    'DISCOVER THE POSSIBILITIES',
+    'Go where curiosity takes you.',
+    `Places and food in ${state.trip?.country||'your destination'}, ready to add to your trip.`,
+    `<button class="btn outline" data-action="add-catalog">${icon('Plus')} Add a place</button>`
+  )}
+  <div class="search-line">
+    <div class="searchbox">
+      ${icon('Search')}
+      <input id="catalog-search" placeholder="Search places, food, cities…" value="${esc(state.search)}" autocomplete="off">
+    </div>
+    <button class="assist-discover" data-action="google-from-explore">${icon('Search')} Search Google</button>
+    <button class="assist-discover" data-action="assistant">${icon('Sparkles')} Ask for ideas</button>
+  </div>
+  <div class="filter-row">
+    ${[['all','All discoveries'],['place','Places'],['food','Food & drink']]
+      .map(([k,v])=>`<button data-action="filter" data-value="${k}" class="${state.kind===k?'selected':''}">${v}</button>`)
+      .join('')}
+    <span>${items.length} discoveries</span>
+  </div>
+  <div class="catalog-grid" id="catalog-results">
+    ${items.slice(0,120).map(x=>catalogItem(x,x.__kind)).join('')||
+      `<div class="empty-list">${icon('Search')}<h3>No matches in ${esc(state.trip?.country||'this destination')} yet</h3><p>Try another search, or add a place of your own.</p></div>`}
+  </div>`;
+}
 function savedView(){let food=state.savedFood.map(s=>state.restaurants.find(r=>r.id===s.restaurant_id)).filter(Boolean).map(x=>({...x,__kind:'food'})),places=state.savedPlaces.map(s=>state.places.find(p=>p.id===s.place_id)).filter(Boolean).map(x=>({...x,__kind:'place'})),items=[...places,...food].filter(x=>state.savedKind==='all'||x.__kind===state.savedKind);return `${title('A COLLECTION OF POSSIBILITIES','The things you love.','Every place worth remembering, ready when you are.',`<button class="btn outline" data-action="tab" data-value="explore">${icon('Compass')} Explore more</button>`)}<div class="filter-row">${[['all',`All saved · ${places.length+food.length}`],['place',`Places · ${places.length}`],['food',`Food · ${food.length}`]].map(([k,v])=>`<button data-action="saved-filter" data-value="${k}" class="${state.savedKind===k?'selected':''}">${v}</button>`).join('')}</div><div class="catalog-grid">${items.length?items.map(x=>catalogItem(x,x.__kind)).join(''):`<div class="empty-list">${icon('Heart')}<h3>Good things are worth keeping.</h3><p>Save places and restaurants while exploring. They’ll appear here on every device.</p><button class="btn primary" data-action="tab" data-value="explore">Explore places ${icon('ArrowRight')}</button></div>`}</div>`;}
 function bookingsView(){let rows=[...state.bookings].sort((a,b)=>(a.booking_date||'9999').localeCompare(b.booking_date||'9999'));return `${title('ALL THE DETAILS, ONE PLACE','Your bookings.','The confirmations and little details that make the journey smooth.',`<button class="btn primary" data-action="new-booking">${icon('Plus')} Add booking</button>`)}<div class="bookings-layout"><div class="stack">${rows.length?rows.map(x=>`<article class="booking-card"><div class="booking-icon">${icon(({accommodation:'BedDouble',restaurant:'Utensils',transport:'TrainFront',car:'Route',ticket:'Ticket',activity:'Compass'})[x.booking_type]||'Ticket')}</div><div class="booking-detail"><span class="catalog-kind">${esc(x.booking_type||'BOOKING')} · ${esc(x.status||'PLANNED')}</span><h3>${esc(x.title)}</h3><p>${[fmtDay(x.booking_date),time(x.start_time),x.location_name].filter(Boolean).map(esc).join(' · ')||'Date to be decided'}</p>${x.confirmation_number?`<div class="confirm-no">Confirmation ${esc(x.confirmation_number)}</div>`:''}<div class="booking-actions">${x.booking_url&&/^https:\/\//.test(x.booking_url)?`<a href="${esc(x.booking_url)}" target="_blank" rel="noopener noreferrer">Open booking ${icon('ArrowUpRight')}</a>`:''}<button data-action="edit-booking" data-id="${x.id}">Edit ${icon('ArrowRight')}</button></div></div></article>`).join(''):`<div class="empty-list">${icon('Ticket')}<h3>Keep the important things together.</h3><p>Add hotels, transport, tickets, and reservations. You’ll have the details when you need them.</p><button class="btn primary" data-action="new-booking">${icon('Plus')} Add your first booking</button></div>`}</div><div class="aside-card"><div class="eyebrow">A LITTLE PEACE OF MIND</div><h3>Ready when you are.</h3><p>Confirmation numbers and links are saved with your trip, so they’re easy to find on the move.</p></div></div>`;}
 function expensesView(){let groups={};state.expenses.forEach(x=>groups[x.currency||'SGD']=(groups[x.currency||'SGD']||0)+Number(x.amount||0));return `${title('SPEND WELL, REMEMBER MORE','Trip spending.','Keep track of what you spend, in the currency you actually paid.',`<button class="btn primary" data-action="new-expense">${icon('Plus')} Add expense</button>`)}<div class="expense-totals">${Object.entries(groups).length?Object.entries(groups).map(([c,n])=>`<div class="total-card"><span>TOTAL IN ${esc(c)}</span><b>${esc(c)} ${n.toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2})}</b><small>${state.expenses.filter(x=>(x.currency||'SGD')===c).length} recorded expenses</small></div>`).join(''):`<div class="total-card"><span>YOUR TRIP, YOUR WAY</span><b>Start with a small spend.</b><small>Expenses appear here once you add them.</small></div>`}</div><div class="stack">${[...state.expenses].sort((a,b)=>(b.expense_date||'').localeCompare(a.expense_date||'')).map(x=>`<article class="expense-row"><div class="expense-icon">${icon(x.category==='food'?'Utensils':x.category==='transport'?'TrainFront':x.category==='accommodation'?'BedDouble':'Wallet')}</div><div><b>${esc(x.title)}</b><small>${esc(fmtDay(x.expense_date))} · ${esc(x.category)}</small></div><strong>${esc(x.currency||'SGD')} ${Number(x.amount).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong><button data-action="edit-expense" data-id="${x.id}" aria-label="Edit expense">${icon('Pencil')}</button></article>`).join('')}</div>`;}
@@ -144,8 +388,8 @@ case 'toggle-theme':state.theme=state.theme==='dark'?'light':'dark';localStorage
 case 'google-select':{const result=state.googleResults[Number(el.dataset.index)];if(!result)break;state.catalogSelection=result;const form=$('#catalog-form');for(const key of ['name','city','area','address','maps_url'])if(form.elements[key])form.elements[key].value=result[key]||'';$('#google-results').innerHTML=googleResultsView();drawIcons();toast('Place details added. Review and save below.');break;}
 case 'tab':state.tab=v;state.mobileMenu=false;state.search='';render();window.scrollTo(0,0);break;
 case 'toggle-schedule':state.scheduleExpanded=!state.scheduleExpanded;render();break;
-case 'explore-kind':if(v==='food'){state.tab='food';state.foodMode='collection';state.foodFilter='all';state.foodTab='discover';}else{state.tab='explore';state.kind='place';}render();window.scrollTo(0,0);break;
-case 'food-saved':state.tab='food';state.foodMode='collection';state.foodFilter='all';state.foodTab='mine';render();window.scrollTo(0,0);break;
+case 'explore-kind':if(v==='food'){state.tab='explore';state.kind='food';state.foodMode='collection';state.foodFilter='all';state.foodTab='discover';}else{state.tab='explore';state.kind='place';}render();window.scrollTo(0,0);break;
+case 'food-saved':state.tab='explore';state.kind='food';state.foodMode='collection';state.foodFilter='all';state.foodTab='mine';render();window.scrollTo(0,0);break;
 case 'food-finder':state.tab='food';state.foodMode='nearby';render();window.scrollTo(0,0);findNearbyFood();break;
 case 'food-mode':state.foodMode=v;render();if(v==='nearby'&&!state.foodLocation)findNearbyFood();break;
 case 'food-filter':state.foodFilter=v;render();break;
