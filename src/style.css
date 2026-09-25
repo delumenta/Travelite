@@ -121,13 +121,21 @@ html[data-theme="dark"] .trip-delete-button:hover,html[data-theme="dark"] .trip-
 .jfood-tabs{display:flex;gap:8px;margin:0 0 14px;border-bottom:1px solid #e7dede;padding-bottom:9px}
 .jfood-tabs button{border:1px solid transparent;border-radius:9px;background:transparent;color:#827676;padding:11px 16px;font-weight:800;font-size:12px}
 .jfood-tabs button.active{background:#aa4747;color:white}
-.jfood-filters{display:grid;gap:10px;margin-bottom:20px}
-.jfood-chips{display:flex;gap:7px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
-.jfood-chips button{flex:none;border:1px solid #e5dcdc;background:#fffdfa;border-radius:99px;padding:9px 13px;color:#54484a;font-weight:800;font-size:11px}
+.jfood-filters{display:grid;gap:10px;margin-bottom:20px;padding:12px;border:1px solid #eadfe0;border-radius:14px;background:rgba(255,253,250,.72)}
+.jfood-filter-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.jfood-filter-head>span{color:#8b797d;font-size:10px;font-weight:900;letter-spacing:1px}
+.jfood-filter-reset{border:0;background:transparent;color:#a44a52;font-size:10px;font-weight:900;padding:4px 0}
+.jfood-chips{display:flex;gap:7px;padding-bottom:2px}
+.jfood-city-chips{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.jfood-city-chips::-webkit-scrollbar{display:none}
+.jfood-status-chips{flex-wrap:wrap;overflow:visible}
+.jfood-chips button{flex:none;border:1px solid #e5dcdc;background:#fffdfa;border-radius:99px;padding:9px 13px;color:#54484a;font-weight:800;font-size:11px;white-space:nowrap}
 .jfood-chips button.active{background:#3d262b;border-color:#3d262b;color:#fff}
 .jfood-fields{display:grid;grid-template-columns:minmax(130px,1fr) minmax(130px,1fr) minmax(200px,1.6fr);gap:9px}
 .jfood-fields label{color:#8b797d;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px}
-.jfood-fields select,.jfood-fields input{display:block;width:100%;margin-top:5px;height:42px;border:1px solid #e5dcdc;border-radius:8px;background:#fffdfa;color:#362d31;padding:0 10px;font-size:12px;letter-spacing:normal;text-transform:none}
+.jfood-fields select,.jfood-fields input{display:block;width:100%;margin-top:5px;height:42px;border:1px solid #e5dcdc;border-radius:9px;background:#fffdfa;color:#362d31;padding:0 10px;font-size:12px;letter-spacing:normal;text-transform:none}
+.jfood-saved-state{opacity:.75;cursor:default}
+.jfood-remove{border-color:#e6cfd1!important;color:#a54750!important;background:#fff7f7!important}
 .jfood-results-head{display:flex;justify-content:space-between;align-items:center;margin:22px 0 12px;color:#442c31}
 .jfood-results-head strong{font:800 17px Manrope,sans-serif}.jfood-results-head span{font-size:11px;color:#938486}
 .jfood-list{max-width:940px}.jfood-section{margin-bottom:26px}.jfood-section h2{display:flex;align-items:center;gap:8px;font:800 12px Manrope,sans-serif;letter-spacing:.7px;text-transform:uppercase;color:#63383e;margin:20px 0 9px}.jfood-section h2 span{margin-left:auto;color:#9b898b;font-size:11px}
@@ -138,9 +146,24 @@ html[data-theme="dark"] .trip-delete-button:hover,html[data-theme="dark"] .trip-
 .jfood-plan{border-left:2px solid #b8787e;margin:11px 0 0;padding:4px 9px;color:#72555b;font-size:11px}.jfood-description{font-size:11px;line-height:1.55;color:#777174;margin:10px 0 0}
 .jfood-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.jfood-actions a,.jfood-actions button{border:1px solid #e9dfe0;border-radius:7px;background:#fff;color:#72525a;padding:7px 9px;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800}.jfood-actions svg{width:13px;height:13px}.jfood-actions a:hover,.jfood-actions button:hover{border-color:#d47e83;color:#a73f47}
 html[data-theme="dark"] .jfood-tabs{border-color:#383034}html[data-theme="dark"] .jfood-tabs button{color:#cbbec2}html[data-theme="dark"] .jfood-tabs button.active{color:#fff}
+html[data-theme="dark"] .jfood-filters{background:#171419;border-color:#302930}
+html[data-theme="dark"] .jfood-filter-head>span{color:#9e8e93}
+html[data-theme="dark"] .jfood-filter-reset{color:#f08e96}
 html[data-theme="dark"] .jfood-chips button,html[data-theme="dark"] .jfood-fields select,html[data-theme="dark"] .jfood-fields input,html[data-theme="dark"] .jfood-card,html[data-theme="dark"] .jfood-actions a,html[data-theme="dark"] .jfood-actions button{background:#1f1c21;border-color:#393238;color:#eee7e8}
-html[data-theme="dark"] .jfood-chips button.active{background:#753139;border-color:#a54e57;color:#fff}html[data-theme="dark"] .jfood-title h3,html[data-theme="dark"] .jfood-results-head strong{color:#fff3f3}html[data-theme="dark"] .jfood-section h2{color:#e2adb0}html[data-theme="dark"] .jfood-mark{background:#432a30;color:#ffa8ad}html[data-theme="dark"] .jfood-badge{background:#332b31;border-color:#54434a;color:#e7d7db}
-@media(max-width:650px){.jfood-fields{grid-template-columns:1fr 1fr}.jfood-search-label{grid-column:1/-1}.jfood-tabs button{flex:1}.jfood-card{padding:12px}.jfood-actions a,.jfood-actions button{min-height:34px}}
+html[data-theme="dark"] .jfood-chips button.active{background:#753139;border-color:#a54e57;color:#fff}
+html[data-theme="dark"] .jfood-remove{background:#2a191d!important;border-color:#58323a!important;color:#f1a0a6!important}html[data-theme="dark"] .jfood-title h3,html[data-theme="dark"] .jfood-results-head strong{color:#fff3f3}html[data-theme="dark"] .jfood-section h2{color:#e2adb0}html[data-theme="dark"] .jfood-mark{background:#432a30;color:#ffa8ad}html[data-theme="dark"] .jfood-badge{background:#332b31;border-color:#54434a;color:#e7d7db}
+@media(max-width:650px){
+  .jfood-filters{padding:10px;gap:9px;border-radius:13px}
+  .jfood-status-chips{gap:6px}
+  .jfood-status-chips button{padding:8px 11px;font-size:10.5px}
+  .jfood-city-chips button{padding:8px 12px}
+  .jfood-fields{grid-template-columns:1fr 1fr;gap:8px}
+  .jfood-search-label{grid-column:1/-1}
+  .jfood-fields select,.jfood-fields input{height:40px}
+  .jfood-tabs button{flex:1}
+  .jfood-card{padding:12px}
+  .jfood-actions a,.jfood-actions button{min-height:34px}
+}
 
 /* Place photographs saved in Supabase Storage */
 .catalog-art.has-photo{position:relative;overflow:hidden;background:#e5e5e5}
