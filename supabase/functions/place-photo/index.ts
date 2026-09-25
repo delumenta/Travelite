@@ -39,7 +39,7 @@ async function processPlace(admin:any, place:any) {
   const entities=(await api(entitiesUrl.toString())).entities||{};
   const entity=Object.values(entities).find((item:any)=>exactEntity(item,place)) as any;
   const fileName=entity?.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
-  if(!entity) return {status:'review',reason:'Wikidata search was not an exact place match.'};
+  if(!entity) return {status:'missing',reason:'No verified exact Wikidata place match.'};
   if(!fileName) return {status:'missing',reason:'Exact Wikidata place has no Commons image.'};
   const file=await commonsFile(fileName);
   const info=file?.imageinfo?.[0], meta=info?.extmetadata||{};
@@ -54,14 +54,14 @@ async function processPlace(admin:any, place:any) {
     image_match_method:'wikidata_p18_exact',
   };
   if(banned.test(text) && allowed.test(license) && candidateMeta.image_candidate_url && /^https:\/\/upload\.wikimedia\.org\//.test(candidateMeta.image_candidate_url) && ['image/jpeg','image/png','image/webp'].includes(info.mime)) return {status:'review',reason:'Exact place match, but the image may be artwork or a non-photo.',update:candidateMeta};
-  if(banned.test(text)) return {status:'review',reason:'Exact image is artwork, map, logo, or non-photo.'};
-  if(!allowed.test(license)) return {status:'review',reason:'Image licence is not approved for storage.'};
-  if(!info?.thumburl || !/^https:\/\/upload\.wikimedia\.org\//.test(info.thumburl) || !['image/jpeg','image/png','image/webp'].includes(info.mime)) return {status:'review',reason:'Exact image is not a usable photo file.'};
-  if(info.width<500 || info.height<280) return {status:'review',reason:'Exact image is too small.'};
+  if(banned.test(text)) return {status:'missing',reason:'Exact image is artwork, map, logo, or non-photo.'};
+  if(!allowed.test(license)) return {status:'missing',reason:'Image licence is not approved for storage.'};
+  if(!info?.thumburl || !/^https:\/\/upload\.wikimedia\.org\//.test(info.thumburl) || !['image/jpeg','image/png','image/webp'].includes(info.mime)) return {status:'missing',reason:'Exact image is not a usable photo file.'};
+  if(info.width<500 || info.height<280) return {status:'missing',reason:'Exact image is too small.'};
   const image=await fetch(info.thumburl,{headers:{'user-agent':ua},signal:AbortSignal.timeout(12000)});
   if(!image.ok) throw Error('Could not download approved Commons image.');
   const bytes=await image.arrayBuffer();
-  if(bytes.byteLength<15000 || bytes.byteLength>5000000) return {status:'review',reason:'Exact image is outside the allowed size.'};
+  if(bytes.byteLength<15000 || bytes.byteLength>5000000) return {status:'missing',reason:'Exact image is outside the allowed size.'};
   const ext=info.mime==='image/png'?'png':info.mime==='image/webp'?'webp':'jpg';
   const path=`places/${place.id}.${ext}`;
   const uploaded=await admin.storage.from('place-photos').upload(path,bytes,{contentType:info.mime,upsert:true});
