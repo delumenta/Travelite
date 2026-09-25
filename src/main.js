@@ -512,7 +512,7 @@ case 'edit-expense':openModal('expense',state.expenses.find(x=>x.id===id));break
 case 'add-catalog':openModal('catalog');break;
 case 'google-from-explore':{let q=state.search.trim();openModal('catalog');if(state.kind==='food')$('#catalog-kind').value='food';if(q.length>=3){$('#google-search-form input').value=q;searchGoogle($('#google-search-form'));}else $('#google-search-form input').focus();break;}
 case 'profile':openModal('profile');break;
-case 'photo-review':openPhotoReview();break;
+case 'photo-review':window.location.href='review.html';break;
 case 'photo-review-approve':await reviewPlacePhoto(id,'approve');break;
 case 'photo-review-reject':await reviewPlacePhoto(id,'reject');break;
 case 'photo-review-missing':await reviewPlacePhoto(id,'missing');break;
