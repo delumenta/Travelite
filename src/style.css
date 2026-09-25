@@ -114,5 +114,5 @@ html[data-theme="dark"] .trip-delete-button:hover,html[data-theme="dark"] .trip-
 .hero-photo-credit{position:absolute;right:16px;bottom:12px;z-index:2;max-width:50%;color:#fff;background:#17131599;border-radius:6px;padding:5px 8px;font-size:10px;line-height:1.35;text-align:right}
 .hero-photo-credit:hover{text-decoration:underline}
 @media(max-width:650px){.hero-photo-credit{right:12px;bottom:10px;max-width:65%;font-size:9px}}
-.hero-photo-credit{left:16px;right:auto;text-align:left}
-@media(max-width:650px){.hero-photo-credit{left:12px;right:auto}}
+.hero-photo-credit{left:auto;right:16px;text-align:right}
+@media(max-width:650px){.hero-photo-credit{left:auto;right:12px}}
