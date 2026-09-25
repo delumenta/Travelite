@@ -22,7 +22,8 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const { data: place, error: placeError } = await admin.from('places').select('id,name,city,country,status,image_url,image_author,image_license,image_license_url,image_source_url').eq('id', id).single();
     if (placeError || !place || place.status !== 'active') return json({ error: 'Place not found.' }, 404);
-    if (place.image_url) return json({ photo: place });
+    const storagePrefix = `${url}/storage/v1/object/public/place-photos/`;
+    if (place.image_url?.startsWith(storagePrefix)) return json({ photo: place });
     const query = [place.name,place.city,place.country].filter(Boolean).join(' ').slice(0,160);
     const api = new URL('https://commons.wikimedia.org/w/api.php');
     Object.entries({ action:'query',format:'json',generator:'search',gsrsearch:query,gsrnamespace:'6',gsrlimit:'20',prop:'imageinfo',iiprop:'url|size|mime|extmetadata',iiurlwidth:'600' }).forEach(([key,value])=>api.searchParams.set(key,value));
@@ -46,12 +47,12 @@ Deno.serve(async (req: Request) => {
       if (bytes.byteLength<15000||bytes.byteLength>5000000) continue;
       const ext=info.mime==='image/png'?'png':info.mime==='image/webp'?'webp':'jpg';
       const path=`places/${id}.${ext}`;
-      const uploaded=await admin.storage.from('place-photos').upload(path,bytes,{contentType:info.mime,upsert:false});
+      const uploaded=await admin.storage.from('place-photos').upload(path,bytes,{contentType:info.mime,upsert:true});
       if (uploaded.error && !/already exists|duplicate/i.test(uploaded.error.message)) throw uploaded.error;
       const image_url=admin.storage.from('place-photos').getPublicUrl(path).data.publicUrl;
       const image_author=plain(meta.Artist?.value||meta.Credit?.value||'Wikimedia Commons').slice(0,250);
       const update={image_url,image_source_url:info.descriptionurl,image_author,image_license:license,image_license_url:meta.LicenseUrl?.value||null};
-      const {data:saved,error}=await admin.from('places').update(update).eq('id',id).is('image_url',null).select('id,image_url,image_source_url,image_author,image_license,image_license_url').maybeSingle();
+      const {data:saved,error}=await admin.from('places').update(update).eq('id',id).select('id,image_url,image_source_url,image_author,image_license,image_license_url').maybeSingle();
       if(error) throw error;
       return json({photo:saved||{...place,...update}});
     }
