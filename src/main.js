@@ -329,10 +329,40 @@ function rollingCommunityRating(rows){
     .slice(0,10);
   if(!recent.length)return null;
 
-  const avg=recent.reduce((sum,x)=>sum+x.__rating,0)/recent.length;
+  const values=recent.map(x=>x.__rating).sort((a,b)=>a-b);
+  const mid=Math.floor(values.length/2);
+  const median=values.length%2
+    ? values[mid]
+    : (values[mid-1]+values[mid])/2;
+
+  // Prefer the cluster around the median so one stray 1.0 / 2.0
+  // cannot drag down an otherwise consistent group of checks.
+  let cluster=recent.filter(x=>Math.abs(x.__rating-median)<=0.4);
+
+  // During a split (for example 5 old high checks and 5 newer low checks),
+  // the mathematical median can land between both groups. In that case,
+  // choose the densest 0.4-wide cluster; ties favour the more recent group.
+  const majority=Math.ceil(recent.length/2);
+  if(cluster.length<majority){
+    let best=[];
+    let bestRecency=-Infinity;
+    for(const start of values){
+      const candidate=recent.filter(x=>x.__rating>=start&&x.__rating<=start+0.4);
+      const recency=candidate.reduce((sum,x)=>sum+x.__checked,0);
+      if(candidate.length>best.length||(candidate.length===best.length&&recency>bestRecency)){
+        best=candidate;
+        bestRecency=recency;
+      }
+    }
+    if(best.length)cluster=best;
+  }
+
+  const avg=cluster.reduce((sum,x)=>sum+x.__rating,0)/cluster.length;
   return {
     value:avg.toFixed(1),
     total:recent.length,
+    used:cluster.length,
+    ignored:Math.max(0,recent.length-cluster.length),
     approximate:recent.length>1
   };
 }
