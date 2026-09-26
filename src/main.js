@@ -162,14 +162,17 @@ function groupScheduleByArea(stops){
     const explicit=explicitScheduleArea(stop);
     const meta=schedulePlaceMeta(stop);
     const metaArea=cleanAreaLabel(meta?.area);
-    let label=explicit || metaArea || current?.label || cleanAreaLabel(stop.location_name) || stop.title || 'Journey';
-    if(explicit || !current){
+    const location=cleanAreaLabel(stop.location_name);
+    const label=explicit || metaArea || current?.label || location || stop.title || 'Journey';
+
+    // Keep consecutive stops in the same area together.
+    // Previously every stop with a resolved area started a new card,
+    // which produced repeated Higashiyama / Gion rows.
+    if(!current || current.label!==label){
       current={label,stops:[],key:`${index}-${label}`};
       groups.push(current);
-    }else if(metaArea && current.label!==metaArea){
-      current={label:metaArea,stops:[],key:`${index}-${metaArea}`};
-      groups.push(current);
     }
+
     current.stops.push(stop);
   });
   return groups;
