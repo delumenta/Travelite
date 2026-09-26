@@ -168,20 +168,20 @@ html[data-theme="dark"] .jfood-filter-reset{color:#f08e96}
 html[data-theme="dark"] .jfood-chips button,html[data-theme="dark"] .jfood-fields select,html[data-theme="dark"] .jfood-fields input,html[data-theme="dark"] .jfood-card,html[data-theme="dark"] .jfood-actions a,html[data-theme="dark"] .jfood-actions button{background:#1f1c21;border-color:#393238;color:#eee7e8}
 html[data-theme="dark"] .jfood-chips button.active{background:#753139;border-color:#a54e57;color:#fff}
 html[data-theme="dark"] .jfood-remove{background:#2a191d!important;border-color:#58323a!important;color:#f1a0a6!important}html[data-theme="dark"] .jfood-title h3,html[data-theme="dark"] .jfood-results-head strong{color:#fff3f3}html[data-theme="dark"] .jfood-section h2{color:#e2adb0}html[data-theme="dark"] .jfood-mark{background:#432a30;color:#ffa8ad}html[data-theme="dark"] .jfood-badge{background:#332b31;border-color:#54434a;color:#e7d7db}
-@media(max-width:650px){
-  .jfood-filters{padding:9px;gap:7px;border-radius:12px;margin-bottom:16px}
-  .jfood-filter-head>span{font-size:9px}
-  .jfood-filter-reset{font-size:9px}
-  .jfood-chips{gap:5px}
-  .jfood-status-chips{gap:5px}
-  .jfood-status-chips button{padding:7px 9px;font-size:9.5px}
-  .jfood-city-chips button{padding:7px 10px;font-size:10px}
-  .jfood-fields{grid-template-columns:minmax(0,.85fr) minmax(0,.85fr) minmax(0,1.3fr);gap:6px}
+@media(max-width:760px){
+  .jfood-filters{padding:8px;gap:6px;border-radius:11px;margin-bottom:14px}
+  .jfood-filter-head>span{font-size:8.5px}
+  .jfood-filter-reset{font-size:8.5px}
+  .jfood-chips{gap:4px}
+  .jfood-status-chips{gap:4px}
+  .jfood-status-chips button{padding:6px 8px;font-size:9px}
+  .jfood-city-chips button{padding:6px 9px;font-size:9.5px}
+  .jfood-fields{grid-template-columns:minmax(0,.75fr) minmax(0,.75fr) minmax(0,1.5fr);gap:5px}
   .jfood-search-label{grid-column:auto}
-  .jfood-fields label{min-width:0;font-size:8px;letter-spacing:.45px}
-  .jfood-fields select,.jfood-fields input{height:36px;min-width:0;padding:0 7px;font-size:10px;border-radius:8px}
-  .jfood-fields input{padding:0 8px}
-  .jfood-fields input::placeholder{font-size:9px}
+  .jfood-fields label{min-width:0;font-size:7.5px;letter-spacing:.35px}
+  .jfood-fields select,.jfood-fields input{height:33px;min-width:0;padding:0 6px;font-size:9.5px;border-radius:7px}
+  .jfood-fields input{padding:0 7px}
+  .jfood-fields input::placeholder{font-size:8.5px}
   .jfood-tabs button{flex:1}
   .jfood-card{padding:12px}
   .jfood-actions a,.jfood-actions button{min-height:34px}
