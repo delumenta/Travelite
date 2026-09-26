@@ -1,3 +1,4 @@
+// Travelite cache-bust build 2026-09-26-1714
 import { createClient } from '@supabase/supabase-js';
 import { createIcons, Compass, House, CalendarDays, Heart, Menu, Plus, ArrowRight, ArrowLeft, ArrowUpRight, MapPin, Clock3, Sparkles, Bookmark, Utensils, Ticket, Wallet, Search, ChevronDown, ChevronLeft, ChevronRight, X, Check, Trash2, Send, Navigation, LogOut, LoaderCircle, LockKeyhole, Mail, Plane, TrainFront, BedDouble, CircleHelp, SlidersHorizontal, ExternalLink, GripVertical, Pencil, Globe2, Leaf, Coffee, Route, CalendarPlus, CheckCircle2, MoreHorizontal, MessageCircle, Map, Copy, Sunrise, Sunset, ListFilter, UserRound, Sun, Moon } from 'lucide';
 import './style.css';
