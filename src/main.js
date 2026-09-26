@@ -101,7 +101,7 @@ const inTripCountry = row => { const destination=canonicalCountry(state.trip?.co
 const cover = trip => { if (trip?.cover_image_url && /^https:\/\//.test(trip.cover_image_url)) return trip.cover_image_url; const saved=state.countryPhotos[countryKey(trip?.country)]; if(saved?.image_url)return saved.image_url; const destination=`${trip?.country||''} ${trip?.name||''}`.toLowerCase(); const images=[[/\b(italy|italia|rome|roma|venice|venezia|florence|firenze|milan|milano|cinque terre)\b/,'photo-1459085184239-463574c08a08'],[/japan|日本|tokyo|kyoto|osaka/i,'photo-1493976040374-85c8e12f0c0e'],[/taiwan|臺灣|台湾|taipei/i,'photo-1470004914212-05527e49370b']]; const image=images.find(([pattern])=>pattern.test(destination))?.[1]||'photo-1488646953014-85cb44e25828'; return `https://images.unsplash.com/${image}?w=1400&q=85`; };
 const coverCredit = trip => { if(trip?.cover_image_url)return '';const p=state.countryPhotos[countryKey(trip?.country)];return p?.source_page?.startsWith('https://commons.wikimedia.org/')?`<a class="hero-photo-credit" href="${esc(p.source_page)}" target="_blank" rel="noopener noreferrer">Photo: ${esc(p.author)} · ${esc(p.license)}</a>`:''; };
 const toast = (msg, error=false) => { let el=$('#toast'); if (!el) {el=document.createElement('div');el.id='toast';document.body.appendChild(el)} el.textContent=msg;el.className=error?'show error':'show';clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.className='',4000); };
-const state = {user:null,trips:[],trip:null,tab:'home',day:null,schedule:[],bookings:[],expenses:[],places:[],restaurants:[],savedPlaces:[],savedFood:[],search:'',kind:'all',savedKind:'all',modal:null,authMode:'login',loading:true,assistant:[],threadId:null,assistantBusy:false,assistantOpen:false,mobileMenu:false,nearbyFood:[],foodBusy:false,foodLocation:null,foodError:'',foodMode:'collection',foodFilter:'all',foodTab:'mine',foodCity:'',foodArea:'',foodCuisine:'',foodSearch:'',scheduleExpanded:false,theme:localStorage.getItem('travelite.theme')==='dark'?'dark':'light',googleResults:[],catalogSelection:null,googleBusy:false,countryPhotos:{},addSearch:'',addKind:'all',addSelection:null,addNearby:false,aroundStop:null,aroundResults:[],aroundBusy:false,aroundRadius:1500};
+const state = {user:null,trips:[],trip:null,tab:'home',day:null,schedule:[],bookings:[],expenses:[],places:[],restaurants:[],savedPlaces:[],savedFood:[],search:'',kind:'all',savedKind:'all',modal:null,authMode:'login',loading:true,assistant:[],threadId:null,assistantBusy:false,assistantOpen:false,mobileMenu:false,nearbyFood:[],foodBusy:false,foodLocation:null,foodError:'',foodMode:'collection',foodFilter:'all',foodTab:'mine',foodCity:'',foodArea:'',foodCuisine:'',foodSearch:'',scheduleExpanded:false,theme:localStorage.getItem('travelite.theme')==='dark'?'dark':'light',googleResults:[],catalogSelection:null,googleBusy:false,countryPhotos:{},addSearch:'',addKind:'all',addSelection:null,addNearby:false,aroundStop:null,aroundResults:[],aroundBusy:false,aroundRadius:2000};
 document.documentElement.dataset.theme=state.theme;
 function drawIcons(){ createIcons({icons,attrs:{'stroke-width':1.85}}); }
 function render(){ document.documentElement.dataset.theme=state.theme; $('#app').innerHTML = !state.user ? authView() : shell(); drawIcons(); if(state.tab==='explore'||state.tab==='saved'||state.modal?.type==='addToDay')hydratePlacePhotos(); if(state.assistantOpen) { const el=$('.chat-messages'); if(el)el.scrollTop=el.scrollHeight; } }
@@ -113,6 +113,44 @@ function title(kicker,heading,desc,action){return `<div class="page-heading"><di
 function emptyTrips(){return `<div class="first-trip"><div class="first-trip-art">${icon('Compass')}</div><div class="eyebrow">A NEW CHAPTER</div><h1>Where to next?</h1><p>Begin with a destination. We’ll help you gather the rest along the way.</p><button class="btn primary" data-action="new-trip">${icon('Plus')} Create your first trip</button></div>`;}
 function homeView(){let t=state.trip,dates=dayList(t),now=today(),current=dates.includes(now)?now:(dates.find(d=>d>=now)||dates[0]);let dayStops=state.schedule.filter(x=>x.schedule_date===current).sort((a,b)=>(time(a.start_time)||'99:99').localeCompare(time(b.start_time)||'99:99')||(a.sort_order||0)-(b.sort_order||0)),items=dayStops.slice(0,3),countdown=t.start_date?Math.ceil((new Date(`${t.start_date}T12:00:00`)-new Date(`${now}T12:00:00`))/86400000):null;return `<div class="home-page"><div class="greeting"><div><div class="eyebrow">YOUR JOURNEY, BEAUTIFULLY TOGETHER</div><h1>Let’s go places<span class="accent-period">.</span></h1><p>Everything you need for the road ahead, right here.</p></div></div><div class="hero" style="background-image:linear-gradient(90deg,rgba(26,16,20,.86),rgba(31,16,22,.22)),url('${esc(cover(t))}')"><div class="hero-content"><div class="hero-label">${icon('MapPin')} ${esc(t.country||'YOUR DESTINATION')}</div><h2>${esc(t.name)}</h2><div class="hero-date">${icon('CalendarDays')} ${esc(dateRange(t.start_date,t.end_date))}</div><button class="btn cream" data-action="tab" data-value="plan">View itinerary ${icon('ArrowRight')}</button></div>${destinationScript(t)?`<div class="hero-watermark" aria-hidden="true" lang="${destinationScript(t).lang}"><span>${destinationScript(t).word}</span><small>${destinationScript(t).label}</small></div>`:''}<div class="hero-count"><strong>${countdown==null?'—':countdown>0?countdown:countdown===0?'Now':'✓'}</strong><span>${countdown>0?'DAYS TO GO':countdown===0?'STARTS TODAY':countdown<0?'MEMORIES MADE':'READY TO PLAN'}</span></div>${coverCredit(t)}</div><div class="home-stats"><button data-action="tab" data-value="plan">${icon('Route')}<b>${state.schedule.length}</b><span>Planned stops</span>${icon('ArrowUpRight')}</button><button data-action="tab" data-value="saved">${icon('Heart')}<b>${state.savedPlaces.length+state.savedFood.length}</b><span>Saved ideas</span>${icon('ArrowUpRight')}</button><button data-action="tab" data-value="bookings">${icon('Ticket')}<b>${state.bookings.length}</b><span>Bookings</span>${icon('ArrowUpRight')}</button></div><div class="home-grid"><section class="panel next-panel"><div class="section-head"><div><div class="eyebrow">COMING UP</div><h2>${current===now?'Today’s plan':current?'Your next day':'Start planning'}</h2></div><button class="text-link" data-action="toggle-schedule" aria-expanded="${state.scheduleExpanded}">${state.scheduleExpanded?'Hide full schedule':'View full schedule'} ${icon('ChevronDown')}</button></div>${state.scheduleExpanded?'':items.length?items.map((x,i)=>`<div class="next-item"><span class="next-time">${time(x.start_time)||String(i+1).padStart(2,'0')}</span><span class="next-dot"></span><div><b>${esc(x.title)}</b><small>${esc(x.location_name||x.address||x.item_type||'Part of your journey')}</small></div>${icon('ArrowUpRight')}</div>`).join(''):`<div class="empty-mini">${icon('CalendarPlus')}<p>There’s room for an adventure here.</p><button data-action="new-stop">Add a stop ${icon('ArrowRight')}</button></div>`}${state.scheduleExpanded?`<div class="home-full-schedule"><div class="home-schedule-day"><strong>${current?esc(fmtDate(current,{weekday:'long',day:'numeric',month:'long',year:'numeric'})):'No date selected'}</strong>${dayStops.length?dayStops.map(x=>`<div class="home-schedule-stop"><span>${esc(time(x.start_time)||'—')}</span><b>${esc(x.title)}</b><a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="See ${esc(x.title)} on Google Maps">${icon('MapPin')}</a></div>`).join(''):'<small>No stops planned for this day.</small>'}</div></div>`:''}</section><section class="panel assist-panel"><div class="assist-stars">${icon('Sparkles')}</div><div class="eyebrow">MEET YOUR CO-PILOT</div><h2>A little help goes<br>a long way.</h2><p>Ask about your plans, find nearby food, or turn a thought into an itinerary stop.</p><button class="btn dark" data-action="assistant">Talk to Travel Assist ${icon('ArrowRight')}</button></section></div><div class="section-head inspiration-title"><div><div class="eyebrow">EXPLORE THE POSSIBILITIES</div><h2>Go where curiosity takes you.</h2></div></div><div class="feature-grid explore-home-grid"><button data-action="explore-kind" data-value="place" class="feature-card"><span class="feature-icon coral">${icon('MapPin')}</span><b>Explore places</b><span>Find sights and experiences for this trip.</span>${icon('ArrowUpRight')}</button><button data-action="explore-kind" data-value="food" class="feature-card"><span class="feature-icon green">${icon('Utensils')}</span><b>Explore food</b><span>Browse restaurants, ratings and your picks.</span>${icon('ArrowUpRight')}</button></div><div class="section-head inspiration-title"><div><div class="eyebrow">AROUND YOU</div><h2>Food Finder.</h2></div></div><div class="feature-grid"><button data-action="food-finder" class="feature-card"><span class="feature-icon coral">${icon('Utensils')}</span><b>Find food within 300 m</b><span>Use your location to find restaurants around you.</span>${icon('ArrowUpRight')}</button><button data-action="food-saved" class="feature-card"><span class="feature-icon green">${icon('Heart')}</span><b>Saved restaurants</b><span>Restaurants you have saved for this trip.</span>${icon('ArrowUpRight')}</button></div></div>`;}
 const distanceMeters=(a,b,c,d)=>{const rad=Math.PI/180,p1=a*rad,p2=c*rad,dp=(c-a)*rad,dl=(d-b)*rad,h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 12742000*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));};
+function nearbyKey(row){
+  return String(row?.name||'').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu,'').trim();
+}
+function nearbyCatalogRows(kind,latitude,longitude,radius){
+  const source=kind==='food'?state.restaurants:state.places;
+  const savedIds=new Set((kind==='food'?state.savedFood:state.savedPlaces).map(x=>Number(kind==='food'?x.restaurant_id:x.place_id)));
+  return source
+    .filter(x=>x.status==='active'&&inTripCountry(x))
+    .filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)))
+    .map(x=>({
+      ...x,
+      __source:'catalog',
+      __kind:kind,
+      saved:savedIds.has(Number(x.id)),
+      __distance:Math.round(distanceMeters(latitude,longitude,Number(x.latitude),Number(x.longitude)))
+    }))
+    .filter(x=>x.__distance<=radius)
+    .sort((a,b)=>a.__distance-b.__distance);
+}
+function mergeNearbyRows(localRows,googleRows,latitude,longitude,radius,kind){
+  const merged=[...localRows];
+  const localPlaceIds=new Set(localRows.map(x=>x.provider_place_id).filter(Boolean));
+  const localNames=new Map();
+  for(const x of localRows){
+    const key=nearbyKey(x);
+    if(key&&!localNames.has(key))localNames.set(key,x);
+  }
+  for(const g of googleRows){
+    const distance=Math.round(distanceMeters(latitude,longitude,Number(g.latitude),Number(g.longitude)));
+    if(distance>radius)continue;
+    if(g.provider_place_id&&localPlaceIds.has(g.provider_place_id))continue;
+    const key=nearbyKey(g);
+    const sameName=key?localNames.get(key):null;
+    if(sameName&&Math.abs(Number(sameName.__distance)-distance)<=200)continue;
+    merged.push({...g,__source:'google',__kind:kind,__distance:distance,saved:false});
+  }
+  return merged.sort((a,b)=>a.__distance-b.__distance);
+}
 function foodResult(r){
   const distance=Number.isFinite(Number(r.distance))?Math.round(Number(r.distance)):null;
   const meta=[distance!=null?`${distance} m away`:null,r.area||r.city||r.address].filter(Boolean).join(' · ');
@@ -144,12 +182,19 @@ async function findNearbyFood(){
     });
     const latitude=Number(position.coords.latitude);
     const longitude=Number(position.coords.longitude);
+    const radius=300;
     state.foodLocation={latitude,longitude};
-    const results=await browserNearbyPlaces({latitude,longitude,radius:300,kind:'food'});
-    state.nearbyFood=results.map(row=>({
-      ...row,
-      distance:Math.round(distanceMeters(latitude,longitude,Number(row.latitude),Number(row.longitude)))
-    })).filter(row=>row.distance<=300).sort((a,b)=>a.distance-b.distance);
+
+    const local=nearbyCatalogRows('food',latitude,longitude,radius);
+    let combined=local;
+
+    // If Travelite already knows enough nearby food, avoid a Google call.
+    if(local.length<8){
+      const google=await browserNearbyPlaces({latitude,longitude,radius,kind:'food'});
+      combined=mergeNearbyRows(local,google,latitude,longitude,radius,'food');
+    }
+
+    state.nearbyFood=combined.map(x=>({...x,distance:x.__distance})).slice(0,20);
   }catch(error){
     const denied=error?.code===1;
     state.foodError=denied?'Location permission is needed to find food around you.':(error?.message||'Could not find nearby food.');
@@ -570,7 +615,7 @@ function aroundStopView(){
       <span class="around-anchor-icon">${icon('MapPinned')}</span>
       <span><small>AROUND</small><b>${esc(stop.title)}</b><em>Within ${Math.round(state.aroundRadius/100)/10} km</em></span>
     </div>
-    <p class="around-explainer">Travelite finds nearby places from Google Maps, then sorts them for planning. Ratings are not fetched — open Google Maps only when you want to check reviews.</p>
+    <p class="around-explainer">Travelite checks its own place library first. Google is only used to fill gaps when there are not enough nearby results. Ratings are not fetched.</p>
     ${state.aroundBusy?`<div class="add-empty around-loading">${icon('LoaderCircle','spin')}<p>Finding popular places around ${esc(stop.title)}…</p></div>`:rows.length?`<div class="around-results">${rows.map((x,i)=>{
       const distance=Number.isFinite(Number(x.__distance))?Math.round(Number(x.__distance)):null;
       const rank=Number(x.nearby_rank)||i+1;
@@ -606,27 +651,31 @@ async function findAroundStop(stop){
 
   try{
     const anchorName=String(stop.title||'').trim().toLowerCase();
-    const radius=Number(state.aroundRadius)||1500;
-    const results=await browserNearbyPlaces({latitude,longitude,radius,kind:'place'});
-
+    const radius=Number(state.aroundRadius)||2000;
     const skipTypes=new Set(['restaurant','cafe','bakery','bar','lodging','hotel','hostel']);
-    state.aroundResults=results
-      .map(x=>({
-        ...x,
-        __source:'google',
-        __kind:'place',
-        __distance:Math.round(distanceMeters(latitude,longitude,Number(x.latitude),Number(x.longitude)))
-      }))
-      .filter(x=>{
-        const sameName=String(x.name||'').trim().toLowerCase()===anchorName;
-        return !sameName && x.__distance>=20 && x.__distance<=radius && !skipTypes.has(String(x.place_type||'').toLowerCase());
-      })
-      .sort((a,b)=>a.__distance-b.__distance)
+
+    const local=nearbyCatalogRows('place',latitude,longitude,radius)
+      .filter(x=>String(x.name||'').trim().toLowerCase()!==anchorName)
+      .filter(x=>x.__distance>=20)
+      .filter(x=>!skipTypes.has(String(x.place_type||'').toLowerCase()));
+
+    let combined=local;
+
+    // Ten useful local POIs is enough for an Around search without paying Google.
+    if(local.length<10){
+      const google=await browserNearbyPlaces({latitude,longitude,radius,kind:'place'});
+      combined=mergeNearbyRows(local,google,latitude,longitude,radius,'place')
+        .filter(x=>String(x.name||'').trim().toLowerCase()!==anchorName)
+        .filter(x=>x.__distance>=20)
+        .filter(x=>!skipTypes.has(String(x.place_type||'').toLowerCase()));
+    }
+
+    state.aroundResults=combined
       .slice(0,20)
       .map((x,i)=>({...x,nearby_rank:i+1}));
   }catch(e){
     console.error('Around here failed',e);
-    toast(e?.message||'Could not load nearby Google places.',true);
+    toast(e?.message||'Could not load nearby places.',true);
   }finally{
     state.aroundBusy=false;
     render();
@@ -1026,8 +1075,8 @@ case 'food-pick':case 'food-flexible':{let link=state.savedFood.find(x=>Number(x
 case 'food-eaten':{let link=state.savedFood.find(x=>Number(x.restaurant_id)===id);if(!link)break;let value=!link.is_eaten;let result=await sb.from('trip_restaurants').update({is_eaten:value,eaten_at:value?new Date().toISOString():null}).eq('id',link.id).eq('trip_id',state.trip.id).select().single();if(result.error)throw result.error;state.savedFood=state.savedFood.map(x=>x.id===link.id?result.data:x);render();break;}
 case 'food-refresh':findNearbyFood();break;
 case 'nearby-map':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId)||state.restaurants.find(x=>Number(x.id)===id);if(result)window.open(el.href||maps(result),'_blank','noopener,noreferrer');break;}
-case 'add-nearby-plan':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId)||state.restaurants.find(x=>Number(x.id)===id);if(!result)break;const selection={...result,__source:result.saved||!result.provider_place_id?'catalog':'google',__kind:'food'};await addSelectionToDay(selection);break;}
-case 'save-nearby':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId);if(!result)break;await saveSelectionForLater({...result,__source:'google',__kind:'food'});break;}
+case 'add-nearby-plan':{let result=state.nearbyFood.find(x=>(el.dataset.placeId&&x.provider_place_id===el.dataset.placeId)||(id&&Number(x.id)===id))||state.restaurants.find(x=>Number(x.id)===id);if(!result)break;const selection={...result,__source:result.__source||((result.id&&!result.provider_place_id)?'catalog':'google'),__kind:'food'};await addSelectionToDay(selection);break;}
+case 'save-nearby':{let result=state.nearbyFood.find(x=>(el.dataset.placeId&&x.provider_place_id===el.dataset.placeId)||(id&&Number(x.id)===id));if(!result)break;await saveSelectionForLater({...result,__source:result.__source||'google',__kind:'food'});break;}
 case 'day':state.day=v;render();break;
 case 'filter':if(v==='food'&&state.kind!=='food'){state.foodTab='discover';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}state.kind=v;render();break;
 case 'saved-filter':state.savedKind=v;if(v==='food'){state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}render();break;
@@ -1045,8 +1094,8 @@ case 'add-clear-search':state.addSearch='';state.googleResults=[];render();setTi
 case 'add-google-search':await searchAddGoogle();break;
 case 'add-nearby':await searchAddGoogle({nearby:true});break;
 case 'around-stop':{const stop=state.schedule.find(x=>Number(x.id)===id);if(stop)await findAroundStop(stop);break;}
-case 'around-add':{const result=state.aroundResults[Number(el.dataset.index)];if(result)await addSelectionToDay({...result,__source:'google',__kind:'place'});break;}
-case 'around-save':{const result=state.aroundResults[Number(el.dataset.index)];if(result)await saveSelectionForLater({...result,__source:'google',__kind:'place'});break;}
+case 'around-add':{const result=state.aroundResults[Number(el.dataset.index)];if(result)await addSelectionToDay({...result,__source:result.__source||'google',__kind:'place'});break;}
+case 'around-save':{const result=state.aroundResults[Number(el.dataset.index)];if(result)await saveSelectionForLater({...result,__source:result.__source||'google',__kind:'place'});break;}
 case 'add-preview':{let selection=null;const source=el.dataset.source||'catalog',kind=el.dataset.kind||'place';if(source==='google'){selection=state.googleResults[Number(el.dataset.index)];if(selection)selection={...selection,__source:'google',__kind:kind};}else{selection=(kind==='food'?state.restaurants:state.places).find(x=>Number(x.id)===id);if(selection)selection={...selection,__source:'catalog',__kind:kind};}if(selection){state.addSelection=selection;render();}break;}
 case 'add-preview-back':state.addSelection=null;render();setTimeout(()=>$('#add-day-search')?.focus(),0);break;
 case 'add-selection-day':await addSelectionToDay(state.addSelection);break;
