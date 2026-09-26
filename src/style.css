@@ -144,7 +144,7 @@ html[data-theme="dark"] .trip-delete-button:hover,html[data-theme="dark"] .trip-
 .jfood-chips{display:flex;gap:7px;padding-bottom:2px}
 .jfood-city-chips{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .jfood-city-chips::-webkit-scrollbar{display:none}
-.jfood-status-chips{flex-wrap:wrap;overflow:visible}
+.jfood-status-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}.jfood-status-chips::-webkit-scrollbar{display:none}
 .jfood-chips button{flex:none;border:1px solid #e5dcdc;background:#fffdfa;border-radius:99px;padding:9px 13px;color:#54484a;font-weight:800;font-size:11px;white-space:nowrap}
 .jfood-chips button.active{background:#3d262b;border-color:#3d262b;color:#fff}
 .jfood-fields{display:grid;grid-template-columns:minmax(130px,1fr) minmax(130px,1fr) minmax(200px,1.6fr);gap:9px}
@@ -173,9 +173,12 @@ html[data-theme="dark"] .jfood-remove{background:#2a191d!important;border-color:
   .jfood-status-chips{gap:6px}
   .jfood-status-chips button{padding:8px 11px;font-size:10.5px}
   .jfood-city-chips button{padding:8px 12px}
-  .jfood-fields{grid-template-columns:1fr 1fr;gap:8px}
-  .jfood-search-label{grid-column:1/-1}
-  .jfood-fields select,.jfood-fields input{height:40px}
+  .jfood-fields{grid-template-columns:minmax(0,.9fr) minmax(0,.9fr) minmax(0,1.35fr);gap:7px}
+  .jfood-search-label{grid-column:auto}
+  .jfood-fields label{min-width:0;font-size:9px;letter-spacing:.55px}
+  .jfood-fields select,.jfood-fields input{height:40px;min-width:0;padding:0 8px;font-size:11px}
+  .jfood-fields input{padding:0 9px}
+  .jfood-fields input::placeholder{font-size:10px}
   .jfood-tabs button{flex:1}
   .jfood-card{padding:12px}
   .jfood-actions a,.jfood-actions button{min-height:34px}
