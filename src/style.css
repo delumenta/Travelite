@@ -743,3 +743,100 @@ html[data-theme="dark"] .plan-summary-note{color:#a9a1a6}
   .starter-actions{flex-direction:column}
   .starter-actions .btn{width:100%}
 }
+
+
+/* =========================================================
+   PLAN — MOBILE HEADER / ACTION LAYOUT FIX
+========================================================= */
+@media(max-width:700px){
+  .day-heading{
+    display:grid;
+    grid-template-columns:1fr;
+    align-items:start;
+    gap:14px;
+    margin:10px 0 18px;
+  }
+
+  .day-heading>div:first-child{
+    min-width:0;
+    width:100%;
+  }
+
+  .day-heading h2{
+    margin:6px 0 0;
+    font-size:28px;
+    line-height:1.08;
+    letter-spacing:-1px;
+  }
+
+  .day-heading-actions{
+    width:100%;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:9px;
+    justify-content:stretch;
+  }
+
+  .day-heading-actions .icon-action{
+    width:100%;
+    min-width:0;
+    min-height:48px;
+    justify-content:center;
+    padding:10px 12px!important;
+    border:1px solid color-mix(in srgb,var(--accent,#a64245) 65%,var(--line))!important;
+    border-radius:12px;
+    background:color-mix(in srgb,var(--accent,#a64245) 6%,var(--panel));
+    color:var(--accent,#a64245);
+    font-size:11px;
+    line-height:1.2;
+    white-space:normal;
+    text-align:center;
+  }
+
+  .day-heading-actions .icon-action svg{
+    width:17px;
+    height:17px;
+    flex:0 0 auto;
+  }
+
+  .day-heading-actions [data-action="between-route"]{
+    grid-column:1 / -1;
+  }
+
+  .day-heading-actions .plan-add-top{
+    background:color-mix(in srgb,var(--accent,#a64245) 9%,var(--panel));
+  }
+
+  .plan-stop .stop-card{
+    min-width:0;
+  }
+
+  .plan-stop .stop-actions{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px;
+  }
+
+  .plan-stop .stop-actions a,
+  .plan-stop .stop-actions button{
+    min-width:0;
+    min-height:44px;
+    padding:7px 4px!important;
+    border:1px solid color-mix(in srgb,var(--accent,#a64245) 48%,var(--line));
+    border-radius:11px;
+    justify-content:center;
+    flex-direction:column;
+    gap:3px;
+    text-align:center;
+  }
+
+  .plan-stop .stop-actions .quiet-danger{
+    margin-left:0;
+  }
+}
+
+@media(max-width:390px){
+  .day-heading h2{font-size:26px}
+  .day-heading-actions{grid-template-columns:1fr}
+  .day-heading-actions [data-action="between-route"]{grid-column:auto}
+}
