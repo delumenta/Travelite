@@ -18,6 +18,7 @@ const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Singapore',y
 const time = t => t ? String(t).slice(0,5) : '';
 const placePhotoIsStored = place => typeof place?.image_url === 'string' && place.image_url.startsWith(`${SB_URL}/storage/v1/object/public/place-photos/`);
 const maps = row => { const u=row?.maps_url; if (u && /^https:\/\//i.test(u)) return u; if (row?.latitude != null && row?.longitude != null) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${row.latitude},${row.longitude}`)}`; return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row?.address || row?.location_name || row?.name || row?.title || '')}`; };
+const directions = row => { const destination=(row?.latitude!=null&&row?.longitude!=null)?`${row.latitude},${row.longitude}`:(row?.address||row?.location_name||row?.name||''); if(!destination)return maps(row); return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`; };
 const destinationScript = trip => { const country=(trip?.country||'').toLowerCase(); if(country.includes('japan')||country.includes('日本'))return {word:'日本',label:'JAPAN',lang:'ja'}; if(country.includes('china')||country.includes('中国'))return {word:'中国',label:'CHINA',lang:'zh'}; if(country.includes('korea')||country.includes('한국')||country.includes('대한민국'))return {word:'한국',label:'KOREA',lang:'ko'}; return null; };
 const countryKey = country => String(country||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('en');
 const countryAliases = {korea:'southkorea',republicofkorea:'southkorea',uk:'unitedkingdom',greatbritain:'unitedkingdom',britain:'unitedkingdom',england:'unitedkingdom',usa:'unitedstates',us:'unitedstates',america:'unitedstates'};
@@ -395,11 +396,10 @@ function dayRows(date=state.day){
 }
 function dayRouteUrl(rows){
   const points=(rows||[]).map(x=>{
-    if(x.latitude!=null&&x.longitude!=null)return `${x.latitude},${x.longitude}`;
-    return x.address||x.location_name||x.title||'';
+    if(Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)))return `${x.latitude},${x.longitude}`;
+    return String(x.address||x.location_name||'').trim();
   }).filter(Boolean);
-  if(points.length===0)return '';
-  if(points.length===1)return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(points[0])}`;
+  if(points.length<2)return '';
   const origin=points[0],destination=points[points.length-1],waypoints=points.slice(1,-1).slice(0,8);
   let url=`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
   if(waypoints.length)url+=`&waypoints=${encodeURIComponent(waypoints.join('|'))}`;
@@ -569,7 +569,7 @@ function planView(){
   if(!state.day||!days.includes(state.day))state.day=days.find(d=>d>=today())||days[0]||today();
   let rows=dayRows(state.day),dayNo=days.indexOf(state.day)+1,route=dayRouteUrl(rows);
   const bookingsToday=state.bookings.filter(b=>b.booking_date===state.day);
-  return `${title('PLAN','Build your trip, one day at a time.','Search exact places when you know what you want. Use Around here when you want ideas that fit the route.',`<button class="btn primary" data-action="new-stop">${icon('Plus')} Add place</button>`)}
+  return `${title('PLAN','Build your trip, one day at a time.','Add your main stops, then use Around here to discover ideas that fit the route.','')}
     <div class="day-strip plan-day-strip">${days.length?days.map((d,i)=>`<button class="day-pill ${state.day===d?'active':''}" data-action="day" data-value="${d}"><small>DAY ${String(i+1).padStart(2,'0')}</small><b>${fmtDate(d,{weekday:'short'})}</b><span>${fmtDate(d,{day:'numeric',month:'short'})}</span><i class="${state.schedule.some(x=>x.schedule_date===d)?'has-stops':''}"></i></button>`).join(''):`<div class="empty-note">Add dates to this trip to build its itinerary. <button data-action="edit-trip">Add dates ${icon('ArrowRight')}</button></div>`}</div>
     <div class="plan-workspace">
       <section class="plan-day-panel">
@@ -579,7 +579,7 @@ function planView(){
             <h2>${rows.length?`${rows.length} ${rows.length===1?'stop':'stops'} planned`:'Nothing planned yet'}</h2>
           </div>
           <div class="day-heading-actions">
-            ${route?`<a class="icon-action" href="${esc(route)}" target="_blank" rel="noopener noreferrer">${icon('Map')} Day map</a>`:''}
+            ${route?`<a class="icon-action" href="${esc(route)}" target="_blank" rel="noopener noreferrer">${icon('Route')} Day route</a>`:''}
             <button class="icon-action plan-add-top" data-action="new-stop">${icon('Plus')} Add place</button>
           </div>
         </div>
@@ -597,7 +597,7 @@ function planView(){
               ${x.location_name||x.address?`<p>${icon('MapPin')} ${esc(x.location_name||x.address)}</p>`:''}
               ${x.description?`<p class="stop-desc">${esc(x.description)}</p>`:''}
               <div class="stop-actions">
-                <a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer">${icon('Navigation')} Maps</a>
+                <a href="${esc(directions(x))}" target="_blank" rel="noopener noreferrer">${icon('Navigation')} Directions</a>
                 ${Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude))?`<button data-action="around-stop" data-id="${x.id}">${icon('Search')} Around here</button>`:''}
                 <button data-action="edit-stop" data-id="${x.id}">${icon('Clock3')} Time / details</button>
                 ${!x.is_locked?`<button data-action="delete-stop" data-id="${x.id}" class="quiet-danger" aria-label="Delete stop">${icon('Trash2')}</button>`:''}
@@ -612,8 +612,7 @@ function planView(){
           <div class="eyebrow">THIS DAY</div>
           <strong>${esc(fmtDate(state.day,{weekday:'long',day:'numeric',month:'long'}))}</strong>
           <div class="plan-summary-numbers"><span><b>${rows.length}</b>Stops</span><span><b>${bookingsToday.length}</b>Bookings</span></div>
-          <button class="btn primary full" data-action="new-stop">${icon('Plus')} Add place</button>
-          ${route?`<a class="plan-summary-link" href="${esc(route)}" target="_blank" rel="noopener noreferrer">${icon('Map')} Open day route ${icon('ArrowRight')}</a>`:''}
+          <p class="plan-summary-note">${route?'Day route follows your mapped stops in itinerary order.':'Add at least two mapped stops to build a day route.'}</p>
         </div>
         <div class="plan-helper-card">
           <div class="eyebrow">HOW TO USE PLAN</div>
