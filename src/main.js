@@ -1939,7 +1939,8 @@ case 'auth-mode':state.authMode=v;render();break;
 case 'toggle-theme':state.theme=state.theme==='dark'?'light':'dark';localStorage.setItem('travelite.theme',state.theme);render();break;
 case 'google-select':{const result=state.googleResults[Number(el.dataset.index)];if(!result)break;state.catalogSelection=result;const form=$('#catalog-form');for(const key of ['name','city','area','address','maps_url'])if(form.elements[key])form.elements[key].value=result[key]||'';$('#google-results').innerHTML=googleResultsView();drawIcons();toast('Place details added. Review and save below.');break;}
 case 'tab':state.tab=v;state.mobileMenu=false;state.search='';render();window.scrollTo(0,0);break;
-case 'toggle-schedule':state.scheduleExpanded=!state.scheduleExpanded;render();break;\ncase 'toggle-schedule-area':state.scheduleAreaExpanded[el.dataset.key]=!state.scheduleAreaExpanded[el.dataset.key];render();break;
+case 'toggle-schedule':state.scheduleExpanded=!state.scheduleExpanded;render();break;
+case 'toggle-schedule-area':state.scheduleAreaExpanded[el.dataset.key]=!state.scheduleAreaExpanded[el.dataset.key];render();break;
 case 'explore-kind':if(v==='food'){state.tab='explore';state.kind='food';state.foodMode='collection';state.foodFilter='all';state.foodTab='discover';}else{state.tab='explore';state.kind='place';}render();window.scrollTo(0,0);break;
 case 'food-saved':state.tab='saved';state.savedKind='food';state.foodMode='collection';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';render();window.scrollTo(0,0);break;
 case 'food-finder':state.tab='food';state.foodMode='nearby';render();window.scrollTo(0,0);findNearbyFood();break;
