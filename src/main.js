@@ -487,10 +487,10 @@ function addToDayView(){
   </div>`;
 }
 function aroundStopLabel(rank,distance){
-  if(rank<=5&&distance>550)return {label:'Popular destination',note:'One of the stronger nearby results — worth considering as a destination in its own right.'};
-  if(rank<=6)return {label:'Popular nearby stop',note:'High in Google’s popularity ordering around this stop and easy to combine with your route.'};
-  if(distance<=400)return {label:'Easy nearby stop',note:'Very close to your planned stop — useful if you have a little extra time.'};
-  return {label:'Worth a nearby stop',note:'A nearby point of interest you can add if it fits the day.'};
+  if(distance<=250)return {label:'Very close',note:'An easy add-on near this stop.'};
+  if(distance<=600)return {label:'Nearby',note:'Close enough to combine without much backtracking.'};
+  if(distance<=1200)return {label:'Good detour',note:'Still within the area if it fits your timing.'};
+  return {label:'In the area',note:'A little farther away, but still within this search radius.'};
 }
 function aroundStopView(){
   const stop=state.aroundStop;
@@ -501,7 +501,7 @@ function aroundStopView(){
       <span class="around-anchor-icon">${icon('MapPinned')}</span>
       <span><small>AROUND</small><b>${esc(stop.title)}</b><em>Within ${Math.round(state.aroundRadius/100)/10} km</em></span>
     </div>
-    <p class="around-explainer">Travelite uses nearby popularity and distance to suggest what may fit your day. Ratings stay on Google Maps — Travelite does not fetch or store them.</p>
+    <p class="around-explainer">Travelite checks your place catalogue around this stop and sorts nearby ideas by distance. Open Google Maps only when you want to check ratings or reviews.</p>
     ${state.aroundBusy?`<div class="add-empty around-loading">${icon('LoaderCircle','spin')}<p>Finding popular places around ${esc(stop.title)}…</p></div>`:rows.length?`<div class="around-results">${rows.map((x,i)=>{
       const distance=Number.isFinite(Number(x.__distance))?Math.round(Number(x.__distance)):null;
       const rank=Number(x.nearby_rank)||i+1;
@@ -534,31 +534,36 @@ async function findAroundStop(stop){
   state.aroundBusy=true;
   state.modal={type:'aroundStop',data:{stopId:stop.id}};
   render();
+
   try{
-    const {data,error}=await sb.functions.invoke('travelite-search',{body:{
-      nearby:true,
-      nearby_mode:'poi',
-      kind:'place',
-      latitude,
-      longitude,
-      radius:state.aroundRadius
-    }});
-    if(error||data?.error)throw Error(data?.error||error?.message||'Nearby places are unavailable.');
     const anchorName=String(stop.title||'').trim().toLowerCase();
-    state.aroundResults=(data?.results||[]).map((x,i)=>({
-      ...x,
-      __source:'google',
-      __kind:'place',
-      nearby_rank:Number(x.nearby_rank)||i+1,
-      __distance:Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude))
-        ? Math.round(distanceMeters(latitude,longitude,Number(x.latitude),Number(x.longitude)))
-        : null
-    })).filter(x=>{
-      const sameName=String(x.name||'').trim().toLowerCase()===anchorName;
-      return !sameName && !(x.__distance!=null&&x.__distance<20);
-    });
+    const radius=Number(state.aroundRadius)||1500;
+
+    const local=(state.places||[])
+      .filter(x=>x.status==='active'&&inTripCountry(x))
+      .filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)))
+      .map(x=>({
+        ...x,
+        __source:'catalog',
+        __kind:'place',
+        __distance:Math.round(distanceMeters(latitude,longitude,Number(x.latitude),Number(x.longitude)))
+      }))
+      .filter(x=>{
+        const sameName=String(x.name||'').trim().toLowerCase()===anchorName;
+        return !sameName && x.__distance>=20 && x.__distance<=radius;
+      })
+      .sort((a,b)=>{
+        const av=Number(Boolean(a.verified)),bv=Number(Boolean(b.verified));
+        if(av!==bv)return bv-av;
+        return a.__distance-b.__distance;
+      })
+      .slice(0,20)
+      .map((x,i)=>({...x,nearby_rank:i+1}));
+
+    state.aroundResults=local;
   }catch(e){
-    toast(e.message||'Could not find places around this stop.',true);
+    console.error('Around here failed',e);
+    toast('Could not load nearby Travelite places.',true);
   }finally{
     state.aroundBusy=false;
     render();
@@ -596,11 +601,11 @@ function planView(){
               <h3>${esc(x.title)}</h3>
               ${x.location_name||x.address?`<p>${icon('MapPin')} ${esc(x.location_name||x.address)}</p>`:''}
               ${x.description?`<p class="stop-desc">${esc(x.description)}</p>`:''}
-              <div class="stop-actions">
-                <a href="${esc(directions(x))}" target="_blank" rel="noopener noreferrer">${icon('Navigation')} Directions</a>
-                ${Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude))?`<button data-action="around-stop" data-id="${x.id}">${icon('Search')} Around here</button>`:''}
-                <button data-action="edit-stop" data-id="${x.id}">${icon('Clock3')} Time / details</button>
-                ${!x.is_locked?`<button data-action="delete-stop" data-id="${x.id}" class="quiet-danger" aria-label="Delete stop">${icon('Trash2')}</button>`:''}
+              <div class="stop-actions compact-actions">
+                <a href="${esc(directions(x))}" target="_blank" rel="noopener noreferrer">${icon('Navigation')} Go</a>
+                ${Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude))?`<button data-action="around-stop" data-id="${x.id}">${icon('Search')} Around</button>`:''}
+                <button data-action="edit-stop" data-id="${x.id}">${icon('Clock3')} Details</button>
+                ${!x.is_locked?`<button data-action="delete-stop" data-id="${x.id}" class="quiet-danger" aria-label="Delete stop">${icon('Trash2')} Delete</button>`:''}
               </div>
             </div>
           </article>`).join(''):`<div class="empty-plan"><span>${icon('Route')}</span><h3>Build this day.</h3><p>Add places directly to the itinerary. You can search Travelite first, then Google when needed.</p><button class="btn primary" data-action="new-stop">${icon('Plus')} Add the first place</button></div>`}
