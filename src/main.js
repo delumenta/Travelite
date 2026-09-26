@@ -118,7 +118,7 @@ const toast = (msg, error=false) => { let el=$('#toast'); if (!el) {el=document.
 const state = {user:null,trips:[],trip:null,tab:'home',day:null,schedule:[],bookings:[],expenses:[],places:[],restaurants:[],savedPlaces:[],savedFood:[],search:'',kind:'all',savedKind:'all',modal:null,authMode:'login',loading:true,assistant:[],threadId:null,assistantBusy:false,assistantOpen:false,mobileMenu:false,nearbyFood:[],foodBusy:false,foodLocation:null,foodError:'',foodMode:'collection',foodFilter:'all',foodTab:'mine',foodCity:'',foodArea:'',foodCuisine:'',foodSearch:'',scheduleExpanded:false,theme:localStorage.getItem('travelite.theme')==='dark'?'dark':'light',googleResults:[],catalogSelection:null,googleBusy:false,countryPhotos:{},addSearch:'',addKind:'all',addSelection:null,addNearby:false,aroundStop:null,aroundResults:[],aroundBusy:false,aroundRadius:2000,discoveryMode:null,discoveryTitle:'',discoverySubtitle:'',starterCity:''};
 document.documentElement.dataset.theme=state.theme;
 function drawIcons(){ createIcons({icons,attrs:{'stroke-width':1.85}}); }
-function render(){ document.documentElement.dataset.theme=state.theme; $('#app').innerHTML = !state.user ? authView() : shell(); drawIcons(); if(state.tab==='explore'||state.tab==='saved'||state.modal?.type==='addToDay')hydratePlacePhotos(); if(state.assistantOpen) { const el=$('.chat-messages'); if(el)el.scrollTop=el.scrollHeight; } }
+function render(){ document.documentElement.dataset.theme=state.theme; $('#app').innerHTML = !state.user ? authView() : shell(); drawIcons(); if(state.tab==='explore'||state.tab==='saved'||state.modal?.type==='addToDay')hydratePlacePhotos(); if(state.modal?.type==='routeMap')setTimeout(()=>initRouteMap(),0); if(state.assistantOpen) { const el=$('.chat-messages'); if(el)el.scrollTop=el.scrollHeight; } }
 function authView(){ return `<div class="auth-shell"><div class="auth-photo"><div class="auth-photo-shade"></div><div class="auth-photo-content"><div class="brand brand-light">${icon('Compass')}<span>travelite<span class="brand-dot">.</span></span></div><div class="auth-quote">Make room for<br><em>the unexpected.</em></div><p>All your places, plans, and little discoveries, in one beautiful place.</p><div class="auth-photo-foot">A better way to go somewhere.</div></div></div><div class="auth-side"><button class="theme-toggle auth-theme" data-action="toggle-theme" aria-label="Switch theme">${icon(state.theme==='dark'?'Sun':'Moon')}<span>${state.theme==='dark'?'Light':'Dark'} mode</span></button><div class="auth-mobile-brand brand">${icon('Compass')}<span>travelite<span class="brand-dot">.</span></span></div><div class="auth-card"><div class="eyebrow">YOUR NEXT STORY STARTS HERE</div><h1>${state.authMode==='signup'?'A world of plans awaits.':state.authMode==='reset'?'Reset your password.':'Welcome back.'}</h1><p class="subline">${state.authMode==='signup'?'Create your account and start collecting the places that move you.':state.authMode==='reset'?'We’ll send you a link to choose a new password.':'Pick up right where your wanderlust left off.'}</p><form id="auth-form">${state.authMode!=='reset'?`<label>Email address<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required></label><label>Password<input name="password" type="password" autocomplete="${state.authMode==='signup'?'new-password':'current-password'}" minlength="6" placeholder="At least 6 characters" required></label>`:`<label>Email address<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required></label>`}<button class="btn primary full" type="submit">${state.authMode==='signup'?'Create account':state.authMode==='reset'?'Send reset link':'Sign in'} ${icon('ArrowRight')}</button></form><div class="auth-switch">${state.authMode==='login'?`New to Travelite? <button data-action="auth-mode" data-value="signup">Create an account</button><br><button class="forgot" data-action="auth-mode" data-value="reset">Forgot your password?</button>`:`Already have an account? <button data-action="auth-mode" data-value="login">Sign in</button>`}</div></div><div class="auth-footer">Travel more. Carry less. © ${new Date().getFullYear()} Travelite</div></div></div>`; }
 const nav = [['home','House','Home'],['plan','Route','Plan'],['explore','Compass','Explore'],['saved','Heart','Saved'],['bookings','Ticket','Bookings'],['expenses','Wallet','Expenses']];
 function shell(){ const trip=state.trip; return `<div class="app-shell"><aside class="sidebar"><div class="brand">${icon('Compass')}<span>travelite<span class="brand-dot">.</span></span></div><div class="side-label">YOUR SPACE</div><button class="trip-switch" data-action="trip-picker">${icon('Globe2')}<span><b>${esc(trip?.name||'All trips')}</b><small>${esc(trip?.country||'Your adventures')}</small></span>${icon('ChevronDown')}</button><div class="side-label side-label-nav">THE JOURNEY</div><nav>${nav.map(([id,ic,label])=>`<button class="nav-link ${state.tab===id?'active':''}" data-action="tab" data-value="${id}">${icon(ic)}<span>${label}</span>${id==='bookings'&&state.bookings.length?`<small>${state.bookings.length}</small>`:''}</button>`).join('')}</nav><div class="sidebar-bottom"><button class="assist-side" data-action="assistant">${icon('Sparkles')}<span><b>Travel Assist</b><small>Your companion on the road</small></span>${icon('ArrowUpRight')}</button></div></aside><div class="main-wrap"><header class="topbar"><div class="mobile-logo brand">${icon('Compass')}<span>travelite<span class="brand-dot">.</span></span></div><div class="desktop-breadcrumb">YOUR TRIPS <span>/</span> ${esc(trip?.name||'Overview')} <span>/</span> ${esc(nav.find(n=>n[0]===state.tab)?.[2]||'Overview')}</div><div class="top-actions"><button class="theme-toggle" data-action="toggle-theme" aria-label="Switch theme">${icon(state.theme==='dark'?'Sun':'Moon')}<span>${state.theme==='dark'?'Light':'Dark'} mode</span></button><button class="top-avatar" data-action="profile" aria-label="Account">${esc((state.user?.email||'T')[0].toUpperCase())}</button><button class="header-menu" data-action="menu" aria-label="Open full menu" aria-expanded="${state.mobileMenu}">${icon('Menu')}</button></div></header><main class="content">${state.loading?`<div class="loading">${icon('LoaderCircle','spin')}<p>Finding your journey…</p></div>`:!trip?emptyTrips():body()}</main></div><nav class="bottom-nav">${[['home','House','Home'],['plan','Route','Plan'],['explore','Compass','Explore'],['saved','Heart','Saved']].map(([id,ic,label])=>`<button data-action="tab" data-value="${id}" class="${state.tab===id?'active':''}">${icon(ic)}<span>${label}</span></button>`).join('')}<button data-action="menu" class="${['bookings','expenses'].includes(state.tab)?'active':''}">${icon('Menu')}<span>More</span></button></nav>${state.mobileMenu?`<div class="overlay" data-action="close-menu"><div class="mobile-menu" role="dialog" aria-modal="true" aria-label="Travelite menu" ><div class="modal-head"><div><div class="eyebrow">TRAVELITE</div><h2>Menu</h2></div><button data-action="close-menu" class="icon-btn" aria-label="Close menu">${icon('X')}</button></div><button class="menu-trip" data-action="trip-picker">${icon('Globe2')}<span><b>${esc(trip?.name||'Choose a trip')}</b><small>${esc(trip?.country||'Your adventures')}</small></span>${icon('ChevronDown')}</button><div class="menu-label">YOUR JOURNEY</div>${nav.map(([id,ic,label])=>`<button data-action="tab" data-value="${id}" class="${state.tab===id?'active':''}">${icon(ic)}<span>${label}</span>${icon('ArrowRight')}</button>`).join('')}<div class="menu-label">TOOLS & ACCOUNT</div><button data-action="assistant">${icon('Sparkles')} Travel Assist ${icon('ArrowRight')}</button><button data-action="photo-review">${icon('CheckCircle2')} Photo review ${icon('ArrowRight')}</button><button data-action="toggle-theme">${icon(state.theme==='dark'?'Sun':'Moon')} ${state.theme==='dark'?'Light':'Dark'} mode ${icon('ArrowRight')}</button><button data-action="profile">${icon('UserRound')} Account ${icon('ArrowRight')}</button></div></div>`:''}${state.modal?modalView():''}${state.assistantOpen?assistantView():''}<button class="floating-assist" data-action="assistant" aria-label="Open Travel Assist">${icon('Sparkles')}</button></div>`; }
@@ -522,6 +522,132 @@ function dayRows(date=state.day){
     .filter(x=>x.schedule_date===date)
     .sort((a,b)=>(Number(a.sort_order||999)-Number(b.sort_order||999))||time(a.start_time).localeCompare(time(b.start_time)));
 }
+function mappedDayRows(date=state.day){
+  return dayRows(date).filter(x=>
+    Number.isFinite(Number(x.latitude)) &&
+    Number.isFinite(Number(x.longitude))
+  );
+}
+
+function routeMapView(){
+  const rows=mappedDayRows();
+  return `<div class="route-map-sheet">
+    <div class="route-map-summary">
+      <span>${icon('Route')}</span>
+      <div>
+        <small>${esc(fmtDate(state.day,{weekday:'long',day:'numeric',month:'long'}))}</small>
+        <b>${rows.length} mapped ${rows.length===1?'stop':'stops'}</b>
+        <em>Only itinerary stops with coordinates appear here.</em>
+      </div>
+    </div>
+    <div id="travelite-route-map" class="travelite-route-map">
+      <div class="route-map-loading">${icon('LoaderCircle','spin')} Loading map…</div>
+    </div>
+    <div class="route-map-note">Numbered pins follow your itinerary order. Stops without coordinates are skipped.</div>
+    <div class="route-map-list">
+      ${rows.map((x,i)=>`<button class="route-map-stop" data-action="route-map-focus" data-index="${i}">
+        <span>${i+1}</span>
+        <div><b>${esc(x.title||x.location_name||'Stop')}</b><small>${esc(x.location_name||x.address||'Mapped stop')}</small></div>
+        ${icon('MapPin')}
+      </button>`).join('')}
+    </div>
+  </div>`;
+}
+
+async function initRouteMap(){
+  const el=document.getElementById('travelite-route-map');
+  if(!el||state.modal?.type!=='routeMap')return;
+
+  const rows=mappedDayRows();
+  if(rows.length<2){
+    el.innerHTML='<div class="route-map-loading">Add at least two mapped stops to view the route.</div>';
+    return;
+  }
+
+  try{
+    await loadGoogleMapsBrowser();
+    const {Map}=await google.maps.importLibrary('maps');
+
+    if(!document.body.contains(el))return;
+
+    const points=rows.map(x=>({
+      lat:Number(x.latitude),
+      lng:Number(x.longitude)
+    }));
+
+    const map=new Map(el,{
+      center:points[0],
+      zoom:13,
+      mapTypeControl:false,
+      streetViewControl:false,
+      fullscreenControl:false,
+      clickableIcons:false,
+      gestureHandling:'greedy'
+    });
+
+    const bounds=new google.maps.LatLngBounds();
+    const info=new google.maps.InfoWindow();
+    const markers=[];
+
+    rows.forEach((row,i)=>{
+      const position=points[i];
+      bounds.extend(position);
+
+      const marker=new google.maps.Marker({
+        map,
+        position,
+        title:row.title||row.location_name||('Stop '+(i+1)),
+        label:{
+          text:String(i+1),
+          color:'#ffffff',
+          fontWeight:'800',
+          fontSize:'11px'
+        }
+      });
+
+      marker.addListener('click',()=>{
+        info.setContent(`<div class="route-map-info"><b>${esc(row.title||row.location_name||'Stop')}</b><small>${esc(row.location_name||row.address||'')}</small></div>`);
+        info.open({map,anchor:marker});
+      });
+
+      markers.push(marker);
+    });
+
+    new google.maps.Polyline({
+      map,
+      path:points,
+      geodesic:true,
+      strokeColor:state.theme==='dark'?'#e36a7b':'#a93041',
+      strokeOpacity:.78,
+      strokeWeight:3,
+      icons:[{
+        icon:{
+          path:google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+          scale:2.4,
+          strokeColor:state.theme==='dark'?'#e36a7b':'#a93041',
+          fillColor:state.theme==='dark'?'#e36a7b':'#a93041',
+          fillOpacity:1
+        },
+        offset:'35px',
+        repeat:'90px'
+      }]
+    });
+
+    map.fitBounds(bounds,52);
+
+    window.__traveliteRouteMap={
+      map,
+      markers,
+      rows
+    };
+  }catch(error){
+    console.error('Route map failed',error);
+    if(document.body.contains(el)){
+      el.innerHTML='<div class="route-map-loading">Could not load the route map. Try again in a moment.</div>';
+    }
+  }
+}
+
 function dayRouteUrl(rows){
   const points=(rows||[])
     .filter(x=>
@@ -1136,7 +1262,7 @@ function planView(){
             <h2>${rows.length?`${rows.length} ${rows.length===1?'stop':'stops'} planned`:'Nothing planned yet'}</h2>
           </div>
           <div class="day-heading-actions">
-            ${route?`<a class="icon-action" href="${esc(route)}" target="_blank" rel="noopener noreferrer">${icon('Route')} Day route</a>`:''}
+            ${route?`<button class="icon-action" data-action="route-map">${icon('Route')} Route map</button>`:''}
             ${rows.filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude))).length>=2?`<button class="icon-action" data-action="between-route">${icon('Sparkles')} Between</button>`:''}
             <button class="icon-action plan-add-top" data-action="new-stop">${icon('Plus')} Add place</button>
           </div>
@@ -1296,7 +1422,7 @@ function savedView(){
 }
 function bookingsView(){let rows=[...state.bookings].sort((a,b)=>(a.booking_date||'9999').localeCompare(b.booking_date||'9999'));return `${title('ALL THE DETAILS, ONE PLACE','Your bookings.','The confirmations and little details that make the journey smooth.',`<button class="btn primary" data-action="new-booking">${icon('Plus')} Add booking</button>`)}<div class="bookings-layout"><div class="stack">${rows.length?rows.map(x=>`<article class="booking-card"><div class="booking-icon">${icon(({accommodation:'BedDouble',restaurant:'Utensils',transport:'TrainFront',car:'Route',ticket:'Ticket',activity:'Compass'})[x.booking_type]||'Ticket')}</div><div class="booking-detail"><span class="catalog-kind">${esc(x.booking_type||'BOOKING')} · ${esc(x.status||'PLANNED')}</span><h3>${esc(x.title)}</h3><p>${[fmtDay(x.booking_date),time(x.start_time),x.location_name].filter(Boolean).map(esc).join(' · ')||'Date to be decided'}</p>${x.confirmation_number?`<div class="confirm-no">Confirmation ${esc(x.confirmation_number)}</div>`:''}<div class="booking-actions">${x.booking_url&&/^https:\/\//.test(x.booking_url)?`<a href="${esc(x.booking_url)}" target="_blank" rel="noopener noreferrer">Open booking ${icon('ArrowUpRight')}</a>`:''}<button data-action="edit-booking" data-id="${x.id}">Edit ${icon('ArrowRight')}</button></div></div></article>`).join(''):`<div class="empty-list">${icon('Ticket')}<h3>Keep the important things together.</h3><p>Add hotels, transport, tickets, and reservations. You’ll have the details when you need them.</p><button class="btn primary" data-action="new-booking">${icon('Plus')} Add your first booking</button></div>`}</div><div class="aside-card"><div class="eyebrow">A LITTLE PEACE OF MIND</div><h3>Ready when you are.</h3><p>Confirmation numbers and links are saved with your trip, so they’re easy to find on the move.</p></div></div>`;}
 function expensesView(){let groups={};state.expenses.forEach(x=>groups[x.currency||'SGD']=(groups[x.currency||'SGD']||0)+Number(x.amount||0));return `${title('SPEND WELL, REMEMBER MORE','Trip spending.','Keep track of what you spend, in the currency you actually paid.',`<button class="btn primary" data-action="new-expense">${icon('Plus')} Add expense</button>`)}<div class="expense-totals">${Object.entries(groups).length?Object.entries(groups).map(([c,n])=>`<div class="total-card"><span>TOTAL IN ${esc(c)}</span><b>${esc(c)} ${n.toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2})}</b><small>${state.expenses.filter(x=>(x.currency||'SGD')===c).length} recorded expenses</small></div>`).join(''):`<div class="total-card"><span>YOUR TRIP, YOUR WAY</span><b>Start with a small spend.</b><small>Expenses appear here once you add them.</small></div>`}</div><div class="stack">${[...state.expenses].sort((a,b)=>(b.expense_date||'').localeCompare(a.expense_date||'')).map(x=>`<article class="expense-row"><div class="expense-icon">${icon(x.category==='food'?'Utensils':x.category==='transport'?'TrainFront':x.category==='accommodation'?'BedDouble':'Wallet')}</div><div><b>${esc(x.title)}</b><small>${esc(fmtDay(x.expense_date))} · ${esc(x.category)}</small></div><strong>${esc(x.currency||'SGD')} ${Number(x.amount).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong><button data-action="edit-expense" data-id="${x.id}" aria-label="Edit expense">${icon('Pencil')}</button></article>`).join('')}</div>`;}
-function modalView(){let m=state.modal;let heading={tripPicker:'Your trips',newTrip:'Create a trip',editTrip:'Edit your trip',deleteTrip:'Delete trip',addToDay:'Add to this day',aroundStop:'Around this stop',discovery:'Discover places',stop:'Plan a stop',booking:'Booking details',expense:'Record an expense',catalog:'Add a discovery',profile:'Your account',confirm:'One more thing',password:'Choose a new password',photoReview:'Photo checks'}[m.type]||'Details';return `<div class="overlay" data-action="close-modal"><div class="modal ${m.type==='tripPicker'?'trip-modal':''}" ><div class="modal-head"><div><div class="eyebrow">TRAVELITE</div><h2>${heading}</h2></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon('X')}</button></div>${modalContent(m)}</div></div>`;}
+function modalView(){let m=state.modal;let heading={tripPicker:'Your trips',newTrip:'Create a trip',editTrip:'Edit your trip',deleteTrip:'Delete trip',addToDay:'Add to this day',aroundStop:'Around this stop',discovery:'Discover places',stop:'Plan a stop',booking:'Booking details',expense:'Record an expense',catalog:'Add a discovery',profile:'Your account',confirm:'One more thing',password:'Choose a new password',photoReview:'Photo checks',routeMap:'Route map'}[m.type]||'Details';return `<div class="overlay" data-action="close-modal"><div class="modal ${m.type==='tripPicker'?'trip-modal':''}" ><div class="modal-head"><div><div class="eyebrow">TRAVELITE</div><h2>${heading}</h2></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon('X')}</button></div>${modalContent(m)}</div></div>`;}
 function modalContent(m){if(m.type==='password')return `<form id="password-form" class="form-grid"><label class="span2">New password<input type="password" name="password" minlength="8" autocomplete="new-password" required></label><button class="btn primary full span2" type="submit">Save new password ${icon('ArrowRight')}</button></form>`;if(m.type==='tripPicker')return `<div class="trip-list">${state.trips.map(t=>`<div class="trip-option-row"><button data-action="select-trip" data-id="${t.id}" class="trip-option ${state.trip?.id===t.id?'selected':''}"><div class="trip-thumb" style="background-image:url('${esc(cover(t))}')"></div><span><b>${esc(t.name)}</b><small>${esc(dateRange(t.start_date,t.end_date))}</small></span>${icon(state.trip?.id===t.id?'Check':'ArrowRight')}</button>${t.owner_id===state.user?.id?`<button class="trip-delete-button" data-action="delete-trip" data-id="${t.id}" aria-label="Delete ${esc(t.name)}" title="Delete trip">${icon('Trash2')}</button>`:''}</div>`).join('')}</div><button class="btn primary full" data-action="new-trip">${icon('Plus')} Create another trip</button>`;
 if(m.type==='deleteTrip'){let t=state.trips.find(x=>x.id===m.data?.id);return `<p class="modal-copy">Delete <strong>${esc(t?.name)}</strong> and its itinerary, bookings, expenses, and saved trip links? This cannot be undone. Places and restaurants in the shared collection will stay available.</p><form id="delete-trip-form" class="form-grid"><label class="span2">Type the trip name to confirm<input name="tripName" autocomplete="off" placeholder="${esc(t?.name)}" required></label><div class="modal-actions span2"><button type="button" class="btn outline" data-action="trip-picker">Cancel</button><button type="submit" class="btn danger">Delete trip ${icon('Trash2')}</button></div></form>`;}
 
@@ -1306,6 +1432,7 @@ if(m.type==='confirm')return `<p class="modal-copy">${esc(m.message)}</p><div cl
 if(m.type==='newTrip'||m.type==='editTrip'){let x=m.type==='editTrip'?state.trip:{};return `<form id="trip-form" class="form-grid"><label class="span2">Trip name<input name="name" value="${esc(x.name||'')}" placeholder="A summer in Italy" required></label><label class="span2">Country or destination<input name="country" value="${esc(x.country||'')}" placeholder="Italy" required></label><label>Start date<input name="start_date" type="date" value="${esc(x.start_date||'')}"></label><label>End date<input name="end_date" type="date" value="${esc(x.end_date||'')}"></label><label class="span2">A note about this trip <span class="optional-label">optional</span><textarea name="description" placeholder="What are you looking forward to?">${esc(x.description||'')}</textarea></label><button class="btn primary full span2" type="submit">${m.type==='editTrip'?'Save trip':'Create trip'} ${icon('ArrowRight')}</button></form>`;}
 if(m.type==='addToDay')return addToDayView();
 if(m.type==='aroundStop')return aroundStopView();
+if(m.type==='routeMap')return routeMapView();
 if(m.type==='discovery')return discoveryView();
 if(m.type==='stop'){let x=m.data||{},dates=dayList(state.trip);return `<form id="stop-form" class="form-grid"><label class="span2">What’s happening?<input name="title" value="${esc(x.title||'')}" placeholder="Morning in Arashiyama" required></label><label>Date<select name="schedule_date" required>${dates.length?dates.map(d=>`<option value="${d}" ${(x.schedule_date||state.day)===d?'selected':''}>${fmtDay(d)}</option>`).join(''):`<option value="${today()}">${fmtDay(today())}</option>`}</select></label><label>Time <span class="optional-label">optional</span><input type="time" name="start_time" value="${time(x.start_time)}"></label><label class="span2">Category<select name="item_type">${[['attraction','Place to visit'],['restaurant','Food & drink'],['transport','Transport'],['accommodation','Stay'],['activity','Activity'],['other','Other']].map(([v,l])=>`<option value="${v}" ${x.item_type===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="span2">Location <span class="optional-label">optional</span><input name="location_name" value="${esc(x.location_name||'')}" placeholder="Where is it?"></label><label class="span2">Notes <span class="optional-label">optional</span><textarea name="notes" placeholder="Anything to remember?">${esc(x.notes||'')}</textarea></label><button class="btn primary full span2" type="submit">${x.id?'Save changes':'Add to itinerary'} ${icon('ArrowRight')}</button></form>`;}
 if(m.type==='booking'){let x=m.data||{};return `<form id="booking-form" class="form-grid"><label class="span2">Booking name<input name="title" value="${esc(x.title||'')}" placeholder="Hotel, train, ticket…" required></label><label>Type<select name="booking_type">${[['accommodation','Hotel / stay'],['transport','Transport'],['restaurant','Restaurant'],['ticket','Ticket'],['car','Car'],['activity','Activity'],['other','Other']].map(([v,l])=>`<option value="${v}" ${x.booking_type===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Status<select name="status">${['planned','booked','cancelled'].map(v=>`<option value="${v}" ${x.status===v?'selected':''}>${v[0].toUpperCase()+v.slice(1)}</option>`).join('')}</select></label><label>Date<input type="date" name="booking_date" value="${esc(x.booking_date||state.day||'')}"></label><label>Time<input type="time" name="start_time" value="${time(x.start_time)}"></label><label class="span2">Confirmation number<input name="confirmation_number" value="${esc(x.confirmation_number||'')}" placeholder="Optional"></label><label class="span2">Location<input name="location_name" value="${esc(x.location_name||'')}" placeholder="Optional"></label><label class="span2">Booking URL<input name="booking_url" type="url" value="${esc(x.booking_url||'')}" placeholder="https://..."></label><label class="span2">Notes<textarea name="notes" placeholder="Check-in time, directions, anything useful">${esc(x.notes||'')}</textarea></label><button class="btn primary full span2" type="submit">${x.id?'Save booking':'Add booking'} ${icon('ArrowRight')}</button>${x.id?`<button type="button" data-action="delete-booking" data-id="${x.id}" class="delete-link span2">${icon('Trash2')} Delete booking</button>`:''}</form>`;}
@@ -1676,6 +1803,19 @@ case 'nearby-map':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.
 case 'add-nearby-plan':{let result=state.nearbyFood.find(x=>(el.dataset.placeId&&x.provider_place_id===el.dataset.placeId)||(id&&Number(x.id)===id))||state.restaurants.find(x=>Number(x.id)===id);if(!result)break;const selection={...result,__source:result.__source||((result.id&&!result.provider_place_id)?'catalog':'google'),__kind:'food'};await addSelectionToDay(selection);break;}
 case 'save-nearby':{let result=state.nearbyFood.find(x=>(el.dataset.placeId&&x.provider_place_id===el.dataset.placeId)||(id&&Number(x.id)===id));if(!result)break;await saveSelectionForLater({...result,__source:result.__source||'google',__kind:'food'});break;}
 case 'day':state.day=v;render();break;
+case 'route-map':openModal('routeMap',{date:state.day});break;
+case 'route-map-focus':{
+  const ctx=window.__traveliteRouteMap;
+  const index=Number(el.dataset.index);
+  const marker=ctx?.markers?.[index];
+  const row=ctx?.rows?.[index];
+  if(ctx?.map&&marker&&row){
+    ctx.map.panTo({lat:Number(row.latitude),lng:Number(row.longitude)});
+    ctx.map.setZoom(Math.max(ctx.map.getZoom()||14,15));
+    google.maps.event.trigger(marker,'click');
+  }
+  break;
+}
 case 'filter':if(v==='food'&&state.kind!=='food'){state.foodTab='discover';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}state.kind=v;render();break;
 case 'saved-filter':state.savedKind=v;if(v==='food'){state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}render();break;
 case 'menu':state.mobileMenu=true;render();break;
