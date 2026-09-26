@@ -769,29 +769,29 @@ function discoveryView(){
   const rows=state.aroundResults||[];
   const modeLabel=state.discoveryMode==='between'?'BETWEEN YOUR STOPS':'START YOUR DAY';
   const leadIcon=state.discoveryMode==='between'?'Route':'Sparkles';
-  return \`<div class="around-sheet">
+  return `<div class="around-sheet">
     <div class="around-anchor">
-      <span class="around-anchor-icon">\${icon(leadIcon)}</span>
-      <span><small>\${modeLabel}</small><b>\${esc(state.discoveryTitle||'Ideas for this day')}</b><em>\${esc(state.discoverySubtitle||'')}</em></span>
+      <span class="around-anchor-icon">${icon(leadIcon)}</span>
+      <span><small>${modeLabel}</small><b>${esc(state.discoveryTitle||'Ideas for this day')}</b><em>${esc(state.discoverySubtitle||'')}</em></span>
     </div>
     <p class="around-explainer">Suggestions are temporary. Travelite checks its own library first and uses Google only when needed. Nothing is added to Supabase until you choose Save or Add to this day.</p>
-    \${state.aroundBusy?\`<div class="add-empty around-loading">\${icon('LoaderCircle','spin')}<p>Finding useful places…</p></div>\`:rows.length?\`<div class="around-results">\${rows.map((x,i)=>{
+    ${state.aroundBusy?`<div class="add-empty around-loading">${icon('LoaderCircle','spin')}<p>Finding useful places…</p></div>`:rows.length?`<div class="around-results">${rows.map((x,i)=>{
       const signal=discoveryCardSignal(x);
       const type=String(x.place_type||'attraction').replaceAll('_',' ');
-      return \`<article class="around-card">
+      return `<article class="around-card">
         <div class="around-card-head">
-          <span class="around-rank">\${i+1}</span>
-          <div><h3>\${esc(x.name)}</h3><p>\${esc([signal.meta,type].filter(Boolean).join(' · '))}</p></div>
+          <span class="around-rank">${i+1}</span>
+          <div><h3>${esc(x.name)}</h3><p>${esc([signal.meta,type].filter(Boolean).join(' · '))}</p></div>
         </div>
-        <div class="around-signal"><b>\${esc(signal.label)}</b><span>\${esc(signal.note)}</span></div>
+        <div class="around-signal"><b>${esc(signal.label)}</b><span>${esc(signal.note)}</span></div>
         <div class="around-actions">
-          <a href="\${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="Open \${esc(x.name)} in Google Maps">\${icon('MapPin')} Google Maps</a>
-          <button data-action="around-save" data-index="\${i}">\${icon('Heart')} Save</button>
-          <button class="around-add" data-action="around-add" data-index="\${i}">\${icon('CalendarPlus')} Add to this day</button>
+          <a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(x.name)} in Google Maps">${icon('MapPin')} Google Maps</a>
+          <button data-action="around-save" data-index="${i}">${icon('Heart')} Save</button>
+          <button class="around-add" data-action="around-add" data-index="${i}">${icon('CalendarPlus')} Add to this day</button>
         </div>
-      </article>\`;
-    }).join('')}</div>\`:\`<div class="add-empty">\${icon('MapPin')}<p>No suggestions came back. You can still add your own place.</p></div>\`}
-  </div>\`;
+      </article>`;
+    }).join('')}</div>`:`<div class="add-empty">${icon('MapPin')}<p>No suggestions came back. You can still add your own place.</p></div>`}
+  </div>`;
 }
 
 async function findStarterSuggestions(){
