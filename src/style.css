@@ -1315,3 +1315,16 @@ html[data-theme="dark"] .jfood-badge.distance{color:#f39aa3;background:#3a2329;b
   .search-line{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
   .search-line .assist-discover{width:100%!important}
 }
+
+
+/* Community Google rating checks */
+.jfood-badge.google-rating{background:#f3ecec;border-color:#e6d4d7;color:#a74654}
+.rating-check-modal{display:grid;gap:14px}
+.rating-check-modal .form-grid{margin-top:0}
+.rating-community-note{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid #eadcdf;border-radius:11px;background:#fff9f8}
+.rating-community-note b{font-size:12px;color:#9f3545}
+.rating-community-note span{font-size:9.5px;color:#8d7c80;text-align:right}
+html[data-theme="dark"] .jfood-badge.google-rating{background:#302128;border-color:#52333d;color:#ef8a95}
+html[data-theme="dark"] .rating-community-note{background:#211a1d;border-color:#463238}
+html[data-theme="dark"] .rating-community-note b{color:#ef8a95}
+html[data-theme="dark"] .rating-community-note span{color:#b9a9ad}
