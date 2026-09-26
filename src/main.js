@@ -1371,25 +1371,79 @@ async function searchAddGoogle({nearby=false}={}){
   if(state.googleBusy)return;
   const q=state.addSearch.trim();
   if(!nearby&&q.length<3)return;
+
   state.googleBusy=true;
   state.googleResults=[];
   render();
+
   try{
-    let body={kind:state.addKind==='food'?'food':'place',destination:state.trip?.country||''};
+    const kind=state.addKind==='food'?'food':'place';
+
     if(nearby){
       const position=await new Promise((resolve,reject)=>{
-        if(!navigator.geolocation)reject(new Error('Location is not available on this device.'));
-        else navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
+        if(!navigator.geolocation){
+          reject(new Error('Location is not available on this device.'));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy:true,
+            timeout:12000,
+            maximumAge:60000
+          }
+        );
       });
-      body={...body,nearby:true,kind:'food',latitude:position.coords.latitude,longitude:position.coords.longitude};
-      state.addKind='food';
+
+      const latitude=Number(position.coords.latitude);
+      const longitude=Number(position.coords.longitude);
+      const radius=kind==='food'?1000:2000;
+
+      const results=await browserNearbyPlaces({
+        latitude,
+        longitude,
+        radius,
+        kind
+      });
+
+      state.googleResults=results.map(x=>({
+        ...x,
+        __source:'google',
+        __kind:kind
+      }));
+
       state.addNearby=true;
-    }else body.query=q;
-    const {data,error}=await sb.functions.invoke('travelite-search',{body});
-    if(error||data?.error)throw Error(data?.error||error?.message||'Google search is unavailable.');
-    state.googleResults=(data.results||[]).map(x=>({...x,__kind:x.result_kind||(body.kind==='food'?'food':'place')}));
+    }else{
+      const destination=[
+        q,
+        state.trip?.country||''
+      ].filter(Boolean).join(' ');
+
+      const results=await browserTextPlaces(
+        destination,
+        kind,
+        10
+      );
+
+      state.googleResults=results.map(x=>({
+        ...x,
+        __source:'google',
+        __kind:kind
+      }));
+
+      state.addNearby=false;
+    }
   }catch(e){
-    toast(e.message||'Could not search Google Places.',true);
+    console.error('Add place Google search failed',e);
+
+    const denied=e?.code===1;
+    toast(
+      denied
+        ? 'Location permission is needed for Near me.'
+        : (e?.message||'Could not search Google Places.'),
+      true
+    );
   }finally{
     state.googleBusy=false;
     render();
