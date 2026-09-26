@@ -1183,7 +1183,54 @@ if(m.type==='expense'){let x=m.data||{};return `<form id="expense-form" class="f
 if(m.type==='catalog')return `<div class="discovery-search"><div class="discovery-search-title">${icon('Search')} FIND IT ON GOOGLE</div><form id="google-search-form" class="google-search-form"><input name="query" type="search" minlength="3" placeholder="Search places or restaurants…" value="${esc(state.modal.searchQuery||'')}" required><button type="submit" ${state.googleBusy?'disabled':''}>${state.googleBusy?icon('LoaderCircle','spin'):icon('ArrowRight')}<span>Search</span></button></form><div id="google-results">${googleResultsView()}</div></div><div class="manual-divider"><span>OR ENTER DETAILS MANUALLY</span></div><form id="catalog-form" class="form-grid"><label class="span2">What are you adding?<select name="kind" id="catalog-kind"><option value="place">A place to visit</option><option value="food">A restaurant or café</option></select></label><label class="span2">Name<input name="name" placeholder="Name of the place" required></label><label>City<input name="city" placeholder="Kyoto"></label><label>Area<input name="area" placeholder="Gion"></label><label class="span2">Address<input name="address" placeholder="Optional"></label><label class="span2">Maps link<input name="maps_url" type="url" placeholder="https://maps.google.com/…"></label><label class="span2">Why is it worth a visit?<textarea name="description" placeholder="Optional"></textarea></label><button class="btn primary full span2" type="submit">Add and save to this trip ${icon('ArrowRight')}</button></form>`;
 return '';}
 function googleResultsView(){if(state.googleBusy)return `<p class="google-hint">${icon('LoaderCircle','spin')} Searching Google Places…</p>`;if(!state.googleResults.length)return state.modal?.searched?'<p class="google-hint">No results found. Try a more specific name or add it manually.</p>':'<p class="google-hint">Search by name, neighbourhood, or city. Choose a result to fill the form.</p>';return `<div class="google-results-list">${state.googleResults.map((r,i)=>`<button type="button" data-action="google-select" data-index="${i}" class="google-result ${state.catalogSelection?.provider_place_id===r.provider_place_id?'selected':''}"><span class="google-pin">${icon('MapPin')}</span><span><b>${esc(r.name)}</b><small>${esc(r.address||r.city||'Google Places')}</small></span>${icon(state.catalogSelection?.provider_place_id===r.provider_place_id?'Check':'ArrowRight')}</button>`).join('')}</div><div class="google-credit">Results from Google Maps</div>`;}
-async function searchGoogle(form){const query=String(new FormData(form).get('query')||'').trim();if(query.length<3||state.googleBusy)return;const kind=$('#catalog-kind')?.value||'place';state.modal.searchQuery=query;state.modal.searched=false;state.googleBusy=true;$('#google-results').innerHTML=googleResultsView();drawIcons();try{const {data,error}=await sb.functions.invoke('travelite-search',{body:{query,kind,destination:state.trip?.country||''}});if(error||data?.error)throw Error(data?.error||error.message);state.googleResults=data.results||[];state.modal.searched=true;}catch(e){state.googleResults=[];state.modal.searched=false;toast(e.message||'Google search could not load.',true);}finally{state.googleBusy=false;let target=$('#google-results');if(target){target.innerHTML=googleResultsView();drawIcons();}}}
+async function searchGoogle(form){
+  const query=String(new FormData(form).get('query')||'').trim();
+  if(query.length<3||state.googleBusy)return;
+
+  const kind=$('#catalog-kind')?.value||'place';
+  state.modal.searchQuery=query;
+  state.modal.searched=false;
+  state.googleBusy=true;
+
+  const initial=$('#google-results');
+  if(initial){
+    initial.innerHTML=googleResultsView();
+    drawIcons();
+  }
+
+  try{
+    const destination=[
+      query,
+      state.trip?.country||''
+    ].filter(Boolean).join(' ');
+
+    const results=await browserTextPlaces(
+      destination,
+      kind,
+      10
+    );
+
+    state.googleResults=results.map(x=>({
+      ...x,
+      __source:'google',
+      __kind:kind
+    }));
+
+    state.modal.searched=true;
+  }catch(e){
+    console.error('Catalog Google search failed',e);
+    state.googleResults=[];
+    state.modal.searched=false;
+    toast(e?.message||'Google search could not load.',true);
+  }finally{
+    state.googleBusy=false;
+    const target=$('#google-results');
+    if(target){
+      target.innerHTML=googleResultsView();
+      drawIcons();
+    }
+  }
+}
 function assistantView(){return `<div class="chat-backdrop" data-action="assistant-close"></div><section class="chat-panel"><header class="chat-head"><div class="chat-icon">${icon('Sparkles')}</div><div><b>Travel Assist</b><small>Here for the journey</small></div><button class="icon-btn" data-action="assistant-close" aria-label="Close">${icon('X')}</button></header><div class="chat-messages"><div class="chat-welcome">${icon('Sparkles')}<h2>Where can I take you?</h2><p>Ask me about this trip, a place to eat, or what to do next. I’ll check your plans and can search for new ideas.</p></div>${state.assistant.map((m,i)=>`<div class="bubble ${m.role}">${esc(m.text).replace(/\n/g,'<br>')}</div>${m.actions?.length?`<div class="chat-actions">${m.actions.map((a,j)=>`<button data-action="assist-proposal" data-message="${i}" data-index="${j}">${icon(a.kind==='map'?'Map':'CheckCircle2')} ${esc(a.label||a.title||'Review change')}</button>`).join('')}</div>`:''}`).join('')}${state.assistantBusy?`<div class="bubble assistant thinking">${icon('LoaderCircle','spin')} Thinking about your trip…</div>`:''}</div><form id="assist-form" class="chat-compose"><input name="message" placeholder="Ask me anything about your trip…" autocomplete="off" required ${state.assistantBusy?'disabled':''}><button aria-label="Send" ${state.assistantBusy?'disabled':''}>${icon('ArrowRight')}</button></form><div class="chat-foot">Trip changes always ask for your confirmation.</div></section>`;}
 function openModal(type,data={}){if(type==='catalog'){state.googleResults=[];state.catalogSelection=null;state.googleBusy=false;}if(type==='addToDay'){state.addSearch='';state.addKind='all';state.addSelection=null;state.addNearby=false;state.googleResults=[];state.googleBusy=false;}if(type==='aroundStop'){state.aroundStop=data?.stop||null;state.aroundResults=[];state.aroundBusy=false;}if(type==='discovery'){state.aroundResults=[];state.aroundBusy=false;}state.modal={type,data};state.mobileMenu=false;render();if(type==='addToDay')setTimeout(()=>$('#add-day-search')?.focus(),0);}
 const countryPhotoPending=new Set();
