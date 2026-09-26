@@ -115,7 +115,7 @@ const inTripCountry = row => { const destination=canonicalCountry(state.trip?.co
 const cover = trip => { if (trip?.cover_image_url && /^https:\/\//.test(trip.cover_image_url)) return trip.cover_image_url; const saved=state.countryPhotos[countryKey(trip?.country)]; if(saved?.image_url)return saved.image_url; const destination=`${trip?.country||''} ${trip?.name||''}`.toLowerCase(); const images=[[/\b(italy|italia|rome|roma|venice|venezia|florence|firenze|milan|milano|cinque terre)\b/,'photo-1459085184239-463574c08a08'],[/japan|日本|tokyo|kyoto|osaka/i,'photo-1493976040374-85c8e12f0c0e'],[/taiwan|臺灣|台湾|taipei/i,'photo-1470004914212-05527e49370b']]; const image=images.find(([pattern])=>pattern.test(destination))?.[1]||'photo-1488646953014-85cb44e25828'; return `https://images.unsplash.com/${image}?w=1400&q=85`; };
 const coverCredit = trip => { if(trip?.cover_image_url)return '';const p=state.countryPhotos[countryKey(trip?.country)];return p?.source_page?.startsWith('https://commons.wikimedia.org/')?`<a class="hero-photo-credit" href="${esc(p.source_page)}" target="_blank" rel="noopener noreferrer">Photo: ${esc(p.author)} · ${esc(p.license)}</a>`:''; };
 const toast = (msg, error=false) => { let el=$('#toast'); if (!el) {el=document.createElement('div');el.id='toast';document.body.appendChild(el)} el.textContent=msg;el.className=error?'show error':'show';clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.className='',4000); };
-const state = {user:null,trips:[],trip:null,tab:'home',day:null,schedule:[],bookings:[],expenses:[],places:[],restaurants:[],savedPlaces:[],savedFood:[],ratingChecks:[],search:'',kind:'all',savedKind:'all',modal:null,authMode:'login',loading:true,assistant:[],threadId:null,assistantBusy:false,assistantOpen:false,mobileMenu:false,nearbyFood:[],foodBusy:false,foodLocation:null,foodError:'',foodMode:'collection',foodFilter:'all',foodTab:'mine',foodCity:'',foodArea:'',foodCuisine:'',foodSearch:'',scheduleExpanded:false,scheduleAreaExpanded:{},theme:localStorage.getItem('travelite.theme')==='dark'?'dark':'light',googleResults:[],catalogSelection:null,googleBusy:false,countryPhotos:{},addSearch:'',addKind:'all',addSelection:null,addNearby:false,aroundStop:null,aroundResults:[],aroundBusy:false,aroundRadius:2000,discoveryMode:null,discoveryTitle:'',discoverySubtitle:'',starterCity:'',exploreSort:'default',exploreLocation:null,exploreLocationBusy:false,exploreLocationError:'',exploreAnchorDate:'',exploreAnchorKey:''};
+const state = {user:null,trips:[],trip:null,tab:'home',day:null,schedule:[],bookings:[],expenses:[],places:[],restaurants:[],savedPlaces:[],savedFood:[],ratingChecks:[],placeRatingChecks:[],search:'',kind:'all',savedKind:'all',modal:null,authMode:'login',loading:true,assistant:[],threadId:null,assistantBusy:false,assistantOpen:false,mobileMenu:false,nearbyFood:[],foodBusy:false,foodLocation:null,foodError:'',foodMode:'collection',foodFilter:'all',foodTab:'mine',foodCity:'',foodArea:'',foodCuisine:'',foodSearch:'',scheduleExpanded:false,scheduleAreaExpanded:{},theme:localStorage.getItem('travelite.theme')==='dark'?'dark':'light',googleResults:[],catalogSelection:null,googleBusy:false,countryPhotos:{},addSearch:'',addKind:'all',addSelection:null,addNearby:false,aroundStop:null,aroundResults:[],aroundBusy:false,aroundRadius:2000,discoveryMode:null,discoveryTitle:'',discoverySubtitle:'',starterCity:'',exploreSort:'default',exploreLocation:null,exploreLocationBusy:false,exploreLocationError:'',exploreAnchorDate:'',exploreAnchorKey:''};
 document.documentElement.dataset.theme=state.theme;
 function drawIcons(){ createIcons({icons,attrs:{'stroke-width':1.85}}); }
 function render(){ document.documentElement.dataset.theme=state.theme; $('#app').innerHTML = !state.user ? authView() : shell(); drawIcons(); if(state.tab==='explore'||state.tab==='saved'||state.modal?.type==='addToDay')hydratePlacePhotos(); if(state.modal?.type==='routeMap')setTimeout(()=>initRouteMap(),0); if(state.assistantOpen) { const el=$('.chat-messages'); if(el)el.scrollTop=el.scrollHeight; } }
@@ -324,6 +324,23 @@ function foodHasTabelog(r){
 function restaurantRatingSummary(restaurantId){
   const rows=state.ratingChecks
     .filter(x=>Number(x.restaurant_id)===Number(restaurantId))
+    .map(x=>({...x,__rating:Number(x.rating)}))
+    .filter(x=>Number.isFinite(x.__rating));
+  if(!rows.length)return null;
+  const sorted=rows.map(x=>x.__rating).sort((a,b)=>a-b);
+  const mid=Math.floor(sorted.length/2);
+  const median=sorted.length%2?sorted[mid]:(sorted[mid-1]+sorted[mid])/2;
+  const agreeing=rows.filter(x=>Math.abs(x.__rating-median)<=0.2);
+  const confirmed=agreeing.length>=2;
+  const value=(confirmed
+    ? agreeing.reduce((sum,x)=>sum+x.__rating,0)/agreeing.length
+    : median
+  ).toFixed(1);
+  return {value,total:rows.length,agreeing:agreeing.length,confirmed};
+}
+function placeRatingSummary(placeId){
+  const rows=state.placeRatingChecks
+    .filter(x=>Number(x.place_id)===Number(placeId))
     .map(x=>({...x,__rating:Number(x.rating)}))
     .filter(x=>Number.isFinite(x.__rating));
   if(!rows.length)return null;
@@ -1072,13 +1089,16 @@ function discoveryView(){
     ${state.aroundBusy?`<div class="add-empty around-loading">${icon('LoaderCircle','spin')}<p>Finding useful places…</p></div>`:rows.length?`<div class="around-results">${rows.map((x,i)=>{
       const signal=discoveryCardSignal(x);
       const type=String(x.place_type||'attraction').replaceAll('_',' ');
+      const ratingSummary=x.id?placeRatingSummary(x.id):null;
       return `<article class="around-card">
         <div class="around-card-head">
           <span class="around-rank">${i+1}</span>
           <div><h3>${esc(x.name)}</h3><p>${esc([x.__legLabel,signal.meta,type].filter(Boolean).join(' · '))}</p></div>
         </div>
         <div class="around-signal"><b>${esc(signal.label)}</b><span>${esc(signal.note)}</span></div>
+        ${ratingSummary?`<div class="around-community-rating">⭐ Community rating: <b>${esc(ratingSummary.value)}</b>${ratingSummary.confirmed?` · ${ratingSummary.agreeing} checks`:` · ${ratingSummary.total} check`}</div>`:''}
         <div class="around-actions">
+          ${x.id?`<button data-action="place-rating" data-id="${x.id}">${ratingSummary?'Update rating':'Add rating'}</button>`:''}
           <a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(x.name)} in Google Maps">${icon('MapPin')} Google Maps</a>
           <button data-action="around-save" data-index="${i}">${icon('Heart')} Save</button>
           <button class="around-add" data-action="around-add" data-index="${i}">${icon('CalendarPlus')} Add to this day</button>
@@ -1498,7 +1518,31 @@ function hydratePlacePhotos(){
   const observer=new IntersectionObserver((entries)=>{for(const entry of entries)if(entry.isIntersecting){observer.unobserve(entry.target);queue(entry.target);}}, {rootMargin:'300px'});
   targets.forEach(el=>observer.observe(el));
 }
-function catalogItem(x,kind){let saved=kind==='food'?state.savedFood.find(s=>s.restaurant_id===x.id):state.savedPlaces.find(s=>s.place_id===x.id);let meta=[x.area||x.city||x.location,x.cuisine||x.place_type].filter(Boolean).join(' · '),distance=exploreDistanceText(x.__distance);return `<article class="catalog-card"><div class="catalog-art ${kind==='food'?'food-art':'place-art'} ${kind==='place'&&placePhotoIsStored(x)?'has-photo':''}" ${kind==='place'?`data-place-id="${x.id}"`:''}>${kind==='place'&&placePhotoIsStored(x)?placePhotoMarkup(x):icon('MapPin')}</div><div class="catalog-info"><span class="catalog-kind">${kind==='food'?'FOOD & DRINK':'PLACE TO SEE'}</span><h3>${esc(x.name)}</h3><p>${icon('MapPin')} ${esc(meta||x.country||'Explore')}</p>${distance?`<div class="catalog-distance">${icon('Navigation')} ${esc(distance)}</div>`:''}${x.description?`<small>${esc(x.description.slice(0,125))}${x.description.length>125?'…':''}</small>`:''}<div class="catalog-actions"><button data-action="save-catalog" data-kind="${kind}" data-id="${x.id}" class="${saved?'is-saved':''}">${icon(saved?'Check':'Heart')} ${saved?'Saved':'Save'}</button><button data-action="schedule-catalog" data-kind="${kind}" data-id="${x.id}">${icon('CalendarPlus')} Add to plan</button><a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="View map">${icon('ArrowUpRight')}</a></div></div></article>`;}
+function catalogItem(x,kind){
+  let saved=kind==='food'?state.savedFood.find(s=>s.restaurant_id===x.id):state.savedPlaces.find(s=>s.place_id===x.id);
+  let meta=[x.area||x.city||x.location,x.cuisine||x.place_type].filter(Boolean).join(' · ');
+  let distance=exploreDistanceText(x.__distance);
+  const ratingSummary=kind==='place'?placeRatingSummary(x.id):restaurantRatingSummary(x.id);
+  return `<article class="catalog-card">
+    <div class="catalog-art ${kind==='food'?'food-art':'place-art'} ${kind==='place'&&placePhotoIsStored(x)?'has-photo':''}" ${kind==='place'?`data-place-id="${x.id}"`:''}>
+      ${kind==='place'&&placePhotoIsStored(x)?placePhotoMarkup(x):icon('MapPin')}
+    </div>
+    <div class="catalog-info">
+      <span class="catalog-kind">${kind==='food'?'FOOD & DRINK':'PLACE TO SEE'}</span>
+      <h3>${esc(x.name)}</h3>
+      <p>${icon('MapPin')} ${esc(meta||x.country||'Explore')}</p>
+      ${distance?`<div class="catalog-distance">${icon('Navigation')} ${esc(distance)}</div>`:''}
+      ${ratingSummary?`<div class="catalog-community-rating">⭐ Community rating: <b>${esc(ratingSummary.value)}</b>${ratingSummary.confirmed?` · ${ratingSummary.agreeing} checks`:` · ${ratingSummary.total} check`}</div>`:''}
+      ${x.description?`<small>${esc(x.description.slice(0,125))}${x.description.length>125?'…':''}</small>`:''}
+      <div class="catalog-actions">
+        <button data-action="save-catalog" data-kind="${kind}" data-id="${x.id}" class="${saved?'is-saved':''}">${icon(saved?'Check':'Heart')} ${saved?'Saved':'Save'}</button>
+        <button data-action="schedule-catalog" data-kind="${kind}" data-id="${x.id}">${icon('CalendarPlus')} Add to plan</button>
+        <button data-action="${kind==='place'?'place-rating':'food-rating'}" data-id="${x.id}">${ratingSummary?'Update rating':'Add rating'}</button>
+        <a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="View map">${icon('ArrowUpRight')}</a>
+      </div>
+    </div>
+  </article>`;
+}
 function exploreAnchorOptions(){
   const byDay={};
   for(const stop of state.schedule){
@@ -1635,17 +1679,23 @@ function bookingsView(){let rows=[...state.bookings].sort((a,b)=>(a.booking_date
 function expensesView(){let groups={};state.expenses.forEach(x=>groups[x.currency||'SGD']=(groups[x.currency||'SGD']||0)+Number(x.amount||0));return `${title('SPEND WELL, REMEMBER MORE','Trip spending.','Keep track of what you spend, in the currency you actually paid.',`<button class="btn primary" data-action="new-expense">${icon('Plus')} Add expense</button>`)}<div class="expense-totals">${Object.entries(groups).length?Object.entries(groups).map(([c,n])=>`<div class="total-card"><span>TOTAL IN ${esc(c)}</span><b>${esc(c)} ${n.toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2})}</b><small>${state.expenses.filter(x=>(x.currency||'SGD')===c).length} recorded expenses</small></div>`).join(''):`<div class="total-card"><span>YOUR TRIP, YOUR WAY</span><b>Start with a small spend.</b><small>Expenses appear here once you add them.</small></div>`}</div><div class="stack">${[...state.expenses].sort((a,b)=>(b.expense_date||'').localeCompare(a.expense_date||'')).map(x=>`<article class="expense-row"><div class="expense-icon">${icon(x.category==='food'?'Utensils':x.category==='transport'?'TrainFront':x.category==='accommodation'?'BedDouble':'Wallet')}</div><div><b>${esc(x.title)}</b><small>${esc(fmtDay(x.expense_date))} · ${esc(x.category)}</small></div><strong>${esc(x.currency||'SGD')} ${Number(x.amount).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong><button data-action="edit-expense" data-id="${x.id}" aria-label="Edit expense">${icon('Pencil')}</button></article>`).join('')}</div>`;}
 function modalView(){let m=state.modal;let heading={tripPicker:'Your trips',newTrip:'Create a trip',editTrip:'Edit your trip',deleteTrip:'Delete trip',addToDay:'Add to this day',aroundStop:'Around this stop',discovery:'Discover places',stop:'Plan a stop',booking:'Booking details',expense:'Record an expense',catalog:'Add a discovery',profile:'Your account',confirm:'One more thing',password:'Choose a new password',photoReview:'Photo checks',routeMap:'Route map',rating:'Check Google rating'}[m.type]||'Details';return `<div class="overlay" data-action="close-modal"><div class="modal ${m.type==='tripPicker'?'trip-modal':''}" ><div class="modal-head"><div><div class="eyebrow">TRAVELITE</div><h2>${heading}</h2></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon('X')}</button></div>${modalContent(m)}</div></div>`;}
 function modalContent(m){if(m.type==='rating'){
-  const r=state.restaurants.find(x=>Number(x.id)===Number(m.data?.id));
-  const mine=state.ratingChecks.find(x=>Number(x.restaurant_id)===Number(m.data?.id)&&x.user_id===state.user?.id);
-  const summary=restaurantRatingSummary(m.data?.id);
+  const kind=m.data?.kind==='place'?'place':'food';
+  const row=kind==='place'
+    ? state.places.find(x=>Number(x.id)===Number(m.data?.id))
+    : state.restaurants.find(x=>Number(x.id)===Number(m.data?.id));
+  const checks=kind==='place'?state.placeRatingChecks:state.ratingChecks;
+  const key=kind==='place'?'place_id':'restaurant_id';
+  const mine=checks.find(x=>Number(x[key])===Number(m.data?.id)&&x.user_id===state.user?.id);
+  const summary=kind==='place'?placeRatingSummary(m.data?.id):restaurantRatingSummary(m.data?.id);
   return `<div class="rating-check-modal">
-    <p class="modal-copy">Open Google, check the current rating for <strong>${esc(r?.name||'this restaurant')}</strong>, then come back and enter what you saw.</p>
-    <a class="btn outline full" href="${esc(googleRatingSearchUrl(r||{}))}" target="_blank" rel="noopener noreferrer">⭐ Check on Google ${icon('ArrowUpRight')}</a>
+    <p class="modal-copy">Open Google, check the current rating for <strong>${esc(row?.name||'this place')}</strong>, then come back and enter what you saw.</p>
+    <a class="btn outline full" href="${esc(googleRatingSearchUrl(row||{}))}" target="_blank" rel="noopener noreferrer">⭐ Search Google rating ${icon('ArrowUpRight')}</a>
     <form id="rating-form" class="form-grid">
+      <input type="hidden" name="rating_kind" value="${kind}">
       <label class="span2">Google rating<input name="rating" type="number" step="0.1" inputmode="decimal" value="${esc(mine?.rating??'')}" placeholder="e.g. 4.6" required></label>
-      <button class="btn primary full span2" type="submit">${mine?'Update my check':'Submit rating'} ${icon('Check')}</button>
+      <button class="btn primary full span2" type="submit">${mine?'Update rating':'Add rating'} ${icon('Check')}</button>
     </form>
-    ${summary?`<div class="rating-community-note"><b>${esc(summary.value)} Google</b><span>${summary.confirmed?`Community checked by ${summary.agreeing} travellers`:`${summary.total} check so far · waiting for another traveller`}</span></div>`:''}
+    ${summary?`<div class="rating-community-note"><b>Community rating: ${esc(summary.value)}</b><span>${summary.confirmed?`${summary.agreeing} matching checks`:`${summary.total} check so far · waiting for another traveller`}</span></div>`:''}
   </div>`;
 }
 if(m.type==='password')return `<form id="password-form" class="form-grid"><label class="span2">New password<input type="password" name="password" minlength="8" autocomplete="new-password" required></label><button class="btn primary full span2" type="submit">Save new password ${icon('ArrowRight')}</button></form>`;if(m.type==='tripPicker')return `<div class="trip-list">${state.trips.map(t=>`<div class="trip-option-row"><button data-action="select-trip" data-id="${t.id}" class="trip-option ${state.trip?.id===t.id?'selected':''}"><div class="trip-thumb" style="background-image:url('${esc(cover(t))}')"></div><span><b>${esc(t.name)}</b><small>${esc(dateRange(t.start_date,t.end_date))}</small></span>${icon(state.trip?.id===t.id?'Check':'ArrowRight')}</button>${t.owner_id===state.user?.id?`<button class="trip-delete-button" data-action="delete-trip" data-id="${t.id}" aria-label="Delete ${esc(t.name)}" title="Delete trip">${icon('Trash2')}</button>`:''}</div>`).join('')}</div><button class="btn primary full" data-action="new-trip">${icon('Plus')} Create another trip</button>`;
@@ -1720,7 +1770,7 @@ async function ensureCountryPhotos(countries){const names=[...new Set(countries.
 function chooseTrip(trip){state.trip=trip;state.tab='home';state.search='';state.kind='all';state.foodFilter='all';state.foodTab='mine';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';state.day=dayList(trip).find(d=>d>=today())||dayList(trip)[0]||today();state.assistant=[];state.threadId=null;localStorage.setItem(`travelite.trip.${state.user.id}`,String(trip.id));state.modal=null;state.mobileMenu=false;state.loading=true;render();loadTripData();if(trip.country)ensureCountryPhotos([trip.country]);}
 async function query(table,tripId){let r=await sb.from(table).select('*').eq('trip_id',tripId);if(r.error)throw r.error;return r.data||[];}
 async function loadTrips(){let [a,b]=await Promise.all([sb.from('trips').select('*').order('start_date',{ascending:true,nullsFirst:false}),sb.from('trip_members').select('trip_id').eq('user_id',state.user.id)]);if(a.error)throw a.error;let all=a.data||[];state.trips=all;let stored=localStorage.getItem(`travelite.trip.${state.user.id}`);let current=all.find(t=>String(t.id)===stored)||all.find(t=>t.start_date&&t.end_date>=today())||all[0]||null;state.trip=current;if(all.length)void ensureCountryPhotos(all.map(t=>t.country));state.day=current?(dayList(current).find(d=>d>=today())||dayList(current)[0]||today()):null;}
-async function loadTripData(){try{if(!state.trip){state.loading=false;render();return;}const id=state.trip.id;let [schedule,bookings,expenses,savedPlaces,savedFood,places,restaurants,ratingChecks]=await Promise.all([query('schedule',id),query('bookings',id),query('trip_expenses',id),query('trip_places',id),query('trip_restaurants',id),sb.from('places').select('*').order('name'),sb.from('restaurants').select('*').order('name'),sb.from('restaurant_rating_checks').select('*')]);if(places.error||restaurants.error||ratingChecks.error)throw places.error||restaurants.error||ratingChecks.error;if(state.trip?.id!==id)return;Object.assign(state,{schedule,bookings,expenses,savedPlaces,savedFood,places:places.data||[],restaurants:restaurants.data||[],ratingChecks:ratingChecks.data||[],loading:false});render();}catch(e){state.loading=false;render();toast(`Couldn't load this trip: ${e.message}`,true);}}
+async function loadTripData(){try{if(!state.trip){state.loading=false;render();return;}const id=state.trip.id;let [schedule,bookings,expenses,savedPlaces,savedFood,places,restaurants,ratingChecks,placeRatingChecks]=await Promise.all([query('schedule',id),query('bookings',id),query('trip_expenses',id),query('trip_places',id),query('trip_restaurants',id),sb.from('places').select('*').order('name'),sb.from('restaurants').select('*').order('name'),sb.from('restaurant_rating_checks').select('*'),sb.from('place_rating_checks').select('*')]);if(places.error||restaurants.error||ratingChecks.error||placeRatingChecks.error)throw places.error||restaurants.error||ratingChecks.error||placeRatingChecks.error;if(state.trip?.id!==id)return;Object.assign(state,{schedule,bookings,expenses,savedPlaces,savedFood,places:places.data||[],restaurants:restaurants.data||[],ratingChecks:ratingChecks.data||[],placeRatingChecks:placeRatingChecks.data||[],loading:false});render();}catch(e){state.loading=false;render();toast(`Couldn't load this trip: ${e.message}`,true);}}
 let catalogRebuildStarted=false;
 const wait = ms => new Promise(resolve => setTimeout(resolve,ms));
 async function rebuildPlaceCatalog(){
@@ -1996,17 +2046,21 @@ async function moveDayStop(id,delta){
 }
 async function handleForm(form){let fd=new FormData(form),id=state.modal?.data?.id;try{
 if(form.id==='rating-form'){
-  const restaurantId=Number(state.modal?.data?.id);
+  const kind=field(fd,'rating_kind')==='place'?'place':'food';
+  const itemId=Number(state.modal?.data?.id);
   const rating=Number(field(fd,'rating'));
-  if(!restaurantId||!Number.isFinite(rating))throw Error('Enter the rating you saw on Google.');
-  const payload={restaurant_id:restaurantId,user_id:state.user.id,rating,checked_at:new Date().toISOString()};
-  const {data,error}=await sb.from('restaurant_rating_checks').upsert(payload,{onConflict:'restaurant_id,user_id'}).select().single();
+  if(!itemId||!Number.isFinite(rating))throw Error('Enter the rating you saw on Google.');
+  const table=kind==='place'?'place_rating_checks':'restaurant_rating_checks';
+  const key=kind==='place'?'place_id':'restaurant_id';
+  const payload={[key]:itemId,user_id:state.user.id,rating,checked_at:new Date().toISOString()};
+  const {data,error}=await sb.from(table).upsert(payload,{onConflict:key+',user_id'}).select().single();
   if(error)throw error;
-  state.ratingChecks=state.ratingChecks.filter(x=>!(Number(x.restaurant_id)===restaurantId&&x.user_id===state.user.id));
-  state.ratingChecks.push(data);
+  const stateKey=kind==='place'?'placeRatingChecks':'ratingChecks';
+  state[stateKey]=state[stateKey].filter(x=>!(Number(x[key])===itemId&&x.user_id===state.user.id));
+  state[stateKey].push(data);
   state.modal=null;
   render();
-  const summary=restaurantRatingSummary(restaurantId);
+  const summary=kind==='place'?placeRatingSummary(itemId):restaurantRatingSummary(itemId);
   toast(summary?.confirmed?'Rating community checked.':'Rating saved. One more matching check will confirm it.');
   return;
 }
@@ -2039,7 +2093,8 @@ case 'go-discover-food':state.tab='explore';state.kind='food';state.foodFilter='
 case 'add-food':openModal('catalog');$('#catalog-kind').value='food';break;
 case 'food-pick':case 'food-flexible':{let link=state.savedFood.find(x=>Number(x.restaurant_id)===id);if(!link)break;let field=a==='food-pick'?'is_pick':'is_flexible';let result=await sb.from('trip_restaurants').update({[field]:!link[field]}).eq('id',link.id).eq('trip_id',state.trip.id).select().single();if(result.error)throw result.error;state.savedFood=state.savedFood.map(x=>x.id===link.id?result.data:x);render();break;}
 case 'food-eaten':{let link=state.savedFood.find(x=>Number(x.restaurant_id)===id);if(!link)break;let value=!link.is_eaten;let result=await sb.from('trip_restaurants').update({is_eaten:value,eaten_at:value?new Date().toISOString():null}).eq('id',link.id).eq('trip_id',state.trip.id).select().single();if(result.error)throw result.error;state.savedFood=state.savedFood.map(x=>x.id===link.id?result.data:x);render();break;}
-case 'food-rating':openModal('rating',{id});break;
+case 'food-rating':openModal('rating',{id,kind:'food'});break;
+case 'place-rating':openModal('rating',{id,kind:'place'});break;
 case 'food-refresh':findNearbyFood();break;
 case 'nearby-map':{let result=state.nearbyFood.find(x=>x.provider_place_id===el.dataset.placeId)||state.restaurants.find(x=>Number(x.id)===id);if(result)window.open(el.href||maps(result),'_blank','noopener,noreferrer');break;}
 case 'add-nearby-plan':{let result=state.nearbyFood.find(x=>(el.dataset.placeId&&x.provider_place_id===el.dataset.placeId)||(id&&Number(x.id)===id))||state.restaurants.find(x=>Number(x.id)===id);if(!result)break;const selection={...result,__source:result.__source||((result.id&&!result.provider_place_id)?'catalog':'google'),__kind:'food'};await addSelectionToDay(selection);break;}
