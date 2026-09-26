@@ -198,9 +198,16 @@ function homeScheduleGroups(groups){
     </div>`;
   }).join('')}</div>`;
 }
+function isHomeMovementStop(stop){
+  if(stop.place_id||stop.restaurant_id)return false;
+  const title=String(stop.title||'').replace(/[🚆🚄🚕🚗🚶🏨✈️]/g,'').trim().toLowerCase();
+  return /^(head\s+(to|toward)|return(\s+to)?\s+hotel|return\s+hotel|leave\b|arrive\b|taxi\s+pickup|drive\s+toward|begin\s+drive|check\s*out\s*\+?\s*leave|descend\b)/i.test(title)
+    || title.includes(' → ');
+}
 function homeView(){
   let t=state.trip,dates=dayList(t),now=today(),current=dates.includes(now)?now:(dates.find(d=>d>=now)||dates[0]);
-  let dayStops=state.schedule.filter(x=>x.schedule_date===current).sort((a,b)=>(time(a.start_time)||'99:99').localeCompare(time(b.start_time)||'99:99')||(a.sort_order||0)-(b.sort_order||0));
+  let rawDayStops=state.schedule.filter(x=>x.schedule_date===current).sort((a,b)=>(time(a.start_time)||'99:99').localeCompare(time(b.start_time)||'99:99')||(a.sort_order||0)-(b.sort_order||0));
+  let dayStops=rawDayStops.filter(stop=>!isHomeMovementStop(stop));
   let items=dayStops.slice(0,3),groups=groupScheduleByArea(dayStops),countdown=t.start_date?Math.ceil((new Date(`${t.start_date}T12:00:00`)-new Date(`${now}T12:00:00`))/86400000):null;
   const timed=dayStops.map(x=>time(x.start_time)).filter(Boolean);
   const daySummary=dayStops.length?`${dayStops.length} stops${timed.length?` · ${timed[0]}–${timed[timed.length-1]}`:''}`:'';
