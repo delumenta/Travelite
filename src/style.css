@@ -1328,3 +1328,17 @@ html[data-theme="dark"] .jfood-badge.google-rating{background:#302128;border-col
 html[data-theme="dark"] .rating-community-note{background:#211a1d;border-color:#463238}
 html[data-theme="dark"] .rating-community-note b{color:#ef8a95}
 html[data-theme="dark"] .rating-community-note span{color:#b9a9ad}
+
+
+/* Community ratings on Explore place cards */
+.catalog-community-rating,
+.around-community-rating{
+  margin-top:7px;
+  font-size:10px;
+  color:#a74654;
+  font-weight:700;
+}
+.catalog-community-rating b,
+.around-community-rating b{font-weight:900}
+html[data-theme="dark"] .catalog-community-rating,
+html[data-theme="dark"] .around-community-rating{color:#ef8a95}
