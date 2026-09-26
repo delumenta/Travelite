@@ -579,8 +579,8 @@ async function initRouteMap(){
   if(!el||state.modal?.type!=='routeMap')return;
 
   const rows=mappedDayRows();
-  if(rows.length<2){
-    el.innerHTML='<div class="route-map-loading">Add at least two mapped stops to view the route.</div>';
+  if(!rows.length){
+    el.innerHTML='<div class="route-map-loading">No mapped stops yet. Add coordinates to a stop and it will appear here.</div>';
     return;
   }
 
@@ -653,7 +653,12 @@ async function initRouteMap(){
       }]
     });
 
-    map.fitBounds(bounds,52);
+    if(points.length===1){
+      map.setCenter(points[0]);
+      map.setZoom(15);
+    }else{
+      map.fitBounds(bounds,52);
+    }
 
     window.__traveliteRouteMap={
       map,
@@ -1279,7 +1284,7 @@ function planView(){
             <h2>${rows.length?`${rows.length} ${rows.length===1?'stop':'stops'} planned`:'Nothing planned yet'}</h2>
           </div>
           <div class="day-heading-actions">
-            ${route?`<button class="icon-action" data-action="route-map">${icon('Route')} Route map</button>`:''}
+            ${rows.length?`<button class="icon-action" data-action="route-map">${icon('Route')} Route map</button>`:''}
             ${rows.filter(x=>hasValidCoordinates(x)).length>=2?`<button class="icon-action" data-action="between-route">${icon('Sparkles')} Between</button>`:''}
             <button class="icon-action plan-add-top" data-action="new-stop">${icon('Plus')} Add place</button>
           </div>
