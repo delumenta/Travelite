@@ -1279,7 +1279,7 @@ html[data-theme="dark"] .explore-sort-card{background:#171315;border-color:#382b
 html[data-theme="dark"] .explore-sort-tabs button{background:#211a1d;border-color:#463238;color:#c6b7ba}
 html[data-theme="dark"] .explore-sort-tabs button.selected{background:#a93041;border-color:#a93041;color:#fff}
 html[data-theme="dark"] .explore-anchor-controls select{background:#211a1d;border-color:#463238;color:#eee7e8}
-@media(max-width:630px){.explore-anchor-controls{grid-template-columns:1fr}.explore-sort-tabs{display:grid;grid-template-columns:1fr 1fr}.explore-sort-tabs button{justify-content:center;padding:10px 8px}}
+@media(max-width:630px){.explore-anchor-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.explore-sort-tabs{display:grid;grid-template-columns:1fr 1fr}.explore-sort-tabs button{justify-content:center;padding:10px 8px}}
 
 /* Compact Explore mobile controls */
 @media(max-width:760px){
@@ -1304,4 +1304,14 @@ html[data-theme="dark"] .explore-anchor-controls select{background:#211a1d;borde
     padding:0 10px;
     font-size:10px;
   }
+}
+
+.jfood-proximity{margin-bottom:12px}
+.jfood-badge.distance{color:#b6424e;background:#fff0f1;border-color:#f0cfd3}
+html[data-theme="dark"] .jfood-badge.distance{color:#f39aa3;background:#3a2329;border-color:#5e3942}
+@media(max-width:760px){
+  .explore-anchor-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+  .explore-anchor-controls label{min-width:0}
+  .search-line{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+  .search-line .assist-discover{width:100%!important}
 }
