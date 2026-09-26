@@ -840,3 +840,56 @@ html[data-theme="dark"] .plan-summary-note{color:#a9a1a6}
   .day-heading-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
   .day-heading-actions .icon-action{font-size:9.5px;padding:8px 4px!important}
 }
+
+
+/* =========================================================
+   PLAN — COMPACT MOBILE STOP CONTROLS
+========================================================= */
+@media(max-width:700px){
+  .plan-stop .stop-actions{
+    gap:6px;
+  }
+
+  .plan-stop .stop-actions a,
+  .plan-stop .stop-actions button{
+    min-height:38px;
+    padding:5px 3px!important;
+    border-radius:9px;
+    font-size:9px;
+    gap:2px;
+  }
+
+  .plan-stop .stop-actions svg{
+    width:14px;
+    height:14px;
+  }
+
+  .stop-reorder{
+    gap:5px;
+  }
+
+  .stop-reorder button{
+    width:38px;
+    height:38px;
+    border-radius:10px;
+  }
+}
+
+html[data-theme="dark"] .stop-reorder button{
+  background:#111214;
+  border-color:#332b31;
+  color:#d8cfd1;
+}
+
+html[data-theme="dark"] .stop-reorder button:hover:not(:disabled){
+  background:#171316;
+  border-color:var(--accent,#d5485c);
+  color:var(--accent,#d5485c);
+}
+
+html[data-theme="dark"] .stop-reorder button:disabled{
+  background:#111214;
+  color:#5e575b;
+  border-color:#2a2529;
+  opacity:.55;
+}
