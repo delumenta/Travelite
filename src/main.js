@@ -1021,7 +1021,62 @@ async function reviewPlacePhoto(placeId,decision){
   if(error||data?.error)throw Error(data?.error||error?.message||'Could not update this photo.');
   await openPhotoReview();
 }
-async function init(){const {data:{session}}=await sb.auth.getSession();state.user=session?.user||null;try{if(state.user){await loadTrips();await loadTripData();void processSafePlacePhotos();}else{state.loading=false;render();}}catch(e){state.loading=false;render();toast(e.message,true);}sb.auth.onAuthStateChange((event,session)=>{setTimeout(async()=>{if(event==='PASSWORD_RECOVERY'&&session?.user){state.user=session.user;state.loading=true;render();try{await loadTrips();await loadTripData();}catch(e){state.loading=false;render();}state.modal={type:'password'};render();}else if(event==='SIGNED_OUT'){Object.assign(state,{user:null,trip:null,trips:[],countryPhotos:{},loading:false,assistantOpen:false});render();}else if(session?.user && session.user.id!==state.user?.id){state.user=session.user;state.loading=true;render();try{await loadTrips();await loadTripData();}catch(e){state.loading=false;render();toast(e.message,true);}}},0);});}
+async function init(){
+  try{
+    const {data,error}=await sb.auth.getSession();
+    if(error)throw error;
+    state.user=data?.session?.user||null;
+
+    if(state.user){
+      await loadTrips();
+      await loadTripData();
+      void processSafePlacePhotos();
+    }else{
+      state.loading=false;
+      render();
+    }
+  }catch(e){
+    console.error('Travelite startup failed',e);
+    state.loading=false;
+    state.user=null;
+    render();
+    toast('Travelite could not restore your session. Please refresh or sign in again.',true);
+  }
+
+  sb.auth.onAuthStateChange((event,session)=>{
+    setTimeout(async()=>{
+      if(event==='PASSWORD_RECOVERY'&&session?.user){
+        state.user=session.user;
+        state.loading=true;
+        render();
+        try{
+          await loadTrips();
+          await loadTripData();
+        }catch(e){
+          state.loading=false;
+          render();
+        }
+        state.modal={type:'password'};
+        render();
+      }else if(event==='SIGNED_OUT'){
+        Object.assign(state,{user:null,trip:null,trips:[],countryPhotos:{},loading:false,assistantOpen:false});
+        render();
+      }else if(session?.user && session.user.id!==state.user?.id){
+        state.user=session.user;
+        state.loading=true;
+        render();
+        try{
+          await loadTrips();
+          await loadTripData();
+        }catch(e){
+          state.loading=false;
+          render();
+          toast(e.message,true);
+        }
+      }
+    },0);
+  });
+}
 const field = (fd,k) => String(fd.get(k)||'').trim();
 const cleanForm = (fd,keys) => Object.fromEntries(keys.map(k=>[k,field(fd,k)||null]));
 async function saveRow(table,payload,id){let q=id?sb.from(table).update(payload).eq('id',id):sb.from(table).insert(payload);let r=await q.select().single();if(r.error)throw r.error;return r.data;}
@@ -1225,4 +1280,16 @@ document.addEventListener('click',e=>{let el=e.target.closest('[data-action]');i
 document.addEventListener('submit',e=>{if(e.target.id==='assist-form'){e.preventDefault();askAssist(e.target);}else if(e.target.id==='google-search-form'){e.preventDefault();searchGoogle(e.target);}else if(e.target.id==='add-search-form'){e.preventDefault();searchAddGoogle();}else if(['auth-form','trip-form','delete-trip-form','stop-form','booking-form','expense-form','catalog-form','password-form'].includes(e.target.id)){e.preventDefault();handleForm(e.target);}});
 document.addEventListener('change',e=>{if(e.target.dataset.foodSelect){if(e.target.dataset.foodSelect==='area')state.foodArea=e.target.value;else state.foodCuisine=e.target.value;render();}});
 document.addEventListener('input',e=>{if(e.target.id==='add-day-search'){let at=e.target.selectionStart;state.addSearch=e.target.value;state.googleResults=[];render();let input=$('#add-day-search');input?.focus();input?.setSelectionRange(at,at);return;}if(e.target.id==='food-search'){let at=e.target.selectionStart;state.foodSearch=e.target.value;render();let input=$('#food-search');input?.focus();input?.setSelectionRange(at,at);return;}if(e.target.id==='catalog-search'){state.search=e.target.value;let term=state.search.toLowerCase(),items=[...state.places.map(x=>({...x,__kind:'place'})),...state.restaurants.map(x=>({...x,__kind:'food'}))].filter(x=>x.status==='active'&&inTripCountry(x)&&(!term||[x.name,x.city,x.area,x.cuisine,x.place_type,x.country].some(v=>String(v||'').toLowerCase().includes(term)))&&(state.kind==='all'||x.__kind===state.kind));let el=$('#catalog-results');if(el){el.innerHTML=items.slice(0,120).map(x=>catalogItem(x,x.__kind)).join('')||'<div class="empty-list"><h3>No matches yet</h3><p>Try another search.</p></div>';drawIcons();hydratePlacePhotos();}let n=$('.filter-row span');if(n)n.textContent=`${items.length} discoveries`;}});
+const appRoot=document.getElementById('app');
+if(appRoot){
+  appRoot.innerHTML='<div style="min-height:100vh;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#f6f4ef;color:#5b4c50"><div style="text-align:center"><strong style="display:block;font-size:20px;margin-bottom:8px">Travelite</strong><span style="font-size:12px;opacity:.7">Loading your journey…</span></div></div>';
+}
+
+window.addEventListener('error',event=>{
+  console.error('Travelite runtime error',event.error||event.message);
+  if(appRoot && !appRoot.innerHTML.trim()){
+    appRoot.innerHTML='<div style="min-height:100vh;display:grid;place-items:center;padding:24px;font-family:system-ui,sans-serif"><div style="max-width:420px;text-align:center"><h2>Travelite could not start.</h2><p>Please refresh the page. If this keeps happening, the app will show an error instead of a blank screen.</p></div></div>';
+  }
+});
+
 init();
