@@ -1280,3 +1280,28 @@ html[data-theme="dark"] .explore-sort-tabs button{background:#211a1d;border-colo
 html[data-theme="dark"] .explore-sort-tabs button.selected{background:#a93041;border-color:#a93041;color:#fff}
 html[data-theme="dark"] .explore-anchor-controls select{background:#211a1d;border-color:#463238;color:#eee7e8}
 @media(max-width:630px){.explore-anchor-controls{grid-template-columns:1fr}.explore-sort-tabs{display:grid;grid-template-columns:1fr 1fr}.explore-sort-tabs button{justify-content:center;padding:10px 8px}}
+
+/* Compact Explore mobile controls */
+@media(max-width:760px){
+  .explore-anchor-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+  .explore-anchor-controls label{min-width:0}
+  .explore-anchor-controls select{min-width:0;padding:9px 10px;font-size:10px}
+
+  .search-line{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:8px;
+  }
+  .search-line .searchbox{
+    grid-column:1/-1;
+    width:100%;
+  }
+  .search-line .assist-discover{
+    width:100%;
+    min-width:0;
+    min-height:40px;
+    justify-content:center;
+    padding:0 10px;
+    font-size:10px;
+  }
+}
