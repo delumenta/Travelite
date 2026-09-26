@@ -115,7 +115,7 @@ const inTripCountry = row => { const destination=canonicalCountry(state.trip?.co
 const cover = trip => { if (trip?.cover_image_url && /^https:\/\//.test(trip.cover_image_url)) return trip.cover_image_url; const saved=state.countryPhotos[countryKey(trip?.country)]; if(saved?.image_url)return saved.image_url; const destination=`${trip?.country||''} ${trip?.name||''}`.toLowerCase(); const images=[[/\b(italy|italia|rome|roma|venice|venezia|florence|firenze|milan|milano|cinque terre)\b/,'photo-1459085184239-463574c08a08'],[/japan|日本|tokyo|kyoto|osaka/i,'photo-1493976040374-85c8e12f0c0e'],[/taiwan|臺灣|台湾|taipei/i,'photo-1470004914212-05527e49370b']]; const image=images.find(([pattern])=>pattern.test(destination))?.[1]||'photo-1488646953014-85cb44e25828'; return `https://images.unsplash.com/${image}?w=1400&q=85`; };
 const coverCredit = trip => { if(trip?.cover_image_url)return '';const p=state.countryPhotos[countryKey(trip?.country)];return p?.source_page?.startsWith('https://commons.wikimedia.org/')?`<a class="hero-photo-credit" href="${esc(p.source_page)}" target="_blank" rel="noopener noreferrer">Photo: ${esc(p.author)} · ${esc(p.license)}</a>`:''; };
 const toast = (msg, error=false) => { let el=$('#toast'); if (!el) {el=document.createElement('div');el.id='toast';document.body.appendChild(el)} el.textContent=msg;el.className=error?'show error':'show';clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.className='',4000); };
-const state = {user:null,trips:[],trip:null,tab:'home',day:null,schedule:[],bookings:[],expenses:[],places:[],restaurants:[],savedPlaces:[],savedFood:[],search:'',kind:'all',savedKind:'all',modal:null,authMode:'login',loading:true,assistant:[],threadId:null,assistantBusy:false,assistantOpen:false,mobileMenu:false,nearbyFood:[],foodBusy:false,foodLocation:null,foodError:'',foodMode:'collection',foodFilter:'all',foodTab:'mine',foodCity:'',foodArea:'',foodCuisine:'',foodSearch:'',scheduleExpanded:false,scheduleAreaExpanded:{},theme:localStorage.getItem('travelite.theme')==='dark'?'dark':'light',googleResults:[],catalogSelection:null,googleBusy:false,countryPhotos:{},addSearch:'',addKind:'all',addSelection:null,addNearby:false,aroundStop:null,aroundResults:[],aroundBusy:false,aroundRadius:2000,discoveryMode:null,discoveryTitle:'',discoverySubtitle:'',starterCity:''};
+const state = {user:null,trips:[],trip:null,tab:'home',day:null,schedule:[],bookings:[],expenses:[],places:[],restaurants:[],savedPlaces:[],savedFood:[],search:'',kind:'all',savedKind:'all',modal:null,authMode:'login',loading:true,assistant:[],threadId:null,assistantBusy:false,assistantOpen:false,mobileMenu:false,nearbyFood:[],foodBusy:false,foodLocation:null,foodError:'',foodMode:'collection',foodFilter:'all',foodTab:'mine',foodCity:'',foodArea:'',foodCuisine:'',foodSearch:'',scheduleExpanded:false,scheduleAreaExpanded:{},theme:localStorage.getItem('travelite.theme')==='dark'?'dark':'light',googleResults:[],catalogSelection:null,googleBusy:false,countryPhotos:{},addSearch:'',addKind:'all',addSelection:null,addNearby:false,aroundStop:null,aroundResults:[],aroundBusy:false,aroundRadius:2000,discoveryMode:null,discoveryTitle:'',discoverySubtitle:'',starterCity:'',exploreSort:'default',exploreLocation:null,exploreLocationBusy:false,exploreLocationError:'',exploreAnchorDate:'',exploreAnchorKey:''};
 document.documentElement.dataset.theme=state.theme;
 function drawIcons(){ createIcons({icons,attrs:{'stroke-width':1.85}}); }
 function render(){ document.documentElement.dataset.theme=state.theme; $('#app').innerHTML = !state.user ? authView() : shell(); drawIcons(); if(state.tab==='explore'||state.tab==='saved'||state.modal?.type==='addToDay')hydratePlacePhotos(); if(state.modal?.type==='routeMap')setTimeout(()=>initRouteMap(),0); if(state.assistantOpen) { const el=$('.chat-messages'); if(el)el.scrollTop=el.scrollHeight; } }
@@ -1441,7 +1441,49 @@ function hydratePlacePhotos(){
   const observer=new IntersectionObserver((entries)=>{for(const entry of entries)if(entry.isIntersecting){observer.unobserve(entry.target);queue(entry.target);}}, {rootMargin:'300px'});
   targets.forEach(el=>observer.observe(el));
 }
-function catalogItem(x,kind){let saved=kind==='food'?state.savedFood.find(s=>s.restaurant_id===x.id):state.savedPlaces.find(s=>s.place_id===x.id);let meta=[x.area||x.city||x.location,x.cuisine||x.place_type].filter(Boolean).join(' · ');return `<article class="catalog-card"><div class="catalog-art ${kind==='food'?'food-art':'place-art'} ${kind==='place'&&placePhotoIsStored(x)?'has-photo':''}" ${kind==='place'?`data-place-id="${x.id}"`:''}>${kind==='place'&&placePhotoIsStored(x)?placePhotoMarkup(x):icon('MapPin')}</div><div class="catalog-info"><span class="catalog-kind">${kind==='food'?'FOOD & DRINK':'PLACE TO SEE'}</span><h3>${esc(x.name)}</h3><p>${icon('MapPin')} ${esc(meta||x.country||'Explore')}</p>${x.description?`<small>${esc(x.description.slice(0,125))}${x.description.length>125?'…':''}</small>`:''}<div class="catalog-actions"><button data-action="save-catalog" data-kind="${kind}" data-id="${x.id}" class="${saved?'is-saved':''}">${icon(saved?'Check':'Heart')} ${saved?'Saved':'Save'}</button><button data-action="schedule-catalog" data-kind="${kind}" data-id="${x.id}">${icon('CalendarPlus')} Add to plan</button><a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="View map">${icon('ArrowUpRight')}</a></div></div></article>`;}
+function catalogItem(x,kind){let saved=kind==='food'?state.savedFood.find(s=>s.restaurant_id===x.id):state.savedPlaces.find(s=>s.place_id===x.id);let meta=[x.area||x.city||x.location,x.cuisine||x.place_type].filter(Boolean).join(' · '),distance=exploreDistanceText(x.__distance);return `<article class="catalog-card"><div class="catalog-art ${kind==='food'?'food-art':'place-art'} ${kind==='place'&&placePhotoIsStored(x)?'has-photo':''}" ${kind==='place'?`data-place-id="${x.id}"`:''}>${kind==='place'&&placePhotoIsStored(x)?placePhotoMarkup(x):icon('MapPin')}</div><div class="catalog-info"><span class="catalog-kind">${kind==='food'?'FOOD & DRINK':'PLACE TO SEE'}</span><h3>${esc(x.name)}</h3><p>${icon('MapPin')} ${esc(meta||x.country||'Explore')}</p>${distance?`<div class="catalog-distance">${icon('Navigation')} ${esc(distance)}</div>`:''}${x.description?`<small>${esc(x.description.slice(0,125))}${x.description.length>125?'…':''}</small>`:''}<div class="catalog-actions"><button data-action="save-catalog" data-kind="${kind}" data-id="${x.id}" class="${saved?'is-saved':''}">${icon(saved?'Check':'Heart')} ${saved?'Saved':'Save'}</button><button data-action="schedule-catalog" data-kind="${kind}" data-id="${x.id}">${icon('CalendarPlus')} Add to plan</button><a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="View map">${icon('ArrowUpRight')}</a></div></div></article>`;}
+function exploreAnchorOptions(){
+  const byDay={};
+  for(const stop of state.schedule){
+    if(!stop.schedule_date)continue;
+    const meta=schedulePlaceMeta(stop);
+    const lat=Number(meta?.latitude),lng=Number(meta?.longitude);
+    if(!Number.isFinite(lat)||!Number.isFinite(lng))continue;
+    const label=cleanAreaLabel(meta?.area)||explicitScheduleArea(stop)||cleanAreaLabel(stop.location_name)||stop.title;
+    if(!byDay[stop.schedule_date])byDay[stop.schedule_date]=[];
+    if(!byDay[stop.schedule_date].some(x=>x.label===label))byDay[stop.schedule_date].push({key:stop.schedule_date+'::'+label,label,date:stop.schedule_date,latitude:lat,longitude:lng});
+  }
+  return Object.entries(byDay).sort((a,b)=>a[0].localeCompare(b[0])).map(([date,anchors])=>({date,anchors}));
+}
+function exploreSelectedAnchor(){
+  const days=exploreAnchorOptions();
+  if(!days.length)return {days,day:null,anchor:null};
+  let day=days.find(x=>x.date===state.exploreAnchorDate)||days.find(x=>x.date===state.day)||days[0];
+  state.exploreAnchorDate=day.date;
+  let anchor=day.anchors.find(x=>x.key===state.exploreAnchorKey)||day.anchors[0];
+  state.exploreAnchorKey=anchor?.key||'';
+  return {days,day,anchor};
+}
+function exploreDistanceText(m){
+  if(!Number.isFinite(Number(m)))return '';
+  m=Number(m);
+  return m<1000?Math.round(m)+' m away':(m/1000).toFixed(m<10000?1:0)+' km away';
+}
+async function setExploreClosestToMe(){
+  state.exploreSort='me';state.exploreLocationBusy=true;state.exploreLocationError='';render();
+  try{
+    const p=await new Promise((resolve,reject)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:12000,maximumAge:60000}):reject(new Error('Location is not available on this device.')));
+    state.exploreLocation={latitude:Number(p.coords.latitude),longitude:Number(p.coords.longitude)};
+  }catch(e){state.exploreLocation=null;state.exploreLocationError=e?.code===1?'Allow location access to sort discoveries near you.':(e?.message||'Could not get your location.');}
+  finally{state.exploreLocationBusy=false;render();}
+}
+function sortExploreItems(items){
+  let origin=null;
+  if(state.exploreSort==='me')origin=state.exploreLocation;
+  if(state.exploreSort==='location')origin=exploreSelectedAnchor().anchor;
+  if(!origin)return items;
+  return items.map(x=>{const lat=Number(x.latitude),lng=Number(x.longitude);return {...x,__distance:Number.isFinite(lat)&&Number.isFinite(lng)?Math.round(distanceMeters(origin.latitude,origin.longitude,lat,lng)):null};}).sort((a,b)=>(Number.isFinite(a.__distance)?a.__distance:Infinity)-(Number.isFinite(b.__distance)?b.__distance:Infinity));
+}
 function exploreView(){
   if(state.kind==='food'){
     return foodCollectionView();
@@ -1456,6 +1498,10 @@ function exploreView(){
         .some(v=>String(v||'').toLowerCase().includes(term))) &&
       (state.kind==='all'||x.__kind===state.kind)
     );
+  items=sortExploreItems(items);
+
+  const anchorInfo=exploreSelectedAnchor();
+  const anchor=anchorInfo.anchor;
 
   return `${title(
     'DISCOVER THE POSSIBILITIES',
@@ -1463,6 +1509,15 @@ function exploreView(){
     `Places and food in ${state.trip?.country||'your destination'}, ready to add to your trip.`,
     `<button class="btn outline" data-action="add-catalog">${icon('Plus')} Add a place</button>`
   )}
+  <div class="explore-sort-card">
+    <div class="explore-sort-tabs">
+      <button data-action="explore-sort-me" class="${state.exploreSort==='me'?'selected':''}">${icon('Navigation')} Closest to me</button>
+      <button data-action="explore-sort-location" class="${state.exploreSort==='location'?'selected':''}">${icon('MapPin')} Closest to location</button>
+    </div>
+    ${state.exploreSort==='location'&&anchorInfo.days.length?`<div class="explore-anchor-controls"><label>Day<select data-explore-select="date">${anchorInfo.days.map(d=>`<option value="${esc(d.date)}" ${d.date===anchorInfo.day?.date?'selected':''}>${esc(fmtDay(d.date))}</option>`).join('')}</select></label><label>Location<select data-explore-select="anchor">${(anchorInfo.day?.anchors||[]).map(a=>`<option value="${esc(a.key)}" ${a.key===anchor?.key?'selected':''}>${esc(a.label)}</option>`).join('')}</select></label></div>`:''}
+    ${state.exploreSort==='location'&&!anchorInfo.days.length?`<div class="explore-sort-note">Add a planned place with coordinates first, then Travelite can sort around it.</div>`:''}
+    ${state.exploreLocationError?`<div class="explore-sort-note error">${esc(state.exploreLocationError)}</div>`:''}
+  </div>
   <div class="search-line">
     <div class="searchbox">
       ${icon('Search')}
@@ -1915,6 +1970,8 @@ case 'route-map-focus':{
   }
   break;
 }
+case 'explore-sort-me':setExploreClosestToMe();break;
+case 'explore-sort-location':state.exploreSort='location';state.exploreLocationError='';exploreSelectedAnchor();render();break;
 case 'filter':if(v==='food'&&state.kind!=='food'){state.foodTab='discover';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}state.kind=v;render();break;
 case 'saved-filter':state.savedKind=v;if(v==='food'){state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';}render();break;
 case 'menu':state.mobileMenu=true;render();break;
@@ -1965,8 +2022,8 @@ case 'assist-proposal':{let message=state.assistant[Number(el.dataset.message)],
 async function askAssist(form){let input=form.elements.message,question=input.value.trim();if(!question||state.assistantBusy)return;state.assistant.push({role:'user',text:question});state.assistantBusy=true;render();try{let {data,error}=await sb.functions.invoke('travel-assist',{body:{trip_id:state.trip.id,message:question,thread_id:state.threadId,selected_date:state.day,entry_point:state.tab,context:{selected_date:state.day,screen:state.tab}}});if(error||data?.error)throw Error(data?.error||error.message);state.threadId=data.thread_id||state.threadId;state.assistant.push({role:'assistant',text:data.reply||data.message||'I’m here to help.',actions:data.actions||[]});}catch(e){state.assistant.push({role:'assistant',text:`I couldn’t reach Travel Assist just now. ${e.message||'Try again in a moment.'}`});}finally{state.assistantBusy=false;render();$('#assist-form input')?.focus();}}
 document.addEventListener('click',e=>{let el=e.target.closest('[data-action]');if(el){if(el.classList.contains('overlay')&&e.target!==el)return;e.preventDefault();action(el.dataset.action,el);}});
 document.addEventListener('submit',e=>{if(e.target.id==='assist-form'){e.preventDefault();askAssist(e.target);}else if(e.target.id==='google-search-form'){e.preventDefault();searchGoogle(e.target);}else if(e.target.id==='add-search-form'){e.preventDefault();searchAddGoogle();}else if(['auth-form','trip-form','delete-trip-form','stop-form','booking-form','expense-form','catalog-form','password-form'].includes(e.target.id)){e.preventDefault();handleForm(e.target);}});
-document.addEventListener('change',e=>{if(e.target.dataset.foodSelect){if(e.target.dataset.foodSelect==='area')state.foodArea=e.target.value;else state.foodCuisine=e.target.value;render();}});
-document.addEventListener('input',e=>{if(e.target.id==='add-day-search'){let at=e.target.selectionStart;state.addSearch=e.target.value;state.googleResults=[];render();let input=$('#add-day-search');input?.focus();input?.setSelectionRange(at,at);return;}if(e.target.id==='food-search'){let at=e.target.selectionStart;state.foodSearch=e.target.value;render();let input=$('#food-search');input?.focus();input?.setSelectionRange(at,at);return;}if(e.target.id==='catalog-search'){state.search=e.target.value;let term=state.search.toLowerCase(),items=[...state.places.map(x=>({...x,__kind:'place'})),...state.restaurants.map(x=>({...x,__kind:'food'}))].filter(x=>x.status==='active'&&inTripCountry(x)&&(!term||[x.name,x.city,x.area,x.cuisine,x.place_type,x.country].some(v=>String(v||'').toLowerCase().includes(term)))&&(state.kind==='all'||x.__kind===state.kind));let el=$('#catalog-results');if(el){el.innerHTML=items.slice(0,120).map(x=>catalogItem(x,x.__kind)).join('')||'<div class="empty-list"><h3>No matches yet</h3><p>Try another search.</p></div>';drawIcons();hydratePlacePhotos();}let n=$('.filter-row span');if(n)n.textContent=`${items.length} discoveries`;}});
+document.addEventListener('change',e=>{if(e.target.dataset.foodSelect){if(e.target.dataset.foodSelect==='area')state.foodArea=e.target.value;else state.foodCuisine=e.target.value;render();return;}if(e.target.dataset.exploreSelect==='date'){state.exploreAnchorDate=e.target.value;state.exploreAnchorKey='';exploreSelectedAnchor();render();return;}if(e.target.dataset.exploreSelect==='anchor'){state.exploreAnchorKey=e.target.value;render();}});
+document.addEventListener('input',e=>{if(e.target.id==='add-day-search'){let at=e.target.selectionStart;state.addSearch=e.target.value;state.googleResults=[];render();let input=$('#add-day-search');input?.focus();input?.setSelectionRange(at,at);return;}if(e.target.id==='food-search'){let at=e.target.selectionStart;state.foodSearch=e.target.value;render();let input=$('#food-search');input?.focus();input?.setSelectionRange(at,at);return;}if(e.target.id==='catalog-search'){state.search=e.target.value;let term=state.search.toLowerCase(),items=[...state.places.map(x=>({...x,__kind:'place'})),...state.restaurants.map(x=>({...x,__kind:'food'}))].filter(x=>x.status==='active'&&inTripCountry(x)&&(!term||[x.name,x.city,x.area,x.cuisine,x.place_type,x.country].some(v=>String(v||'').toLowerCase().includes(term)))&&(state.kind==='all'||x.__kind===state.kind));items=sortExploreItems(items);let el=$('#catalog-results');if(el){el.innerHTML=items.slice(0,120).map(x=>catalogItem(x,x.__kind)).join('')||'<div class="empty-list"><h3>No matches yet</h3><p>Try another search.</p></div>';drawIcons();hydratePlacePhotos();}let n=$('.filter-row span');if(n)n.textContent=`${items.length} discoveries`;}});
 const appRoot=document.getElementById('app');
 if(appRoot){
   appRoot.innerHTML='<div style="min-height:100vh;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#f6f4ef;color:#5b4c50"><div style="text-align:center"><strong style="display:block;font-size:20px;margin-bottom:8px">Travelite</strong><span style="font-size:12px;opacity:.7">Loading your journey…</span></div></div>';
