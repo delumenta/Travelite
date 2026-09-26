@@ -781,7 +781,7 @@ function discoveryView(){
       return `<article class="around-card">
         <div class="around-card-head">
           <span class="around-rank">${i+1}</span>
-          <div><h3>${esc(x.name)}</h3><p>${esc([signal.meta,type].filter(Boolean).join(' · '))}</p></div>
+          <div><h3>${esc(x.name)}</h3><p>${esc([x.__legLabel,signal.meta,type].filter(Boolean).join(' · '))}</p></div>
         </div>
         <div class="around-signal"><b>${esc(signal.label)}</b><span>${esc(signal.note)}</span></div>
         <div class="around-actions">
@@ -856,53 +856,172 @@ function routePointDistanceMeters(lat,lng,aLat,aLng,bLat,bLng){
 }
 
 async function findBetweenRoute(){
-  const mapped=dayRows(state.day).filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)));
+  const mapped=dayRows(state.day)
+    .filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)));
+
   if(mapped.length<2){
     toast('Add at least two mapped places first.',true);
     return;
   }
 
-  const first=mapped[0],last=mapped[mapped.length-1];
-  const aLat=Number(first.latitude),aLng=Number(first.longitude),bLat=Number(last.latitude),bLng=Number(last.longitude);
-  const midLat=(aLat+bLat)/2,midLng=(aLng+bLng)/2;
-  const endpointDistance=distanceMeters(aLat,aLng,bLat,bLng);
-  const radius=Math.min(30000,Math.max(1800,endpointDistance/2+1500));
+  const legs=[];
+  for(let i=0;i<mapped.length-1;i++){
+    legs.push({
+      index:i,
+      from:mapped[i],
+      to:mapped[i+1]
+    });
+  }
 
   state.discoveryMode='between';
-  state.discoveryTitle=first.title+' → '+last.title;
-  state.discoverySubtitle='Places that fit reasonably along the route';
+  state.discoveryTitle='Places between your stops';
+  state.discoverySubtitle=legs.length+' route '+(legs.length===1?'leg':'legs')+' checked';
   state.aroundResults=[];
   state.aroundBusy=true;
   state.modal={type:'discovery'};
   render();
 
   try{
-    const anchorNames=new Set(mapped.map(x=>String(x.title||'').trim().toLowerCase()));
-    const corridor=row=>{
-      const d=routePointDistanceMeters(Number(row.latitude),Number(row.longitude),aLat,aLng,bLat,bLng);
-      row.__distance=Math.round(d);
-      return d<=1400;
-    };
+    const anchorNames=new Set(
+      mapped.map(x=>String(x.title||'').trim().toLowerCase())
+    );
+    const skipTypes=new Set([
+      'restaurant','cafe','bakery','bar',
+      'lodging','hotel','hostel'
+    ]);
 
-    let local=nearbyCatalogRows('place',midLat,midLng,radius)
-      .filter(x=>!anchorNames.has(String(x.name||'').trim().toLowerCase()))
-      .filter(corridor);
+    const allCandidates=[];
 
-    let combined=local;
-    if(local.length<10){
-      const google=await browserNearbyPlaces({latitude:midLat,longitude:midLng,radius,kind:'place'});
-      combined=mergeNearbyRows(local,google,midLat,midLng,radius,'place')
+    for(const leg of legs){
+      const aLat=Number(leg.from.latitude);
+      const aLng=Number(leg.from.longitude);
+      const bLat=Number(leg.to.latitude);
+      const bLng=Number(leg.to.longitude);
+
+      const midpoint={
+        latitude:(aLat+bLat)/2,
+        longitude:(aLng+bLng)/2
+      };
+
+      const legDistance=distanceMeters(aLat,aLng,bLat,bLng);
+
+      /*
+        Keep the search local to this individual leg.
+        Short legs get a compact radius; longer legs can search farther.
+      */
+      const radius=Math.min(
+        10000,
+        Math.max(1200,legDistance/2+900)
+      );
+
+      const corridorWidth=Math.min(
+        1200,
+        Math.max(450,legDistance*0.22)
+      );
+
+      const legLabel=
+        String(leg.from.title||'Stop '+(leg.index+1))+
+        ' → '+
+        String(leg.to.title||'Stop '+(leg.index+2));
+
+      const fitsLeg=row=>{
+        const lat=Number(row.latitude);
+        const lng=Number(row.longitude);
+        if(!Number.isFinite(lat)||!Number.isFinite(lng))return false;
+
+        const corridorDistance=routePointDistanceMeters(
+          lat,lng,
+          aLat,aLng,
+          bLat,bLng
+        );
+
+        row.__distance=Math.round(corridorDistance);
+        row.__legIndex=leg.index;
+        row.__legLabel=legLabel;
+        row.__legDistance=Math.round(legDistance);
+
+        return corridorDistance<=corridorWidth;
+      };
+
+      let local=nearbyCatalogRows(
+        'place',
+        midpoint.latitude,
+        midpoint.longitude,
+        radius
+      )
         .filter(x=>!anchorNames.has(String(x.name||'').trim().toLowerCase()))
-        .filter(corridor);
+        .filter(x=>!skipTypes.has(String(x.place_type||'').toLowerCase()))
+        .filter(fitsLeg);
+
+      let combined=local;
+
+      /*
+        Use Google only when this leg does not already have enough
+        useful catalogue candidates.
+      */
+      if(local.length<4){
+        const google=await browserNearbyPlaces({
+          latitude:midpoint.latitude,
+          longitude:midpoint.longitude,
+          radius,
+          kind:'place'
+        });
+
+        combined=mergeNearbyRows(
+          local,
+          google,
+          midpoint.latitude,
+          midpoint.longitude,
+          radius,
+          'place'
+        )
+          .filter(x=>!anchorNames.has(String(x.name||'').trim().toLowerCase()))
+          .filter(x=>!skipTypes.has(String(x.place_type||'').toLowerCase()))
+          .filter(fitsLeg);
+      }
+
+      /*
+        Keep only a few candidates per leg before the Wiki enrichment.
+        This prevents one busy area from swallowing the whole result set.
+      */
+      allCandidates.push(
+        ...combined
+          .sort((a,b)=>Number(a.__distance)-Number(b.__distance))
+          .slice(0,5)
+      );
     }
 
-    const enriched=await enrichDiscoveryRows(combined.slice(0,20));
+    const unique=[];
+    const seen=new Set();
+
+    for(const row of allCandidates){
+      const key=
+        row.provider_place_id ||
+        nearbyKey(row) ||
+        [row.latitude,row.longitude].join('|');
+
+      if(!key||seen.has(key))continue;
+      seen.add(key);
+      unique.push(row);
+    }
+
+    const enriched=await enrichDiscoveryRows(unique.slice(0,30));
+
     state.aroundResults=enriched
       .sort((a,b)=>{
-        const importance=(Number(b.importanceRank)||0)-(Number(a.importanceRank)||0);
-        return importance||Number(a.__distance)-Number(b.__distance);
+        const leg=(Number(a.__legIndex)||0)-(Number(b.__legIndex)||0);
+        if(leg!==0)return leg;
+
+        const importance=
+          (Number(b.importanceRank)||0)-
+          (Number(a.importanceRank)||0);
+
+        if(importance!==0)return importance;
+
+        return Number(a.__distance)-Number(b.__distance);
       })
-      .slice(0,12);
+      .slice(0,24);
+
   }catch(e){
     console.error('Between-route discovery failed',e);
     toast(e?.message||'Could not find places between these stops.',true);
@@ -911,7 +1030,6 @@ async function findBetweenRoute(){
     render();
   }
 }
-
 function aroundStopView(){
   const stop=state.aroundStop;
   if(!stop)return '<div class="add-empty"><p>Choose a planned stop first.</p></div>';
