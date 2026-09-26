@@ -719,7 +719,7 @@ function aroundStopView(){
         </div>
         <div class="around-signal"><b>${esc(tag.label)}</b><span>${esc(tag.note)}</span></div>
         <div class="around-actions">
-          <a class="around-map-link" href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(x.name)} in Google Maps" title="Open in Google Maps">${icon('MapPin')} Google Maps</a>
+          <a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer">${icon('ArrowUpRight')} Check ratings on Google Maps</a>
           <button data-action="around-save" data-index="${i}">${icon('Heart')} Save</button>
           <button class="around-add" data-action="around-add" data-index="${i}">${icon('CalendarPlus')} Add to this day</button>
         </div>
