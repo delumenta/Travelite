@@ -321,6 +321,7 @@ function foodHasTabelog(r){
 }
 
 function foodCard(r,link){
+  const proximity=exploreDistanceText(r.__distance);
   const scheduled=state.schedule
     .filter(x=>Number(x.restaurant_id)===Number(r.id))
     .sort((a,b)=>String(a.schedule_date).localeCompare(String(b.schedule_date)));
@@ -357,6 +358,7 @@ function foodCard(r,link){
       </div>
     </div>
     <div class="jfood-badges">
+      ${proximity?badge(esc(proximity),'distance'):''}
       ${badge(esc(r.cuisine||'Food & drink'),'cuisine')}
       ${link?.is_pick?badge('⭐ Pick','pick'):''}
       ${link?.is_flexible?badge('🌙 Flexible','flex'):''}
@@ -430,6 +432,12 @@ function foodCollectionView(){
       .map(x=>Number(x.restaurant_id))
   );
 
+  const foodAnchorInfo=exploreSelectedAnchor();
+  const foodAnchor=foodAnchorInfo.anchor;
+  const foodOrigin=exploreMode
+    ? (state.exploreSort==='me'?state.exploreLocation:state.exploreSort==='location'?foodAnchor:null)
+    : null;
+
   let items=areaSource
     .filter(x=>!type||foodGroupLabel(x)===type)
     .filter(x=>{
@@ -460,7 +468,18 @@ function foodCollectionView(){
         x.recognition
       ].some(v=>String(v||'').toLowerCase().includes(state.foodSearch.toLowerCase()))
     )
+    .map(x=>{
+      if(!foodOrigin)return x;
+      const lat=Number(x.latitude),lng=Number(x.longitude);
+      const __distance=Number.isFinite(lat)&&Number.isFinite(lng)
+        ? Math.round(distanceMeters(foodOrigin.latitude,foodOrigin.longitude,lat,lng))
+        : null;
+      return {...x,__distance};
+    })
     .sort((a,b)=>
+      (foodOrigin
+        ? ((Number.isFinite(a.__distance)?a.__distance:Infinity)-(Number.isFinite(b.__distance)?b.__distance:Infinity))
+        : 0) ||
       Number(!!links.get(Number(b.id))?.is_pick)-Number(!!links.get(Number(a.id))?.is_pick) ||
       Number(foodIsTop100(b))-Number(foodIsTop100(a)) ||
       Number(foodIsHot(b))-Number(foodIsHot(a)) ||
@@ -552,6 +571,15 @@ function foodCollectionView(){
   return `${heading}
   ${savedKinds}
   ${exploreKinds}
+  ${exploreMode?`<div class="explore-sort-card jfood-proximity">
+    <div class="explore-sort-tabs">
+      <button data-action="explore-sort-me" class="${state.exploreSort==='me'?'selected':''}">${icon('Navigation')} Closest to me</button>
+      <button data-action="explore-sort-location" class="${state.exploreSort==='location'?'selected':''}">${icon('MapPin')} Closest to location</button>
+    </div>
+    ${state.exploreSort==='location'&&foodAnchorInfo.days.length?`<div class="explore-anchor-controls"><label>Day<select data-explore-select="date">${foodAnchorInfo.days.map(d=>`<option value="${esc(d.date)}" ${d.date===foodAnchorInfo.day?.date?'selected':''}>${esc(fmtDay(d.date))}</option>`).join('')}</select></label><label>Location<select data-explore-select="anchor">${(foodAnchorInfo.day?.anchors||[]).map(a=>`<option value="${esc(a.key)}" ${a.key===foodAnchor?.key?'selected':''}>${esc(a.label)}</option>`).join('')}</select></label></div>`:''}
+    ${state.exploreSort==='location'&&!foodAnchorInfo.days.length?`<div class="explore-sort-note">Add a planned place with coordinates first, then Travelite can sort restaurants around it.</div>`:''}
+    ${state.exploreLocationError?`<div class="explore-sort-note error">${esc(state.exploreLocationError)}</div>`:''}
+  </div>`:''}
   <div class="jfood-filters">
     <div class="jfood-filter-head">
       <span>FILTERS</span>
