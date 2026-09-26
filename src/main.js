@@ -5,6 +5,80 @@ import './style.css';
 const SB_URL = 'https://zngncasvdrrxyrkjqutj.supabase.co';
 const SB_KEY = 'sb_publishable_wUrH6t12z4tRKruS28LqWQ_2GG06U9m';
 const sb = createClient(SB_URL, SB_KEY, { auth: { detectSessionInUrl: true, flowType: 'pkce' } });
+const GOOGLE_MAPS_BROWSER_KEY = "AIzaSyD1tFdxoch8ihGkoLA7OYoEuG2k93CGi80";
+let googleMapsPromise=null;
+let googlePlacesPromise=null;
+
+function loadGoogleMapsBrowser(){
+  if(window.google?.maps?.importLibrary)return Promise.resolve(window.google.maps);
+  if(googleMapsPromise)return googleMapsPromise;
+  googleMapsPromise=new Promise((resolve,reject)=>{
+    const callbackName='__traveliteGoogleMapsReady';
+    window[callbackName]=()=>{
+      if(window.google?.maps?.importLibrary)resolve(window.google.maps);
+      else { googleMapsPromise=null; reject(new Error('Google Maps loaded but Places is unavailable.')); }
+    };
+    const script=document.createElement('script');
+    script.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(GOOGLE_MAPS_BROWSER_KEY)+'&v=weekly&loading=async&callback='+callbackName;
+    script.async=true;
+    script.onerror=()=>{googleMapsPromise=null;reject(new Error('Google Maps could not load.'));};
+    document.head.appendChild(script);
+  });
+  return googleMapsPromise;
+}
+
+function getGooglePlacesBrowser(){
+  if(googlePlacesPromise)return googlePlacesPromise;
+  googlePlacesPromise=(async()=>{
+    await loadGoogleMapsBrowser();
+    const lib=await google.maps.importLibrary('places');
+    if(!lib?.Place){ googlePlacesPromise=null; throw new Error('Google Places is unavailable.'); }
+    return lib;
+  })();
+  return googlePlacesPromise;
+}
+
+function googleLatLng(place){
+  const loc=place?.location;
+  if(!loc)return {latitude:null,longitude:null};
+  const latitude=typeof loc.lat==='function'?loc.lat():loc.lat;
+  const longitude=typeof loc.lng==='function'?loc.lng():loc.lng;
+  return {latitude:Number.isFinite(Number(latitude))?Number(latitude):null,longitude:Number.isFinite(Number(longitude))?Number(longitude):null};
+}
+
+function normalizeBrowserPlace(place,kind='place'){
+  const {latitude,longitude}=googleLatLng(place);
+  const primaryType=place.primaryType||place.types?.[0]||(kind==='food'?'restaurant':'attraction');
+  return {
+    name:typeof place.displayName==='string'?place.displayName:(place.displayName?.text||''),
+    provider:'google',
+    provider_place_id:place.id||'',
+    address:place.formattedAddress||'',
+    latitude,
+    longitude,
+    maps_url:place.googleMapsURI||place.googleMapsUri||'',
+    place_type:primaryType,
+    cuisine:kind==='food'?primaryType:null,
+    result_kind:kind
+  };
+}
+
+async function browserNearbyPlaces({latitude,longitude,radius=1500,kind='place'}){
+  const {Place,SearchNearbyRankPreference}=await getGooglePlacesBrowser();
+  const fields=['id','displayName','formattedAddress','location','types','primaryType','googleMapsURI'];
+  const request={
+    fields,
+    locationRestriction:{center:{lat:Number(latitude),lng:Number(longitude)},radius:Number(radius)},
+    maxResultCount:20,
+    rankPreference:kind==='food'
+      ? (SearchNearbyRankPreference?.DISTANCE||'DISTANCE')
+      : (SearchNearbyRankPreference?.POPULARITY||'POPULARITY'),
+  };
+  if(kind==='food')request.includedPrimaryTypes=['restaurant','cafe','bakery'];
+  const response=await Place.searchNearby(request);
+  return (response?.places||[]).map(p=>normalizeBrowserPlace(p,kind)).filter(p=>p.name&&p.latitude!=null&&p.longitude!=null);
+}
+
 const icons = { Compass, House, CalendarDays, Heart, Menu, Plus, ArrowRight, ArrowLeft, ArrowUpRight, MapPin, Clock3, Sparkles, Bookmark, Utensils, Ticket, Wallet, Search, ChevronDown, ChevronLeft, ChevronRight, X, Check, Trash2, Send, Navigation, LogOut, LoaderCircle, LockKeyhole, Mail, Plane, TrainFront, BedDouble, CircleHelp, SlidersHorizontal, ExternalLink, GripVertical, Pencil, Globe2, Leaf, Coffee, Route, CalendarPlus, CheckCircle2, MoreHorizontal, MessageCircle, Map, Copy, Sunrise, Sunset, ListFilter, UserRound, Sun, Moon };
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -71,16 +145,11 @@ async function findNearbyFood(){
     const latitude=Number(position.coords.latitude);
     const longitude=Number(position.coords.longitude);
     state.foodLocation={latitude,longitude};
-    const {data,error}=await sb.functions.invoke('travelite-search',{
-      body:{nearby:true,kind:'food',latitude,longitude}
-    });
-    if(error||data?.error)throw Error(data?.error||error?.message||'Nearby food search is unavailable.');
-    state.nearbyFood=(data?.results||[]).map(row=>({
+    const results=await browserNearbyPlaces({latitude,longitude,radius:300,kind:'food'});
+    state.nearbyFood=results.map(row=>({
       ...row,
-      distance:Number.isFinite(Number(row.latitude))&&Number.isFinite(Number(row.longitude))
-        ? Math.round(distanceMeters(latitude,longitude,Number(row.latitude),Number(row.longitude)))
-        : null
-    })).sort((a,b)=>(a.distance??999999)-(b.distance??999999));
+      distance:Math.round(distanceMeters(latitude,longitude,Number(row.latitude),Number(row.longitude)))
+    })).filter(row=>row.distance<=300).sort((a,b)=>a.distance-b.distance);
   }catch(error){
     const denied=error?.code===1;
     state.foodError=denied?'Location permission is needed to find food around you.':(error?.message||'Could not find nearby food.');
@@ -501,7 +570,7 @@ function aroundStopView(){
       <span class="around-anchor-icon">${icon('MapPinned')}</span>
       <span><small>AROUND</small><b>${esc(stop.title)}</b><em>Within ${Math.round(state.aroundRadius/100)/10} km</em></span>
     </div>
-    <p class="around-explainer">Travelite checks your place catalogue around this stop and sorts nearby ideas by distance. Open Google Maps only when you want to check ratings or reviews.</p>
+    <p class="around-explainer">Travelite finds nearby places from Google Maps, then sorts them for planning. Ratings are not fetched — open Google Maps only when you want to check reviews.</p>
     ${state.aroundBusy?`<div class="add-empty around-loading">${icon('LoaderCircle','spin')}<p>Finding popular places around ${esc(stop.title)}…</p></div>`:rows.length?`<div class="around-results">${rows.map((x,i)=>{
       const distance=Number.isFinite(Number(x.__distance))?Math.round(Number(x.__distance)):null;
       const rank=Number(x.nearby_rank)||i+1;
@@ -538,32 +607,26 @@ async function findAroundStop(stop){
   try{
     const anchorName=String(stop.title||'').trim().toLowerCase();
     const radius=Number(state.aroundRadius)||1500;
+    const results=await browserNearbyPlaces({latitude,longitude,radius,kind:'place'});
 
-    const local=(state.places||[])
-      .filter(x=>x.status==='active'&&inTripCountry(x))
-      .filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)))
+    const skipTypes=new Set(['restaurant','cafe','bakery','bar','lodging','hotel','hostel']);
+    state.aroundResults=results
       .map(x=>({
         ...x,
-        __source:'catalog',
+        __source:'google',
         __kind:'place',
         __distance:Math.round(distanceMeters(latitude,longitude,Number(x.latitude),Number(x.longitude)))
       }))
       .filter(x=>{
         const sameName=String(x.name||'').trim().toLowerCase()===anchorName;
-        return !sameName && x.__distance>=20 && x.__distance<=radius;
+        return !sameName && x.__distance>=20 && x.__distance<=radius && !skipTypes.has(String(x.place_type||'').toLowerCase());
       })
-      .sort((a,b)=>{
-        const av=Number(Boolean(a.verified)),bv=Number(Boolean(b.verified));
-        if(av!==bv)return bv-av;
-        return a.__distance-b.__distance;
-      })
+      .sort((a,b)=>a.__distance-b.__distance)
       .slice(0,20)
       .map((x,i)=>({...x,nearby_rank:i+1}));
-
-    state.aroundResults=local;
   }catch(e){
     console.error('Around here failed',e);
-    toast('Could not load nearby Travelite places.',true);
+    toast(e?.message||'Could not load nearby Google places.',true);
   }finally{
     state.aroundBusy=false;
     render();
