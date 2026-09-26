@@ -925,3 +925,47 @@ html[data-theme="dark"] .plan-stop .stop-actions .quiet-danger{
   border-color:#4a3940;
   color:#e36a7b;
 }
+
+
+/* =========================================================
+   PLAN — REORDER BUTTONS MATCH CARD THEME
+========================================================= */
+.plan-stop .stop-reorder button{
+  background:#fffdfa;
+  border:1px solid #e8e0dc;
+  color:#6f666a;
+  box-shadow:none;
+}
+
+.plan-stop .stop-reorder button:hover:not(:disabled){
+  background:#faf5f2;
+  border-color:#d9c9cc;
+  color:#a93041;
+}
+
+.plan-stop .stop-reorder button:disabled{
+  background:#f7f3f1;
+  border-color:#ece4e0;
+  color:#c8bec0;
+  opacity:1;
+}
+
+html[data-theme="dark"] .plan-stop .stop-reorder button{
+  background:#151316;
+  border:1px solid #4a3940;
+  color:#b9aeb1;
+  box-shadow:none;
+}
+
+html[data-theme="dark"] .plan-stop .stop-reorder button:hover:not(:disabled){
+  background:#1d191d;
+  border-color:#6a4a53;
+  color:#e36a7b;
+}
+
+html[data-theme="dark"] .plan-stop .stop-reorder button:disabled{
+  background:#19161a;
+  border-color:#342a2f;
+  color:#62585c;
+  opacity:1;
+}
