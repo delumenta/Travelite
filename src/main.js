@@ -398,7 +398,6 @@ function foodCard(r,link){
     ${r.description?`<p class="jfood-description">${esc(r.description)}</p>`:''}
     <div class="jfood-actions">
       <a href="${esc(maps(r))}" target="_blank" rel="noopener noreferrer">${icon('MapPin')} Map</a>
-      <a href="${esc(googleRatingSearchUrl(r))}" target="_blank" rel="noopener noreferrer">⭐ Check Google</a>
       <button data-action="food-rating" data-id="${r.id}">${ratingSummary?'Update rating':'Add rating'}</button>
       ${r.tabelog_url?.startsWith('https://')?`<a href="${esc(r.tabelog_url)}" target="_blank" rel="noopener noreferrer">🏆 Tabelog</a>`:''}
       ${r.booking_url?.startsWith('https://')?`<a href="${esc(r.booking_url)}" target="_blank" rel="noopener noreferrer">Book</a>`:''}
