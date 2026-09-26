@@ -772,8 +772,8 @@ html[data-theme="dark"] .plan-summary-note{color:#a9a1a6}
   .day-heading-actions{
     width:100%;
     display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:9px;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
     justify-content:stretch;
   }
 
@@ -782,25 +782,25 @@ html[data-theme="dark"] .plan-summary-note{color:#a9a1a6}
     min-width:0;
     min-height:48px;
     justify-content:center;
-    padding:10px 12px!important;
+    padding:8px 6px!important;
     border:1px solid color-mix(in srgb,var(--accent,#a64245) 65%,var(--line))!important;
     border-radius:12px;
     background:color-mix(in srgb,var(--accent,#a64245) 6%,var(--panel));
     color:var(--accent,#a64245);
-    font-size:11px;
-    line-height:1.2;
+    font-size:10px;
+    line-height:1.15;
     white-space:normal;
     text-align:center;
   }
 
   .day-heading-actions .icon-action svg{
-    width:17px;
-    height:17px;
+    width:16px;
+    height:16px;
     flex:0 0 auto;
   }
 
   .day-heading-actions [data-action="between-route"]{
-    grid-column:1 / -1;
+    grid-column:auto;
   }
 
   .day-heading-actions .plan-add-top{
@@ -837,6 +837,6 @@ html[data-theme="dark"] .plan-summary-note{color:#a9a1a6}
 
 @media(max-width:390px){
   .day-heading h2{font-size:26px}
-  .day-heading-actions{grid-template-columns:1fr}
-  .day-heading-actions [data-action="between-route"]{grid-column:auto}
+  .day-heading-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .day-heading-actions .icon-action{font-size:9.5px;padding:8px 4px!important}
 }
