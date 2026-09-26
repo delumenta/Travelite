@@ -736,3 +736,10 @@ html[data-theme="dark"] .plan-summary-note{color:#a9a1a6}
     grid-column:auto;
   }
 }
+
+.starter-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.starter-actions .btn{min-width:150px}
+@media(max-width:630px){
+  .starter-actions{flex-direction:column}
+  .starter-actions .btn{width:100%}
+}
