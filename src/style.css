@@ -346,3 +346,238 @@ html[data-theme="dark"] .around-signal{background:#292529}
   .modal:has(.around-sheet){width:100%;max-height:88vh;border-radius:22px 22px 0 0;margin-top:auto}
   .around-actions .around-add{width:100%;justify-content:center;margin-left:0}
 }
+
+
+/* =========================================================
+   PLAN LAYOUT — ROOMIER ITINERARY BUILDER
+========================================================= */
+.plan-workspace{
+  grid-template-columns:minmax(0,1fr) 310px;
+  gap:34px;
+}
+.plan-day-strip{
+  margin-bottom:22px;
+  padding-bottom:16px;
+}
+.plan-day-panel{
+  min-width:0;
+}
+.day-heading{
+  margin:12px 0 24px;
+  gap:20px;
+}
+.day-heading-actions{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.plan-timeline{
+  max-width:960px;
+}
+.plan-stop.stop{
+  grid-template-columns:70px minmax(0,1fr);
+  gap:16px;
+}
+.plan-stop .stop-card{
+  padding:22px 22px 18px;
+  margin-bottom:19px;
+  border-radius:18px;
+}
+.plan-stop .stop-card h3{
+  font-size:18px;
+  margin-top:12px;
+  margin-bottom:7px;
+}
+.plan-stop .stop-card p{
+  font-size:11.5px;
+  line-height:1.6;
+}
+.plan-stop .stop-actions{
+  margin-top:17px;
+  padding-top:14px;
+  gap:18px;
+  row-gap:10px;
+}
+.plan-stop .stop-actions a,
+.plan-stop .stop-actions button{
+  min-height:32px;
+}
+.add-timeline{
+  width:calc(100% - 86px);
+  margin-left:86px;
+  padding:18px;
+  border-radius:14px;
+}
+.plan-tools{
+  gap:16px;
+  top:106px;
+}
+.plan-summary-card,
+.plan-helper-card{
+  padding:22px;
+  border-radius:18px;
+}
+.plan-helper-card p{
+  font-size:11.5px;
+  line-height:1.65;
+}
+.plan-summary-numbers{
+  gap:10px;
+  margin-bottom:16px;
+}
+.plan-summary-numbers span{
+  padding:12px;
+}
+.around-results{
+  gap:13px;
+}
+.around-card{
+  padding:18px;
+  border-radius:16px;
+}
+.around-card-head{
+  grid-template-columns:34px minmax(0,1fr);
+  gap:12px;
+}
+.around-rank{
+  width:32px;
+  height:32px;
+}
+.around-card h3{
+  font-size:15px;
+}
+.around-card-head p{
+  font-size:10.5px;
+  line-height:1.5;
+}
+.around-signal{
+  margin:13px 0 14px;
+  padding:11px 12px;
+}
+.around-actions{
+  gap:15px;
+  row-gap:10px;
+}
+
+@media(max-width:1180px){
+  .plan-workspace{
+    grid-template-columns:1fr;
+    gap:26px;
+  }
+  .plan-tools{
+    position:static;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .plan-helper-card.bookings-today{
+    grid-column:1/-1;
+  }
+  .plan-timeline{
+    max-width:none;
+  }
+}
+
+@media(max-width:700px){
+  .plan-day-strip{
+    margin-bottom:18px;
+    padding-bottom:13px;
+  }
+  .day-heading{
+    margin:8px 0 20px;
+    gap:14px;
+  }
+  .day-heading h2{
+    font-size:20px;
+  }
+  .day-heading-actions{
+    width:100%;
+    gap:8px;
+  }
+  .day-heading-actions .icon-action{
+    min-height:38px;
+    padding:0 10px!important;
+    border:1px solid #dde8de;
+    border-radius:10px;
+    background:#fff;
+  }
+  .plan-tools{
+    grid-template-columns:1fr;
+    gap:13px;
+  }
+  .plan-summary-card,
+  .plan-helper-card{
+    padding:18px;
+  }
+  .plan-stop.stop{
+    grid-template-columns:32px minmax(0,1fr);
+    gap:10px;
+  }
+  .plan-stop .stop-rail{
+    padding-top:20px;
+  }
+  .plan-stop .stop-rail span{
+    font-size:10px;
+  }
+  .plan-stop .stop-rail i{
+    right:-8px;
+  }
+  .plan-stop .stop-rail:after{
+    right:-15px;
+    top:22px;
+  }
+  .plan-stop .stop-card{
+    padding:18px 16px 15px;
+    margin-bottom:15px;
+    border-radius:16px;
+  }
+  .plan-stop .stop-card-top{
+    flex-wrap:wrap;
+    row-gap:7px;
+  }
+  .plan-stop .stop-card h3{
+    font-size:17px;
+    line-height:1.35;
+  }
+  .plan-stop .stop-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .plan-stop .stop-actions a,
+  .plan-stop .stop-actions button{
+    min-height:38px;
+    padding:0 9px;
+    border:1px solid #e2ebe2;
+    border-radius:9px;
+    justify-content:center;
+    font-size:9.5px;
+  }
+  .plan-stop .stop-actions .quiet-danger{
+    margin-left:0;
+  }
+  .add-timeline{
+    width:calc(100% - 42px);
+    margin-left:42px;
+    padding:16px 12px;
+  }
+  .around-card{
+    padding:16px;
+  }
+  .around-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .around-actions a,
+  .around-actions button{
+    justify-content:center;
+    min-height:38px;
+    padding:7px 9px;
+    border:1px solid #e2ebe2;
+    border-radius:9px;
+  }
+  .around-actions .around-add{
+    grid-column:1/-1;
+    width:100%;
+  }
+}
