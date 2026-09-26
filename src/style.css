@@ -105,7 +105,8 @@ html[data-theme="dark"] .auth-photo-shade{background:linear-gradient(180deg,#170
 .home-area-time{color:#9daa9e;font:800 11px Manrope,sans-serif}
 .home-area-dot{width:13px;height:13px;border-radius:50%;border:3px solid #b6424e;box-shadow:0 0 0 2px #b6424e14}
 .home-area-copy{min-width:0}.home-area-copy b,.home-area-copy small{display:block}.home-area-copy b{color:#b6424e;font-size:13px}.home-area-copy small{color:#978c8e;font-size:10px;margin-top:4px}
-.home-area-head>svg{width:16px;color:#aa7379;transition:transform .2s ease}.home-area-group.open .home-area-head>svg{transform:rotate(180deg)}
+.home-area-chevron{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;color:#d85a67;font-size:18px;font-weight:900;line-height:1;transition:transform .2s ease,background .2s ease;background:rgba(216,90,103,.08)}
+.home-area-group.open .home-area-chevron{transform:rotate(180deg);background:rgba(216,90,103,.14)}
 .home-area-stops{margin:0 0 12px 81px;border-left:1px solid #e7d9dc;padding-left:14px}
 .home-area-stop{display:grid;grid-template-columns:44px minmax(0,1fr) 24px;gap:9px;align-items:center;padding:10px 0;border-top:1px solid #eee7e5}
 .home-area-stop:first-child{border-top:0}.home-area-stop>span{font-size:10px;color:#a48084}.home-area-stop b,.home-area-stop small{display:block}.home-area-stop b{font-size:11px;color:#4a4244}.home-area-stop small{font-size:9px;color:#94898b;margin-top:3px}.home-area-stop a{color:#b6424e}.home-area-stop svg{width:15px;height:15px}
