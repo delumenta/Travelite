@@ -523,14 +523,26 @@ function dayRows(date=state.day){
     .sort((a,b)=>(Number(a.sort_order||999)-Number(b.sort_order||999))||time(a.start_time).localeCompare(time(b.start_time)));
 }
 function dayRouteUrl(rows){
-  const points=(rows||[]).map(x=>{
-    if(Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)))return `${x.latitude},${x.longitude}`;
-    return String(x.address||x.location_name||'').trim();
-  }).filter(Boolean);
+  const points=(rows||[])
+    .filter(x=>
+      Number.isFinite(Number(x.latitude)) &&
+      Number.isFinite(Number(x.longitude))
+    )
+    .map(x=>`${Number(x.latitude)},${Number(x.longitude)}`);
+
   if(points.length<2)return '';
-  const origin=points[0],destination=points[points.length-1],waypoints=points.slice(1,-1).slice(0,8);
-  let url=`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
-  if(waypoints.length)url+=`&waypoints=${encodeURIComponent(waypoints.join('|'))}`;
+
+  const origin=points[0];
+  const destination=points[points.length-1];
+  const waypoints=points.slice(1,-1).slice(0,8);
+
+  let url=
+    `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+
+  if(waypoints.length){
+    url+=`&waypoints=${encodeURIComponent(waypoints.join('|'))}`;
+  }
+
   return url;
 }
 function addCatalogMatches(){
