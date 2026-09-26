@@ -969,3 +969,74 @@ html[data-theme="dark"] .plan-stop .stop-reorder button:disabled{
   color:#62585c;
   opacity:1;
 }
+
+
+/* =========================================================
+   PLAN — CLEAN MOBILE TIMELINE RAIL
+========================================================= */
+@media(max-width:700px){
+  .plan-timeline{
+    position:relative;
+  }
+
+  .plan-stop.stop{
+    grid-template-columns:54px minmax(0,1fr);
+    gap:10px;
+  }
+
+  .plan-stop .stop-rail{
+    position:relative;
+    padding-top:22px;
+    align-items:flex-end;
+  }
+
+  .plan-stop .stop-rail span{
+    padding-right:8px;
+    font-size:10px;
+    line-height:1;
+  }
+
+  .plan-stop .stop-rail i{
+    position:absolute;
+    left:calc(100% + 5px);
+    right:auto;
+    top:-16px;
+    bottom:-16px;
+    width:2px;
+    background:color-mix(in srgb,var(--accent,#c45360) 32%,var(--line));
+    transform:translateX(-50%);
+  }
+
+  .plan-stop:first-child .stop-rail i{
+    top:29px;
+  }
+
+  .plan-stop .stop-rail:after{
+    content:'';
+    position:absolute;
+    left:calc(100% + 5px);
+    right:auto;
+    top:22px;
+    width:14px;
+    height:14px;
+    box-sizing:border-box;
+    border:4px solid var(--accent,#c45360);
+    background:var(--bg,#f8f5f2);
+    border-radius:50%;
+    transform:translateX(-50%);
+    z-index:2;
+  }
+
+  .plan-stop:last-of-type .stop-rail i{
+    bottom:29px;
+  }
+}
+
+html[data-theme="dark"] .plan-stop .stop-rail i{
+  background:color-mix(in srgb,var(--accent,#d5485c) 40%,#342a2f);
+}
+
+html[data-theme="dark"] .plan-stop .stop-rail:after{
+  background:#0b0c0e;
+  border-color:var(--accent,#d5485c);
+}
