@@ -321,39 +321,30 @@ function foodHasTabelog(r){
 }
 
 
+function rollingCommunityRating(rows){
+  const recent=[...rows]
+    .map(x=>({...x,__rating:Number(x.rating),__checked:new Date(x.checked_at||x.created_at||0).getTime()}))
+    .filter(x=>Number.isFinite(x.__rating))
+    .sort((a,b)=>b.__checked-a.__checked)
+    .slice(0,10);
+  if(!recent.length)return null;
+
+  const avg=recent.reduce((sum,x)=>sum+x.__rating,0)/recent.length;
+  return {
+    value:avg.toFixed(1),
+    total:recent.length,
+    approximate:recent.length>1
+  };
+}
 function restaurantRatingSummary(restaurantId){
-  const rows=state.ratingChecks
-    .filter(x=>Number(x.restaurant_id)===Number(restaurantId))
-    .map(x=>({...x,__rating:Number(x.rating)}))
-    .filter(x=>Number.isFinite(x.__rating));
-  if(!rows.length)return null;
-  const sorted=rows.map(x=>x.__rating).sort((a,b)=>a-b);
-  const mid=Math.floor(sorted.length/2);
-  const median=sorted.length%2?sorted[mid]:(sorted[mid-1]+sorted[mid])/2;
-  const agreeing=rows.filter(x=>Math.abs(x.__rating-median)<=0.2);
-  const confirmed=agreeing.length>=2;
-  const value=(confirmed
-    ? agreeing.reduce((sum,x)=>sum+x.__rating,0)/agreeing.length
-    : median
-  ).toFixed(1);
-  return {value,total:rows.length,agreeing:agreeing.length,confirmed};
+  return rollingCommunityRating(
+    state.ratingChecks.filter(x=>Number(x.restaurant_id)===Number(restaurantId))
+  );
 }
 function placeRatingSummary(placeId){
-  const rows=state.placeRatingChecks
-    .filter(x=>Number(x.place_id)===Number(placeId))
-    .map(x=>({...x,__rating:Number(x.rating)}))
-    .filter(x=>Number.isFinite(x.__rating));
-  if(!rows.length)return null;
-  const sorted=rows.map(x=>x.__rating).sort((a,b)=>a-b);
-  const mid=Math.floor(sorted.length/2);
-  const median=sorted.length%2?sorted[mid]:(sorted[mid-1]+sorted[mid])/2;
-  const agreeing=rows.filter(x=>Math.abs(x.__rating-median)<=0.2);
-  const confirmed=agreeing.length>=2;
-  const value=(confirmed
-    ? agreeing.reduce((sum,x)=>sum+x.__rating,0)/agreeing.length
-    : median
-  ).toFixed(1);
-  return {value,total:rows.length,agreeing:agreeing.length,confirmed};
+  return rollingCommunityRating(
+    state.placeRatingChecks.filter(x=>Number(x.place_id)===Number(placeId))
+  );
 }
 function googleRatingSearchUrl(r){
   const query=[r.name,r.city||r.area||r.country,'Google reviews'].filter(Boolean).join(' ');
@@ -409,7 +400,7 @@ function foodCard(r,link){
       ${eaten?badge(`✓ Eaten${link.eaten_at?' · '+esc(fmtDate(link.eaten_at.slice(0,10))):''}`,'eaten'):''}
       ${price?badge(esc(price),'price'):''}
       ${r.tabelog_rating!=null?badge(`⭐ ${esc(r.tabelog_rating)} Tabelog`,'rating'):''}
-      ${ratingSummary?badge(`⭐ ${esc(ratingSummary.value)} Google · ${ratingSummary.confirmed?'community checked':ratingSummary.total+' check'}`,'google-rating'):''}
+      ${ratingSummary?badge(`⭐ ${esc(ratingSummary.value)}${ratingSummary.approximate?'~':''} Community Rating · ${ratingSummary.total} ${ratingSummary.total===1?'check':'checked'}`,'google-rating'):''}
     </div>
     ${scheduled.length?`<div class="jfood-plan">${scheduled.map(x=>`📅 ${esc(fmtDate(x.schedule_date))}${x.start_time?' · '+esc(time(x.start_time)):''}`).join(' &nbsp; ')}</div>`:''}
     ${r.description?`<p class="jfood-description">${esc(r.description)}</p>`:''}
@@ -1096,7 +1087,7 @@ function discoveryView(){
           <div><h3>${esc(x.name)}</h3><p>${esc([x.__legLabel,signal.meta,type].filter(Boolean).join(' · '))}</p></div>
         </div>
         <div class="around-signal"><b>${esc(signal.label)}</b><span>${esc(signal.note)}</span></div>
-        ${ratingSummary?`<div class="around-community-rating">⭐ Community rating: <b>${esc(ratingSummary.value)}</b>${ratingSummary.confirmed?` · ${ratingSummary.agreeing} checks`:` · ${ratingSummary.total} check`}</div>`:''}
+        ${ratingSummary?`<div class="around-community-rating">⭐ Community Rating: <b>${esc(ratingSummary.value)}${ratingSummary.approximate?'~':''}</b> · ${ratingSummary.total} ${ratingSummary.total===1?'check':'checked'}</div>`:''}
         <div class="around-actions">
           ${x.id?`<button data-action="place-rating" data-id="${x.id}">${ratingSummary?'Update rating':'Add rating'}</button>`:''}
           <a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(x.name)} in Google Maps">${icon('MapPin')} Google Maps</a>
@@ -1532,7 +1523,7 @@ function catalogItem(x,kind){
       <h3>${esc(x.name)}</h3>
       <p>${icon('MapPin')} ${esc(meta||x.country||'Explore')}</p>
       ${distance?`<div class="catalog-distance">${icon('Navigation')} ${esc(distance)}</div>`:''}
-      ${ratingSummary?`<div class="catalog-community-rating">⭐ Community rating: <b>${esc(ratingSummary.value)}</b>${ratingSummary.confirmed?` · ${ratingSummary.agreeing} checks`:` · ${ratingSummary.total} check`}</div>`:''}
+      ${ratingSummary?`<div class="catalog-community-rating">⭐ Community Rating: <b>${esc(ratingSummary.value)}${ratingSummary.approximate?'~':''}</b> · ${ratingSummary.total} ${ratingSummary.total===1?'check':'checked'}</div>`:''}
       ${x.description?`<small>${esc(x.description.slice(0,125))}${x.description.length>125?'…':''}</small>`:''}
       <div class="catalog-actions">
         <button data-action="save-catalog" data-kind="${kind}" data-id="${x.id}" class="${saved?'is-saved':''}">${icon(saved?'Check':'Heart')} ${saved?'Saved':'Save'}</button>
@@ -1695,7 +1686,7 @@ function modalContent(m){if(m.type==='rating'){
       <label class="span2">Google rating<input name="rating" type="number" step="0.1" inputmode="decimal" value="${esc(mine?.rating??'')}" placeholder="e.g. 4.6" required></label>
       <button class="btn primary full span2" type="submit">${mine?'Update rating':'Add rating'} ${icon('Check')}</button>
     </form>
-    ${summary?`<div class="rating-community-note"><b>Community rating: ${esc(summary.value)}</b><span>${summary.confirmed?`${summary.agreeing} matching checks`:`${summary.total} check so far · waiting for another traveller`}</span></div>`:''}
+    ${summary?`<div class="rating-community-note"><b>Community Rating: ${esc(summary.value)}${summary.approximate?'~':''}</b><span>${summary.total} ${summary.total===1?'check':'checked'} · latest checks count most</span></div>`:''}
   </div>`;
 }
 if(m.type==='password')return `<form id="password-form" class="form-grid"><label class="span2">New password<input type="password" name="password" minlength="8" autocomplete="new-password" required></label><button class="btn primary full span2" type="submit">Save new password ${icon('ArrowRight')}</button></form>`;if(m.type==='tripPicker')return `<div class="trip-list">${state.trips.map(t=>`<div class="trip-option-row"><button data-action="select-trip" data-id="${t.id}" class="trip-option ${state.trip?.id===t.id?'selected':''}"><div class="trip-thumb" style="background-image:url('${esc(cover(t))}')"></div><span><b>${esc(t.name)}</b><small>${esc(dateRange(t.start_date,t.end_date))}</small></span>${icon(state.trip?.id===t.id?'Check':'ArrowRight')}</button>${t.owner_id===state.user?.id?`<button class="trip-delete-button" data-action="delete-trip" data-id="${t.id}" aria-label="Delete ${esc(t.name)}" title="Delete trip">${icon('Trash2')}</button>`:''}</div>`).join('')}</div><button class="btn primary full" data-action="new-trip">${icon('Plus')} Create another trip</button>`;
@@ -2061,7 +2052,7 @@ if(form.id==='rating-form'){
   state.modal=null;
   render();
   const summary=kind==='place'?placeRatingSummary(itemId):restaurantRatingSummary(itemId);
-  toast(summary?.confirmed?'Rating community checked.':'Rating saved. One more matching check will confirm it.');
+  toast(summary?.total>1?'Community rating updated.':'Rating saved.');
   return;
 }
 if(form.id==='password-form'){let r=await sb.auth.updateUser({password:field(fd,'password')});if(r.error)throw r.error;state.modal=null;render();toast('Password updated.');return;}
