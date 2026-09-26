@@ -581,3 +581,12 @@ html[data-theme="dark"] .around-signal{background:#292529}
     width:100%;
   }
 }
+
+
+.plan-summary-note{
+  margin:4px 0 0;
+  color:#829087;
+  font-size:11px;
+  line-height:1.55;
+}
+html[data-theme="dark"] .plan-summary-note{color:#a9a1a6}
