@@ -136,7 +136,7 @@ function nearbyCatalogRows(kind,latitude,longitude,radius){
 function mergeNearbyRows(localRows,googleRows,latitude,longitude,radius,kind){
   const merged=[...localRows];
   const localPlaceIds=new Set(localRows.map(x=>x.provider_place_id).filter(Boolean));
-  const localNames=new Map();
+  const localNames=new globalThis.Map();
   for(const x of localRows){
     const key=nearbyKey(x);
     if(key&&!localNames.has(key))localNames.set(key,x);
@@ -602,7 +602,7 @@ function addToDayView(){
   </div>`;
 }
 
-const publicPlaceCache=new Map();
+const publicPlaceCache=new globalThis.Map();
 
 function claimCoordinate(entity){
   const value=entity?.claims?.P625?.[0]?.mainsnak?.datavalue?.value;
