@@ -129,7 +129,7 @@ html[data-theme="dark"] .trip-delete-button{background:#1b1a1f;border-color:#513
 html[data-theme="dark"] .trip-delete-button:hover,html[data-theme="dark"] .trip-delete-button:focus-visible{background:#392027}
 .hero-photo-credit{position:absolute;right:16px;bottom:12px;z-index:2;max-width:50%;color:#fff;background:#17131599;border-radius:6px;padding:5px 8px;font-size:10px;line-height:1.35;text-align:right}
 .hero-photo-credit:hover{text-decoration:underline}
-@media(max-width:650px){.hero-photo-credit{right:12px;bottom:10px;max-width:65%;font-size:9px}}
+@media(max-width:760px){.hero-photo-credit{right:12px;bottom:10px;max-width:65%;font-size:9px}}
 .hero-photo-credit{left:auto;right:16px;text-align:right}
 @media(max-width:650px){.hero-photo-credit{left:auto;right:12px}}
 
@@ -169,16 +169,19 @@ html[data-theme="dark"] .jfood-chips button,html[data-theme="dark"] .jfood-field
 html[data-theme="dark"] .jfood-chips button.active{background:#753139;border-color:#a54e57;color:#fff}
 html[data-theme="dark"] .jfood-remove{background:#2a191d!important;border-color:#58323a!important;color:#f1a0a6!important}html[data-theme="dark"] .jfood-title h3,html[data-theme="dark"] .jfood-results-head strong{color:#fff3f3}html[data-theme="dark"] .jfood-section h2{color:#e2adb0}html[data-theme="dark"] .jfood-mark{background:#432a30;color:#ffa8ad}html[data-theme="dark"] .jfood-badge{background:#332b31;border-color:#54434a;color:#e7d7db}
 @media(max-width:650px){
-  .jfood-filters{padding:10px;gap:9px;border-radius:13px}
-  .jfood-status-chips{gap:6px}
-  .jfood-status-chips button{padding:8px 11px;font-size:10.5px}
-  .jfood-city-chips button{padding:8px 12px}
-  .jfood-fields{grid-template-columns:minmax(0,.9fr) minmax(0,.9fr) minmax(0,1.35fr);gap:7px}
+  .jfood-filters{padding:9px;gap:7px;border-radius:12px;margin-bottom:16px}
+  .jfood-filter-head>span{font-size:9px}
+  .jfood-filter-reset{font-size:9px}
+  .jfood-chips{gap:5px}
+  .jfood-status-chips{gap:5px}
+  .jfood-status-chips button{padding:7px 9px;font-size:9.5px}
+  .jfood-city-chips button{padding:7px 10px;font-size:10px}
+  .jfood-fields{grid-template-columns:minmax(0,.85fr) minmax(0,.85fr) minmax(0,1.3fr);gap:6px}
   .jfood-search-label{grid-column:auto}
-  .jfood-fields label{min-width:0;font-size:9px;letter-spacing:.55px}
-  .jfood-fields select,.jfood-fields input{height:40px;min-width:0;padding:0 8px;font-size:11px}
-  .jfood-fields input{padding:0 9px}
-  .jfood-fields input::placeholder{font-size:10px}
+  .jfood-fields label{min-width:0;font-size:8px;letter-spacing:.45px}
+  .jfood-fields select,.jfood-fields input{height:36px;min-width:0;padding:0 7px;font-size:10px;border-radius:8px}
+  .jfood-fields input{padding:0 8px}
+  .jfood-fields input::placeholder{font-size:9px}
   .jfood-tabs button{flex:1}
   .jfood-card{padding:12px}
   .jfood-actions a,.jfood-actions button{min-height:34px}
