@@ -893,3 +893,35 @@ html[data-theme="dark"] .stop-reorder button:disabled{
   border-color:#2a2529;
   opacity:.55;
 }
+
+
+/* =========================================================
+   PLAN — ACTION BOXES FOLLOW CARD THEME
+========================================================= */
+@media(max-width:700px){
+  .plan-stop .stop-actions a,
+  .plan-stop .stop-actions button{
+    background:#fffdfa;
+    border-color:#e8e0dc;
+    color:#a93041;
+  }
+
+  .plan-stop .stop-actions .quiet-danger{
+    background:#fffdfa;
+    border-color:#ead8da;
+    color:#a93041;
+  }
+}
+
+html[data-theme="dark"] .plan-stop .stop-actions a,
+html[data-theme="dark"] .plan-stop .stop-actions button{
+  background:#151316;
+  border-color:#4a3940;
+  color:#e36a7b;
+}
+
+html[data-theme="dark"] .plan-stop .stop-actions .quiet-danger{
+  background:#151316;
+  border-color:#4a3940;
+  color:#e36a7b;
+}
