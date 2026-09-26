@@ -712,6 +712,206 @@ function aroundStopLabel(row){
   const note=[row.reason,row.fitNote].filter(Boolean).join(' ');
   return {label:`${importance} · ${fit}`,note};
 }
+
+function inferPlanningCity(){
+  const counts=new globalThis.Map();
+  const add=value=>{
+    const city=String(value||'').trim();
+    if(city)counts.set(city,(counts.get(city)||0)+1);
+  };
+  for(const link of state.savedPlaces){
+    const place=state.places.find(x=>Number(x.id)===Number(link.place_id));
+    add(place?.city);
+  }
+  for(const row of state.schedule){
+    if(!row.place_id)continue;
+    const place=state.places.find(x=>Number(x.id)===Number(row.place_id));
+    add(place?.city);
+  }
+  if(counts.size)return [...counts.entries()].sort((a,b)=>b[1]-a[1])[0][0];
+  for(const row of state.places.filter(x=>x.status==='active'&&inTripCountry(x)&&x.city))add(row.city);
+  return counts.size?[...counts.entries()].sort((a,b)=>b[1]-a[1])[0][0]:'';
+}
+
+function deterministicShuffle(rows,seedText=''){
+  let seed=0;
+  for(const ch of String(seedText))seed=((seed*31)+ch.charCodeAt(0))>>>0;
+  const out=[...rows];
+  for(let i=out.length-1;i>0;i--){
+    seed=(1664525*seed+1013904223)>>>0;
+    const j=seed%(i+1);
+    [out[i],out[j]]=[out[j],out[i]];
+  }
+  return out;
+}
+
+function walkingMinutes(distance){
+  const metres=Number(distance);
+  if(!Number.isFinite(metres)||metres<=0)return null;
+  return Math.max(1,Math.round(metres/80));
+}
+
+function discoveryCardSignal(row){
+  const importance=row.importance||'Optional';
+  const distance=Number(row.__distance);
+  const mins=walkingMinutes(distance);
+  let label=importance;
+  if(importance==='Go')label='Popular stop';
+  if(importance==='If interested'&&Number.isFinite(distance)&&distance<=700)label='Convenient stop';
+  return {
+    label,
+    meta:[row.fit,mins?mins+' min away':null].filter(Boolean).join(' · '),
+    note:row.reason||row.fitNote||''
+  };
+}
+
+function discoveryView(){
+  const rows=state.aroundResults||[];
+  const modeLabel=state.discoveryMode==='between'?'BETWEEN YOUR STOPS':'START YOUR DAY';
+  const leadIcon=state.discoveryMode==='between'?'Route':'Sparkles';
+  return \`<div class="around-sheet">
+    <div class="around-anchor">
+      <span class="around-anchor-icon">\${icon(leadIcon)}</span>
+      <span><small>\${modeLabel}</small><b>\${esc(state.discoveryTitle||'Ideas for this day')}</b><em>\${esc(state.discoverySubtitle||'')}</em></span>
+    </div>
+    <p class="around-explainer">Suggestions are temporary. Travelite checks its own library first and uses Google only when needed. Nothing is added to Supabase until you choose Save or Add to this day.</p>
+    \${state.aroundBusy?\`<div class="add-empty around-loading">\${icon('LoaderCircle','spin')}<p>Finding useful places…</p></div>\`:rows.length?\`<div class="around-results">\${rows.map((x,i)=>{
+      const signal=discoveryCardSignal(x);
+      const type=String(x.place_type||'attraction').replaceAll('_',' ');
+      return \`<article class="around-card">
+        <div class="around-card-head">
+          <span class="around-rank">\${i+1}</span>
+          <div><h3>\${esc(x.name)}</h3><p>\${esc([signal.meta,type].filter(Boolean).join(' · '))}</p></div>
+        </div>
+        <div class="around-signal"><b>\${esc(signal.label)}</b><span>\${esc(signal.note)}</span></div>
+        <div class="around-actions">
+          <a href="\${esc(maps(x))}" target="_blank" rel="noopener noreferrer" aria-label="Open \${esc(x.name)} in Google Maps">\${icon('MapPin')} Google Maps</a>
+          <button data-action="around-save" data-index="\${i}">\${icon('Heart')} Save</button>
+          <button class="around-add" data-action="around-add" data-index="\${i}">\${icon('CalendarPlus')} Add to this day</button>
+        </div>
+      </article>\`;
+    }).join('')}</div>\`:\`<div class="add-empty">\${icon('MapPin')}<p>No suggestions came back. You can still add your own place.</p></div>\`}
+  </div>\`;
+}
+
+async function findStarterSuggestions(){
+  state.discoveryMode='starter';
+  state.starterCity=inferPlanningCity();
+  const destination=state.starterCity||state.trip?.name||state.trip?.country||'your destination';
+  state.discoveryTitle=state.starterCity||state.trip?.name||'Starter ideas';
+  state.discoverySubtitle='Up to 5 ideas · nothing is saved until you choose it';
+  state.aroundResults=[];
+  state.aroundBusy=true;
+  state.modal={type:'discovery'};
+  render();
+
+  try{
+    const scheduledIds=new Set(dayRows(state.day).map(x=>Number(x.place_id)).filter(Boolean));
+    let local=state.places
+      .filter(x=>x.status==='active'&&inTripCountry(x))
+      .filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)))
+      .filter(x=>!scheduledIds.has(Number(x.id)))
+      .filter(x=>!state.starterCity||String(x.city||'').toLowerCase()===String(state.starterCity).toLowerCase())
+      .map(x=>({...x,__source:'catalog',__kind:'place'}));
+
+    local=deterministicShuffle(local,String(state.trip?.id)+'|'+String(state.day)+'|'+destination).slice(0,8);
+    let combined=[...local];
+
+    if(combined.length<5){
+      const google=await browserTextPlaces('top attractions in '+destination+' '+(state.trip?.country||''),'place',10);
+      combined.push(...google.map(x=>({...x,__source:'google',__kind:'place'})));
+    }
+
+    const unique=[];
+    const seen=new Set();
+    for(const row of combined){
+      const key=row.provider_place_id||nearbyKey(row);
+      if(!key||seen.has(key))continue;
+      seen.add(key);
+      unique.push(row);
+      if(unique.length>=10)break;
+    }
+
+    const enriched=await enrichDiscoveryRows(unique);
+    state.aroundResults=enriched
+      .sort((a,b)=>(Number(b.importanceRank)||0)-(Number(a.importanceRank)||0))
+      .slice(0,5);
+  }catch(e){
+    console.error('Starter suggestions failed',e);
+    toast(e?.message||'Could not load starter suggestions.',true);
+  }finally{
+    state.aroundBusy=false;
+    render();
+  }
+}
+
+function routePointDistanceMeters(lat,lng,aLat,aLng,bLat,bLng){
+  const meanLat=((aLat+bLat+lat)/3)*Math.PI/180;
+  const x=Math.cos(meanLat)*111320;
+  const y=110540;
+  const ax=aLng*x,ay=aLat*y,bx=bLng*x,by=bLat*y,px=lng*x,py=lat*y;
+  const dx=bx-ax,dy=by-ay,len2=dx*dx+dy*dy;
+  const t=len2?Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/len2)):0;
+  return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+}
+
+async function findBetweenRoute(){
+  const mapped=dayRows(state.day).filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)));
+  if(mapped.length<2){
+    toast('Add at least two mapped places first.',true);
+    return;
+  }
+
+  const first=mapped[0],last=mapped[mapped.length-1];
+  const aLat=Number(first.latitude),aLng=Number(first.longitude),bLat=Number(last.latitude),bLng=Number(last.longitude);
+  const midLat=(aLat+bLat)/2,midLng=(aLng+bLng)/2;
+  const endpointDistance=distanceMeters(aLat,aLng,bLat,bLng);
+  const radius=Math.min(30000,Math.max(1800,endpointDistance/2+1500));
+
+  state.discoveryMode='between';
+  state.discoveryTitle=first.title+' → '+last.title;
+  state.discoverySubtitle='Places that fit reasonably along the route';
+  state.aroundResults=[];
+  state.aroundBusy=true;
+  state.modal={type:'discovery'};
+  render();
+
+  try{
+    const anchorNames=new Set(mapped.map(x=>String(x.title||'').trim().toLowerCase()));
+    const corridor=row=>{
+      const d=routePointDistanceMeters(Number(row.latitude),Number(row.longitude),aLat,aLng,bLat,bLng);
+      row.__distance=Math.round(d);
+      return d<=1400;
+    };
+
+    let local=nearbyCatalogRows('place',midLat,midLng,radius)
+      .filter(x=>!anchorNames.has(String(x.name||'').trim().toLowerCase()))
+      .filter(corridor);
+
+    let combined=local;
+    if(local.length<10){
+      const google=await browserNearbyPlaces({latitude:midLat,longitude:midLng,radius,kind:'place'});
+      combined=mergeNearbyRows(local,google,midLat,midLng,radius,'place')
+        .filter(x=>!anchorNames.has(String(x.name||'').trim().toLowerCase()))
+        .filter(corridor);
+    }
+
+    const enriched=await enrichDiscoveryRows(combined.slice(0,20));
+    state.aroundResults=enriched
+      .sort((a,b)=>{
+        const importance=(Number(b.importanceRank)||0)-(Number(a.importanceRank)||0);
+        return importance||Number(a.__distance)-Number(b.__distance);
+      })
+      .slice(0,12);
+  }catch(e){
+    console.error('Between-route discovery failed',e);
+    toast(e?.message||'Could not find places between these stops.',true);
+  }finally{
+    state.aroundBusy=false;
+    render();
+  }
+}
+
 function aroundStopView(){
   const stop=state.aroundStop;
   if(!stop)return '<div class="add-empty"><p>Choose a planned stop first.</p></div>';
