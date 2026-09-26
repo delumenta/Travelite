@@ -600,11 +600,103 @@ function addToDayView(){
     <button class="add-custom-stop" data-action="new-custom-stop">${icon('Plus')} Add a custom note or stop</button>
   </div>`;
 }
-function aroundStopLabel(rank,distance){
-  if(distance<=250)return {label:'Very close',note:'An easy add-on near this stop.'};
-  if(distance<=600)return {label:'Nearby',note:'Close enough to combine without much backtracking.'};
-  if(distance<=1200)return {label:'Good detour',note:'Still within the area if it fits your timing.'};
-  return {label:'In the area',note:'A little farther away, but still within this search radius.'};
+
+const publicPlaceCache=new Map();
+
+function claimCoordinate(entity){
+  const value=entity?.claims?.P625?.[0]?.mainsnak?.datavalue?.value;
+  if(!value||!Number.isFinite(Number(value.latitude))||!Number.isFinite(Number(value.longitude)))return null;
+  return {latitude:Number(value.latitude),longitude:Number(value.longitude)};
+}
+function hasClaim(entity,property){return Array.isArray(entity?.claims?.[property])&&entity.claims[property].length>0;}
+function discoveryFit(distance){
+  if(distance<=300)return {fit:'Easy walk',fitNote:'Very easy to combine with this stop.'};
+  if(distance<=700)return {fit:'Nearby',fitNote:'Close enough to add without much backtracking.'};
+  if(distance<=1400)return {fit:'Worth the walk',fitNote:'A longer walk, but still in the same area.'};
+  return {fit:'Detour',fitNote:'Farther from this stop, so add it only if it is worth the extra travel.'};
+}
+function discoveryImportance(entity,wikiSummary,row){
+  const sitelinks=entity?.sitelinks?Object.keys(entity.sitelinks).length:0;
+  const description=String(entity?.descriptions?.en?.value||wikiSummary?.description||'').toLowerCase();
+  const heritage=hasClaim(entity,'P1435')||hasClaim(entity,'P757');
+  const majorWords=/world heritage|unesco|national museum|national park|castle|palace|cathedral|major shrine|major temple|historic monument|landmark/;
+  const nicheWords=/museum|gallery|garden|shrine|temple|monument|historic|market|park|viewpoint|tower/;
+  if(heritage||sitelinks>=45||majorWords.test(description)){
+    return {importance:'Major attraction',importanceRank:4,reason:heritage?'Recognised heritage site with broad public significance.':'Strong Wikipedia/Wikidata presence suggests a major landmark.'};
+  }
+  if(sitelinks>=15||(wikiSummary?.extract&&nicheWords.test(description))){
+    return {importance:'Go',importanceRank:3,reason:'Well documented and notable enough to be a strong nearby choice.'};
+  }
+  if(sitelinks>=4||wikiSummary?.extract){
+    return {importance:'If interested',importanceRank:2,reason:'A recognised place, but more dependent on your interests.'};
+  }
+  return {importance:'Optional',importanceRank:1,reason:'Useful as a nearby filler rather than a must-see.'};
+}
+async function wikidataMatchForPlace(row){
+  const key=[row.name,Math.round(Number(row.latitude||0)*1000),Math.round(Number(row.longitude||0)*1000)].join('|');
+  if(publicPlaceCache.has(key))return publicPlaceCache.get(key);
+  const task=(async()=>{
+    const searchUrl='https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&origin=*&language=en&uselang=en&limit=5&search='+encodeURIComponent(row.name||'');
+    const search=await fetch(searchUrl).then(r=>r.ok?r.json():null).catch(()=>null);
+    const ids=(search?.search||[]).map(x=>x.id).filter(Boolean);
+    if(!ids.length)return {entity:null,wikiSummary:null};
+    const entityUrl='https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&origin=*&props=claims%7Csitelinks%7Cdescriptions%7Clabels&languages=en&sitefilter=enwiki&ids='+encodeURIComponent(ids.join('|'));
+    const entityData=await fetch(entityUrl).then(r=>r.ok?r.json():null).catch(()=>null);
+    const entities=ids.map(id=>entityData?.entities?.[id]).filter(Boolean);
+    const lat=Number(row.latitude),lng=Number(row.longitude);
+    let entity=entities[0]||null;
+    if(Number.isFinite(lat)&&Number.isFinite(lng)){
+      const located=entities.map(e=>{
+        const coord=claimCoordinate(e);
+        return {e,coord,d:coord?distanceMeters(lat,lng,coord.latitude,coord.longitude):Infinity};
+      }).sort((a,b)=>a.d-b.d);
+      if(located[0]?.d<=3000)entity=located[0].e;
+    }
+    const title=entity?.sitelinks?.enwiki?.title||'';
+    let wikiSummary=null;
+    if(title){
+      wikiSummary=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(title))
+        .then(r=>r.ok?r.json():null).catch(()=>null);
+    }
+    return {entity,wikiSummary};
+  })();
+  publicPlaceCache.set(key,task);
+  return task;
+}
+async function enrichDiscoveryPlace(row){
+  try{
+    const {entity,wikiSummary}=await wikidataMatchForPlace(row);
+    const distance=Number(row.__distance)||0;
+    const importance=discoveryImportance(entity,wikiSummary,row);
+    const fit=discoveryFit(distance);
+    return {
+      ...row,
+      __public:{
+        wikidata_id:entity?.id||null,
+        wikipedia_title:entity?.sitelinks?.enwiki?.title||null,
+        description:wikiSummary?.description||entity?.descriptions?.en?.value||null,
+        extract:wikiSummary?.extract||null,
+        sitelinks:entity?.sitelinks?Object.keys(entity.sitelinks).length:0,
+        heritage:hasClaim(entity,'P1435')||hasClaim(entity,'P757')
+      },
+      ...importance,
+      ...fit
+    };
+  }catch{
+    const fit=discoveryFit(Number(row.__distance)||0);
+    return {...row,importance:'Optional',importanceRank:1,reason:'Nearby place with limited public-source information.',...fit};
+  }
+}
+async function enrichDiscoveryRows(rows){
+  const first=rows.slice(0,12);
+  const enriched=await Promise.all(first.map(enrichDiscoveryPlace));
+  return [...enriched,...rows.slice(12).map(row=>({...row,importance:'Optional',importanceRank:1,...discoveryFit(Number(row.__distance)||0)}))];
+}
+function aroundStopLabel(row){
+  const importance=row.importance||'Optional';
+  const fit=row.fit||discoveryFit(Number(row.__distance)||9999).fit;
+  const note=[row.reason,row.fitNote].filter(Boolean).join(' ');
+  return {label:`${importance} · ${fit}`,note};
 }
 function aroundStopView(){
   const stop=state.aroundStop;
@@ -615,11 +707,10 @@ function aroundStopView(){
       <span class="around-anchor-icon">${icon('MapPinned')}</span>
       <span><small>AROUND</small><b>${esc(stop.title)}</b><em>Within ${Math.round(state.aroundRadius/100)/10} km</em></span>
     </div>
-    <p class="around-explainer">Travelite checks its own place library first. Google is only used to fill gaps when there are not enough nearby results. Ratings are not fetched.</p>
+    <p class="around-explainer">Travelite checks its own place library first, then uses Google only to fill gaps. Wikipedia and Wikidata help judge significance; distance helps judge how naturally a place fits this stop. Ratings are not fetched.</p>
     ${state.aroundBusy?`<div class="add-empty around-loading">${icon('LoaderCircle','spin')}<p>Finding popular places around ${esc(stop.title)}…</p></div>`:rows.length?`<div class="around-results">${rows.map((x,i)=>{
       const distance=Number.isFinite(Number(x.__distance))?Math.round(Number(x.__distance)):null;
-      const rank=Number(x.nearby_rank)||i+1;
-      const tag=aroundStopLabel(rank,distance??9999);
+      const tag=aroundStopLabel(x);
       const type=String(x.place_type||'attraction').replaceAll('_',' ');
       return `<article class="around-card">
         <div class="around-card-head">
@@ -670,8 +761,13 @@ async function findAroundStop(stop){
         .filter(x=>!skipTypes.has(String(x.place_type||'').toLowerCase()));
     }
 
-    state.aroundResults=combined
-      .slice(0,20)
+    const enriched=await enrichDiscoveryRows(combined.slice(0,20));
+    state.aroundResults=enriched
+      .sort((a,b)=>{
+        const importance=(Number(b.importanceRank)||0)-(Number(a.importanceRank)||0);
+        if(importance!==0)return importance;
+        return Number(a.__distance)-Number(b.__distance);
+      })
       .map((x,i)=>({...x,nearby_rank:i+1}));
   }catch(e){
     console.error('Around here failed',e);
