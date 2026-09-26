@@ -135,7 +135,7 @@ function nearbyCatalogRows(kind,latitude,longitude,radius){
   const savedIds=new Set((kind==='food'?state.savedFood:state.savedPlaces).map(x=>Number(kind==='food'?x.restaurant_id:x.place_id)));
   return source
     .filter(x=>x.status==='active'&&inTripCountry(x))
-    .filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)))
+    .filter(x=>hasValidCoordinates(x))
     .map(x=>({
       ...x,
       __source:'catalog',
@@ -217,7 +217,7 @@ async function findNearbyFood(){
     render();
   }
 }
-function foodView(){if(state.foodMode==='collection')return foodCollectionView();let loc=state.foodLocation, saved=state.savedFood.map(link=>state.restaurants.find(x=>x.id===link.restaurant_id)).filter(Boolean).filter(x=>loc&&Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude))&&x.latitude!=null&&x.longitude!=null).map(x=>({...x,distance:Math.round(distanceMeters(loc.latitude,loc.longitude,Number(x.latitude),Number(x.longitude))),saved:true})).filter(x=>x.distance<=300).sort((a,b)=>a.distance-b.distance);let google=state.nearbyFood.filter(x=>!saved.some(y=>(x.id&&Number(y.id)===Number(x.id))||(x.provider_place_id&&y.provider_place_id===x.provider_place_id)||(nearbyKey(y)&&nearbyKey(y)===nearbyKey(x))));return `${title('FOOD FINDER','A bite around the corner.','Restaurants within 300 m of your current location.',`<button class="btn outline" data-action="food-mode" data-value="collection">All food</button><button class="btn primary" data-action="food-refresh">${icon('Navigation')} Refresh location</button>`)}<div class="food-radius">${icon('MapPin')} 300 m radius · ${state.foodBusy?'Finding restaurants…':loc?'Nearest first':'Location needed'}</div>${state.foodError?`<div class="food-message">${esc(state.foodError)} <button data-action="food-refresh">Try again</button></div>`:''}${state.foodBusy?`<div class="loading">${icon('LoaderCircle','spin')}<p>Looking around you…</p></div>`:loc?`<div class="food-groups">${saved.length?`<h2>Your picks nearby</h2>${saved.map(x=>foodResult(x)).join('')}`:''}<h2>Restaurants around you</h2>${google.length?google.map(x=>foodResult(x)).join(''):'<p class="food-message">No other restaurants found within 300 m. Try again from another location.</p>'}</div>`:'<div class="empty-list">'+icon('Navigation')+'<h3>Find food near you.</h3><p>Allow location access to see restaurants within 300 m.</p><button class="btn primary" data-action="food-refresh">Find nearby food</button></div>'}`;}
+function foodView(){if(state.foodMode==='collection')return foodCollectionView();let loc=state.foodLocation, saved=state.savedFood.map(link=>state.restaurants.find(x=>x.id===link.restaurant_id)).filter(Boolean).filter(x=>loc&&hasValidCoordinates(x)&&x.latitude!=null&&x.longitude!=null).map(x=>({...x,distance:Math.round(distanceMeters(loc.latitude,loc.longitude,Number(x.latitude),Number(x.longitude))),saved:true})).filter(x=>x.distance<=300).sort((a,b)=>a.distance-b.distance);let google=state.nearbyFood.filter(x=>!saved.some(y=>(x.id&&Number(y.id)===Number(x.id))||(x.provider_place_id&&y.provider_place_id===x.provider_place_id)||(nearbyKey(y)&&nearbyKey(y)===nearbyKey(x))));return `${title('FOOD FINDER','A bite around the corner.','Restaurants within 300 m of your current location.',`<button class="btn outline" data-action="food-mode" data-value="collection">All food</button><button class="btn primary" data-action="food-refresh">${icon('Navigation')} Refresh location</button>`)}<div class="food-radius">${icon('MapPin')} 300 m radius · ${state.foodBusy?'Finding restaurants…':loc?'Nearest first':'Location needed'}</div>${state.foodError?`<div class="food-message">${esc(state.foodError)} <button data-action="food-refresh">Try again</button></div>`:''}${state.foodBusy?`<div class="loading">${icon('LoaderCircle','spin')}<p>Looking around you…</p></div>`:loc?`<div class="food-groups">${saved.length?`<h2>Your picks nearby</h2>${saved.map(x=>foodResult(x)).join('')}`:''}<h2>Restaurants around you</h2>${google.length?google.map(x=>foodResult(x)).join(''):'<p class="food-message">No other restaurants found within 300 m. Try again from another location.</p>'}</div>`:'<div class="empty-list">'+icon('Navigation')+'<h3>Find food near you.</h3><p>Allow location access to see restaurants within 300 m.</p><button class="btn primary" data-action="food-refresh">Find nearby food</button></div>'}`;}
 function foodGroupLabel(r){let c=String(r.cuisine||'').toLowerCase();if(/sushi|sashimi|omakase/.test(c))return 'Sushi';if(/ramen|udon|soba|noodle/.test(c))return 'Noodles';if(/yakitori|kushiyaki/.test(c))return 'Yakitori';if(/tonkatsu|katsu/.test(c))return 'Katsu';if(/oyakodon|donburi|rice/.test(c))return 'Rice';if(/tempura/.test(c))return 'Tempura';if(/unagi|eel|seafood|fish/.test(c))return 'Seafood';if(/curry/.test(c))return 'Curry';if(/izakaya|japanese pub/.test(c))return 'Izakaya';if(/cafe|coffee|dessert|sweet|bakery|pastry|wagashi/.test(c))return 'Cafe & sweets';return String(r.cuisine||'Other').split(/[,/]/)[0].trim()||'Other';}
 
 function foodIsTop100(r){
@@ -522,11 +522,31 @@ function dayRows(date=state.day){
     .filter(x=>x.schedule_date===date)
     .sort((a,b)=>(Number(a.sort_order||999)-Number(b.sort_order||999))||time(a.start_time).localeCompare(time(b.start_time)));
 }
-function mappedDayRows(date=state.day){
-  return dayRows(date).filter(x=>
-    Number.isFinite(Number(x.latitude)) &&
-    Number.isFinite(Number(x.longitude))
+function hasValidCoordinates(row){
+  if(!row)return false;
+
+  const rawLat=row.latitude;
+  const rawLng=row.longitude;
+
+  if(
+    rawLat===null || rawLat===undefined || String(rawLat).trim()==='' ||
+    rawLng===null || rawLng===undefined || String(rawLng).trim()===''
+  ) return false;
+
+  const lat=Number(rawLat);
+  const lng=Number(rawLng);
+
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat>=-90 && lat<=90 &&
+    lng>=-180 && lng<=180 &&
+    !(lat===0 && lng===0)
   );
+}
+
+function mappedDayRows(date=state.day){
+  return dayRows(date).filter(hasValidCoordinates);
 }
 
 function routeMapView(){
@@ -650,10 +670,7 @@ async function initRouteMap(){
 
 function dayRouteUrl(rows){
   const points=(rows||[])
-    .filter(x=>
-      Number.isFinite(Number(x.latitude)) &&
-      Number.isFinite(Number(x.longitude))
-    )
+    .filter(hasValidCoordinates)
     .map(x=>`${Number(x.latitude)},${Number(x.longitude)}`);
 
   if(points.length<2)return '';
@@ -947,7 +964,7 @@ async function findStarterSuggestions(){
     const scheduledIds=new Set(dayRows(state.day).map(x=>Number(x.place_id)).filter(Boolean));
     let local=state.places
       .filter(x=>x.status==='active'&&inTripCountry(x))
-      .filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)))
+      .filter(x=>hasValidCoordinates(x))
       .filter(x=>!scheduledIds.has(Number(x.id)))
       .filter(x=>!state.starterCity||String(x.city||'').toLowerCase()===String(state.starterCity).toLowerCase())
       .map(x=>({...x,__source:'catalog',__kind:'place'}));
@@ -995,7 +1012,7 @@ function routePointDistanceMeters(lat,lng,aLat,aLng,bLat,bLng){
 
 async function findBetweenRoute(){
   const mapped=dayRows(state.day)
-    .filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)));
+    .filter(x=>hasValidCoordinates(x));
 
   if(mapped.length<2){
     toast('Add at least two mapped places first.',true);
@@ -1263,7 +1280,7 @@ function planView(){
           </div>
           <div class="day-heading-actions">
             ${route?`<button class="icon-action" data-action="route-map">${icon('Route')} Route map</button>`:''}
-            ${rows.filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude))).length>=2?`<button class="icon-action" data-action="between-route">${icon('Sparkles')} Between</button>`:''}
+            ${rows.filter(x=>hasValidCoordinates(x)).length>=2?`<button class="icon-action" data-action="between-route">${icon('Sparkles')} Between</button>`:''}
             <button class="icon-action plan-add-top" data-action="new-stop">${icon('Plus')} Add place</button>
           </div>
         </div>
@@ -1282,7 +1299,7 @@ function planView(){
               ${x.description?`<p class="stop-desc">${esc(x.description)}</p>`:''}
               <div class="stop-actions compact-actions">
                 <a href="${esc(directions(x))}" target="_blank" rel="noopener noreferrer">${icon('Navigation')} Go</a>
-                ${Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude))?`<button data-action="around-stop" data-id="${x.id}">${icon('Search')} Around</button>`:''}
+                ${hasValidCoordinates(x)?`<button data-action="around-stop" data-id="${x.id}">${icon('Search')} Around</button>`:''}
                 <button data-action="edit-stop" data-id="${x.id}">${icon('Clock3')} Details</button>
                 ${!x.is_locked?`<button data-action="delete-stop" data-id="${x.id}" class="quiet-danger" aria-label="Delete stop">${icon('Trash2')} Delete</button>`:''}
               </div>
