@@ -452,7 +452,7 @@ function addPreviewView(x){
     <h3>${esc(x.name)}</h3>
     <p>${icon('MapPin')} ${esc(x.area||x.city||x.address||state.trip?.country||'')}</p>
     ${x.description?`<div class="add-preview-desc">${esc(x.description)}</div>`:''}
-    <a class="add-map-link" href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer">${icon('Navigation')} See Google rating & reviews ${icon('ArrowUpRight')}</a>
+    <a class="add-map-link" href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer">${icon('Navigation')} Check ratings on Google Maps ${icon('ArrowUpRight')}</a>
     <div class="add-preview-actions">
       <button class="btn primary" data-action="add-selection-day">${icon('CalendarPlus')} Add to this day</button>
       <button class="btn outline ${saved?'is-saved':''}" data-action="save-selection">${icon(saved?'Check':'Heart')} ${saved?'Saved':'Save for later'}</button>
@@ -501,7 +501,7 @@ function aroundStopView(){
       <span class="around-anchor-icon">${icon('MapPinned')}</span>
       <span><small>AROUND</small><b>${esc(stop.title)}</b><em>Within ${Math.round(state.aroundRadius/100)/10} km</em></span>
     </div>
-    <p class="around-explainer">Google returns nearby POIs in popularity order. Travelite turns that ordering and distance into planning labels — star ratings are not fetched.</p>
+    <p class="around-explainer">Travelite uses nearby popularity and distance to suggest what may fit your day. Ratings stay on Google Maps — Travelite does not fetch or store them.</p>
     ${state.aroundBusy?`<div class="add-empty around-loading">${icon('LoaderCircle','spin')}<p>Finding popular places around ${esc(stop.title)}…</p></div>`:rows.length?`<div class="around-results">${rows.map((x,i)=>{
       const distance=Number.isFinite(Number(x.__distance))?Math.round(Number(x.__distance)):null;
       const rank=Number(x.nearby_rank)||i+1;
@@ -514,7 +514,7 @@ function aroundStopView(){
         </div>
         <div class="around-signal"><b>${esc(tag.label)}</b><span>${esc(tag.note)}</span></div>
         <div class="around-actions">
-          <a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer">${icon('ArrowUpRight')} See Google reviews</a>
+          <a href="${esc(maps(x))}" target="_blank" rel="noopener noreferrer">${icon('ArrowUpRight')} Check ratings on Google Maps</a>
           <button data-action="around-save" data-index="${i}">${icon('Heart')} Save</button>
           <button class="around-add" data-action="around-add" data-index="${i}">${icon('CalendarPlus')} Add to this day</button>
         </div>
@@ -618,7 +618,7 @@ function planView(){
         <div class="plan-helper-card">
           <div class="eyebrow">HOW TO USE PLAN</div>
           <h3>Know it? Add it.<br>Unsure? Look around.</h3>
-          <p>Search the exact place when you already know your plan. Use <b>Around here</b> on any mapped stop to find popular nearby POIs.</p>
+          <p>Search the exact place when you already know your plan. Use <b>Around here</b> on any mapped stop to find useful nearby POIs. Travelite recommends what fits; ratings can be checked directly on Google Maps.</p>
           <button data-action="tab" data-value="saved">${icon('Heart')} ${state.savedPlaces.length+state.savedFood.length} saved ideas ${icon('ArrowRight')}</button>
         </div>
         ${bookingsToday.length?`<div class="plan-helper-card bookings-today"><div class="eyebrow">BOOKED TODAY</div>${bookingsToday.map(b=>`<p>${icon('Ticket')} ${esc(b.title)}</p>`).join('')}</div>`:''}
