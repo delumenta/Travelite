@@ -1007,7 +1007,7 @@ function planView(){
           </div>
           <div class="day-heading-actions">
             ${route?`<a class="icon-action" href="${esc(route)}" target="_blank" rel="noopener noreferrer">${icon('Route')} Day route</a>`:''}
-            ${rows.filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude))).length>=2?`<button class="icon-action" data-action="between-route">${icon('Sparkles')} Places between route</button>`:''}
+            ${rows.filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude))).length>=2?`<button class="icon-action" data-action="between-route">${icon('Sparkles')} Between</button>`:''}
             <button class="icon-action plan-add-top" data-action="new-stop">${icon('Plus')} Add place</button>
           </div>
         </div>
