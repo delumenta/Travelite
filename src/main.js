@@ -64,13 +64,15 @@ function normalizeBrowserPlace(place,kind='place'){
   };
 }
 
-async function browserNearbyPlaces({latitude,longitude,radius=1500,kind='place'}){
+async function browserNearbyPlaces({latitude,longitude,radius=1500,kind='place',minResults=10}){
   const {Place,SearchNearbyRankPreference}=await getGooglePlacesBrowser();
   const fields=['id','displayName','formattedAddress','location','types','primaryType','googleMapsURI'];
   const request={
     fields,
     locationRestriction:{center:{lat:Number(latitude),lng:Number(longitude)},radius:Number(radius)},
-    maxResultCount:20,
+    // Google may return fewer when fewer matching places exist, but Food Finder
+    // asks for a pool comfortably above our 10-result target in one request.
+    maxResultCount:Math.max(10,Math.min(Number(minResults)||10,20)),
     rankPreference:kind==='food'
       ? (SearchNearbyRankPreference?.DISTANCE||'DISTANCE')
       : (SearchNearbyRankPreference?.POPULARITY||'POPULARITY'),
@@ -322,7 +324,7 @@ async function findNearbyFood(){
     // Reuse Google's stored restaurant coordinates for 20 days. After that,
     // refresh lazily only when Food Finder is actually used in this area.
     if(freshLocal.length<8||staleGoogleNearby){
-      const google=await browserNearbyPlaces({latitude,longitude,radius,kind:'food'});
+      const google=await browserNearbyPlaces({latitude,longitude,radius,kind:'food',minResults:10});
       await cacheGoogleFoodLocations(google);
       combined=mergeNearbyRows(local,google,latitude,longitude,radius,'food');
     }
