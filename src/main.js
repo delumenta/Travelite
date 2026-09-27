@@ -217,12 +217,20 @@ const distanceMeters=(a,b,c,d)=>{const rad=Math.PI/180,p1=a*rad,p2=c*rad,dp=(c-a
 function nearbyKey(row){
   return String(row?.name||'').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu,'').trim();
 }
-function nearbyCatalogRows(kind,latitude,longitude,radius){
+const GOOGLE_FOOD_REFRESH_DAYS=20;
+function googleFoodCacheFresh(row){
+  if(row?.provider!=='google')return true;
+  if(!row?.google_location_obtained_at)return false;
+  const age=Date.now()-new Date(row.google_location_obtained_at).getTime();
+  return Number.isFinite(age)&&age<(GOOGLE_FOOD_REFRESH_DAYS*86400000);
+}
+function nearbyCatalogRows(kind,latitude,longitude,radius,{freshGoogleOnly=false}={}){
   const source=kind==='food'?state.restaurants:state.places;
   const savedIds=new Set((kind==='food'?state.savedFood:state.savedPlaces).map(x=>Number(kind==='food'?x.restaurant_id:x.place_id)));
   return source
     .filter(x=>x.status==='active'&&inTripCountry(x))
     .filter(x=>hasValidCoordinates(x))
+    .filter(x=>!freshGoogleOnly||kind!=='food'||googleFoodCacheFresh(x))
     .map(x=>({
       ...x,
       __source:'catalog',
@@ -251,6 +259,26 @@ function mergeNearbyRows(localRows,googleRows,latitude,longitude,radius,kind){
     merged.push({...g,__source:'google',__kind:kind,__distance:distance,saved:false});
   }
   return merged.sort((a,b)=>a.__distance-b.__distance);
+}
+async function cacheGoogleFoodLocations(rows){
+  const results=(rows||[]).filter(x=>x?.provider_place_id&&x?.latitude!=null&&x?.longitude!=null);
+  if(!results.length)return;
+  try{
+    const {data,error}=await sb.functions.invoke('restaurant-location-cache',{body:{results}});
+    if(error||data?.error)throw Error(data?.error||error?.message||'Could not refresh restaurant cache.');
+    if(data?.updated){
+      const now=new Date().toISOString();
+      const expires=new Date(Date.now()+30*86400000).toISOString();
+      const returned=new Map(results.map(x=>[x.provider_place_id,x]));
+      state.restaurants=state.restaurants.map(r=>{
+        const g=returned.get(r.provider_place_id);
+        if(!g)return r;
+        return {...r,latitude:g.latitude,longitude:g.longitude,google_location_obtained_at:now,google_location_expires_at:expires,google_location_last_used_at:now};
+      });
+    }
+  }catch(error){
+    console.warn('Restaurant coordinate cache refresh failed',error);
+  }
 }
 function foodResult(r){
   const distance=Number.isFinite(Number(r.distance))?Math.round(Number(r.distance)):null;
@@ -287,11 +315,15 @@ async function findNearbyFood(){
     state.foodLocation={latitude,longitude};
 
     const local=nearbyCatalogRows('food',latitude,longitude,radius);
+    const freshLocal=nearbyCatalogRows('food',latitude,longitude,radius,{freshGoogleOnly:true});
+    const staleGoogleNearby=local.some(x=>x.provider==='google'&&!googleFoodCacheFresh(x));
     let combined=local;
 
-    // If Travelite already knows enough nearby food, avoid a Google call.
-    if(local.length<8){
+    // Reuse Google's stored restaurant coordinates for 20 days. After that,
+    // refresh lazily only when Food Finder is actually used in this area.
+    if(freshLocal.length<8||staleGoogleNearby){
       const google=await browserNearbyPlaces({latitude,longitude,radius,kind:'food'});
+      await cacheGoogleFoodLocations(google);
       combined=mergeNearbyRows(local,google,latitude,longitude,radius,'food');
     }
 
