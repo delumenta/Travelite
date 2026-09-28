@@ -207,13 +207,66 @@ function isHomeMovementStop(stop){
     || title.includes(' → ');
 }
 function homeView(){
-  let t=state.trip,dates=dayList(t),now=today(),current=dates.includes(now)?now:(dates.find(d=>d>=now)||dates[0]);
-  let rawDayStops=state.schedule.filter(x=>x.schedule_date===current).sort((a,b)=>(time(a.start_time)||'99:99').localeCompare(time(b.start_time)||'99:99')||(a.sort_order||0)-(b.sort_order||0));
-  let dayStops=rawDayStops.filter(stop=>!isHomeMovementStop(stop));
-  let items=dayStops.slice(0,3),groups=groupScheduleByArea(dayStops),countdown=t.start_date?Math.ceil((new Date(`${t.start_date}T12:00:00`)-new Date(`${now}T12:00:00`))/86400000):null;
-  const timed=dayStops.map(x=>time(x.start_time)).filter(Boolean);
-  const daySummary=dayStops.length?`${dayStops.length} stops${timed.length?` · ${timed[0]}–${timed[timed.length-1]}`:''}`:'';
-  return `<div class="home-page"><div class="greeting"><div><div class="eyebrow">YOUR JOURNEY, BEAUTIFULLY TOGETHER</div><h1>Let’s go places<span class="accent-period">.</span></h1><p>Everything you need for the road ahead, right here.</p></div></div><div class="hero" style="background-image:linear-gradient(90deg,rgba(26,16,20,.86),rgba(31,16,22,.22)),url('${esc(cover(t))}')"><div class="hero-content"><div class="hero-label">${icon('MapPin')} ${esc(t.country||'YOUR DESTINATION')}</div><h2>${esc(t.name)}</h2><div class="hero-date">${icon('CalendarDays')} ${esc(dateRange(t.start_date,t.end_date))}</div><button class="btn cream" data-action="tab" data-value="plan">View itinerary ${icon('ArrowRight')}</button></div>${destinationScript(t)?`<div class="hero-watermark" aria-hidden="true" lang="${destinationScript(t).lang}"><span>${destinationScript(t).word}</span><small>${destinationScript(t).label}</small></div>`:''}<div class="hero-count"><strong>${countdown==null?'—':countdown>0?countdown:countdown===0?'Now':'✓'}</strong><span>${countdown>0?'DAYS TO GO':countdown===0?'STARTS TODAY':countdown<0?'MEMORIES MADE':'READY TO PLAN'}</span></div>${coverCredit(t)}</div><div class="home-stats"><button data-action="tab" data-value="plan">${icon('Route')}<b>${state.schedule.length}</b><span>Planned stops</span>${icon('ArrowUpRight')}</button><button data-action="tab" data-value="saved">${icon('Heart')}<b>${state.savedPlaces.length+state.savedFood.length}</b><span>Saved ideas</span>${icon('ArrowUpRight')}</button><button data-action="tab" data-value="bookings">${icon('Ticket')}<b>${state.bookings.length}</b><span>Bookings</span>${icon('ArrowUpRight')}</button></div><div class="home-grid"><section class="panel next-panel"><div class="section-head"><div><div class="eyebrow">COMING UP</div><h2>${current===now?'Today’s plan':current?'Your next day':'Start planning'}</h2>${current?`<div class="home-day-meta"><span>${esc(fmtDate(current,{weekday:'short',day:'numeric',month:'short'}))}</span>${daySummary?`<small>${esc(daySummary)}</small>`:''}</div>`:''}</div><button class="text-link" data-action="toggle-schedule" aria-expanded="${state.scheduleExpanded}">${state.scheduleExpanded?'Hide full schedule':'View full schedule'} ${icon('ChevronDown')}</button></div>${state.scheduleExpanded?homeScheduleGroups(groups):items.length?items.map((x,i)=>`<div class="next-item"><span class="next-time">${time(x.start_time)||String(i+1).padStart(2,'0')}</span><span class="next-dot"></span><div><b>${esc(x.title)}</b><small>${esc(x.location_name||x.address||x.item_type||'Part of your journey')}</small></div>${icon('ArrowUpRight')}</div>`).join('')+`<button class="more-stops" data-action="toggle-schedule">+ ${Math.max(dayStops.length-items.length,0)} more stops</button>`:`<div class="empty-mini">${icon('CalendarPlus')}<p>There’s room for an adventure here.</p><button data-action="new-stop">Add a stop ${icon('ArrowRight')}</button></div>`}</section><section class="panel assist-panel"><div class="assist-stars">${icon('Sparkles')}</div><div class="eyebrow">MEET YOUR CO-PILOT</div><h2>A little help goes<br>a long way.</h2><p>Ask about your plans, find nearby food, or turn a thought into an itinerary stop.</p><button class="btn dark" data-action="assistant">Talk to Travel Assist ${icon('ArrowRight')}</button></section></div><div class="section-head inspiration-title"><div><div class="eyebrow">EXPLORE THE POSSIBILITIES</div><h2>Go where curiosity takes you.</h2></div></div><div class="feature-grid explore-home-grid"><button data-action="explore-kind" data-value="place" class="feature-card"><span class="feature-icon coral">${icon('MapPin')}</span><b>Explore places</b><span>Find sights and experiences for this trip.</span>${icon('ArrowUpRight')}</button><button data-action="explore-kind" data-value="food" class="feature-card"><span class="feature-icon green">${icon('Utensils')}</span><b>Explore food</b><span>Browse restaurants, ratings and your picks.</span>${icon('ArrowUpRight')}</button></div><div class="section-head inspiration-title"><div><div class="eyebrow">AROUND YOU</div><h2>Food Finder.</h2></div></div><div class="feature-grid"><button data-action="food-finder" class="feature-card"><span class="feature-icon coral">${icon('Utensils')}</span><b>Find food within 300 m</b><span>Use your location to find restaurants around you.</span>${icon('ArrowUpRight')}</button><button data-action="food-saved" class="feature-card"><span class="feature-icon green">${icon('Heart')}</span><b>Saved restaurants</b><span>Restaurants you have saved for this trip.</span>${icon('ArrowUpRight')}</button></div></div>`;
+  const t=state.trip,dates=dayList(t),now=today();
+  const current=dates.includes(now)?now:(dates.find(d=>d>=now)||dates[0]);
+  const rawDayStops=state.schedule.filter(x=>x.schedule_date===current).sort((a,b)=>(time(a.start_time)||'99:99').localeCompare(time(b.start_time)||'99:99')||(a.sort_order||0)-(b.sort_order||0));
+  const dayStops=rawDayStops.filter(stop=>!isHomeMovementStop(stop));
+  const nextStop=dayStops.find(x=>time(x.start_time))||dayStops[0];
+  const countdown=t.start_date?Math.ceil((new Date(`${t.start_date}T12:00:00`)-new Date(`${now}T12:00:00`))/86400000):null;
+  const tripIsLive=countdown!=null&&countdown<=0&&(!t.end_date||now<=t.end_date);
+  const tripHasStarted=countdown!=null&&countdown<=0;
+  const primaryKicker=tripIsLive?'RIGHT NOW':'YOUR TRIP';
+  const primaryTitle=tripIsLive?'What should you do next?':countdown>0?`${countdown} days to go.`:'Build a trip that fits.';
+  const primaryCopy=tripIsLive
+    ? 'Use your plan, current location and the time before your next commitment to find something that actually fits.'
+    : 'Travelite keeps the important times protected, groups places that belong together, and leaves breathing room instead of cramming every stop in.';
+  return `<div class="home-page home-command">
+    <section class="home-command-hero">
+      <div class="home-command-copy">
+        <div class="eyebrow">${primaryKicker}</div>
+        <h1>${esc(primaryTitle)}</h1>
+        <p>${esc(primaryCopy)}</p>
+        <div class="home-command-actions">
+          ${tripIsLive?`<button class="btn primary" data-action="assistant">${icon('Sparkles')} What now?</button>`:`<button class="btn primary" data-action="tab" data-value="plan">${icon('Route')} Open my plan</button>`}
+          <button class="btn soft" data-action="food-finder">${icon('Utensils')} Find food nearby</button>
+        </div>
+      </div>
+      <div class="home-trip-glance">
+        <span class="home-trip-country">${icon('MapPin')} ${esc(t.country||'Trip')}</span>
+        <h2>${esc(t.name)}</h2>
+        <p>${esc(dateRange(t.start_date,t.end_date))}</p>
+        <div class="home-glance-numbers">
+          <span><b>${state.schedule.length}</b><small>planned</small></span>
+          <span><b>${state.savedPlaces.length+state.savedFood.length}</b><small>saved</small></span>
+          <span><b>${state.bookings.length}</b><small>fixed</small></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-focus-grid">
+      <div class="panel home-next-card">
+        <div class="section-head"><div><div class="eyebrow">${tripIsLive?'NEXT COMMITMENT':'NEXT UP'}</div><h2>${current?esc(fmtDate(current,{weekday:'long',day:'numeric',month:'short'})):'Nothing scheduled yet'}</h2></div><button class="text-link" data-action="tab" data-value="plan">Full plan ${icon('ArrowRight')}</button></div>
+        ${nextStop?`<div class="home-next-stop"><span class="home-next-time">${esc(time(nextStop.start_time)||'Flexible')}</span><div><b>${esc(nextStop.title)}</b><small>${esc(nextStop.location_name||nextStop.address||'Part of your day')}</small></div><a href="${esc(directions(nextStop))}" target="_blank" rel="noopener noreferrer" aria-label="Directions">${icon('Navigation')}</a></div>`:`<div class="home-open-space">${icon('CalendarPlus')}<div><b>Your day has room.</b><small>Add the places you care about. Travelite can arrange the flexible ones around your fixed plans.</small></div><button data-action="new-stop">Add place</button></div>`}
+      </div>
+
+      <div class="panel home-now-card">
+        <div class="eyebrow">SPARE TIME</div>
+        <h2>Find something that fits.</h2>
+        <p>Nearby is not enough. Use the time you have and where you need to be next.</p>
+        <button class="home-now-button" data-action="assistant"><span>${icon('Sparkles')}</span><div><b>What Now?</b><small>Use my itinerary as context</small></div>${icon('ArrowRight')}</button>
+        <button class="home-now-button secondary" data-action="explore-sort" data-value="near-me"><span>${icon('MapPin')}</span><div><b>Around me</b><small>Browse nearby saved and curated places</small></div>${icon('ArrowRight')}</button>
+      </div>
+    </section>
+
+    <section class="home-plan-intelligence">
+      <div class="section-head"><div><div class="eyebrow">SMARTER DAYS</div><h2>Good timing matters.</h2><p>Some places belong at sunrise, some at sunset, and some are better moved to another day.</p></div></div>
+      <div class="home-intel-grid">
+        <button data-action="tab" data-value="plan"><span class="feature-icon coral">${icon('Sunrise')}</span><b>Arrange my days</b><small>Protect the best time windows first, then build the route around them.</small>${icon('ArrowUpRight')}</button>
+        <button data-action="explore-kind" data-value="place"><span class="feature-icon green">${icon('Compass')}</span><b>My places</b><small>Keep the places you care about in one pool, even when they do not fit yet.</small>${icon('ArrowUpRight')}</button>
+        <button data-action="food-finder"><span class="feature-icon coral">${icon('Utensils')}</span><b>Food Finder</b><small>Find food around where you actually are when hunger wins.</small>${icon('ArrowUpRight')}</button>
+      </div>
+    </section>
+  </div>`;
 }
 const distanceMeters=(a,b,c,d)=>{const rad=Math.PI/180,p1=a*rad,p2=c*rad,dp=(c-a)*rad,dl=(d-b)*rad,h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 12742000*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));};
 function nearbyKey(row){
