@@ -1444,3 +1444,22 @@ html[data-theme="dark"] .on-the-go-strip{background:linear-gradient(135deg,#2519
 html[data-theme="dark"] .on-the-go-strip b,html[data-theme="dark"] .on-the-go-strip small{color:#eee4e6}
 html[data-theme="dark"] .stop-actions button.is-done{color:#9cdbad;background:#1b3022;border-color:#355d40}
 @media(max-width:650px){.on-the-go-strip{align-items:flex-start;flex-direction:column}.on-the-go-strip .btn{width:100%}}
+
+/* Travelite+ user POI cards */
+.plus-start-sheet,.plus-cards-sheet{display:grid;gap:14px}
+.plus-card-list{display:grid;gap:8px}
+.plus-card-preview{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border:1px solid #e8ddde;border-left:4px solid #6baf7c;border-radius:12px;background:#fffdfa}
+.plus-card-preview>div{display:grid;gap:3px;min-width:0}
+.plus-card-preview b{font-size:12px;color:#44373a}
+.plus-card-preview small{font-size:10px;color:#8f8084}
+.plus-card-preview strong{font-size:9px;letter-spacing:.6px}
+.plus-card-preview.yellow{border-left-color:#d5a848}
+.plus-card-preview.yellow strong{color:#a07718}
+.plus-card-preview.red{border-left-color:#bd5260}
+.plus-card-preview.red strong{color:#ae3e4c}
+.effort-dot{width:8px;height:8px;border-radius:50%;background:#63a976;display:inline-block;margin-right:5px}
+.plus-card-preview.yellow .effort-dot{background:#d5a848}
+.plus-card-preview.red .effort-dot{background:#bd5260}
+html[data-theme="dark"] .plus-card-preview{background:#191619;border-color:#423438}
+html[data-theme="dark"] .plus-card-preview b{color:#eee5e7}
+html[data-theme="dark"] .plus-card-preview small{color:#b7a8ac}
