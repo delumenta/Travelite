@@ -13,6 +13,7 @@ const key = (value: unknown) => String(value ?? "")
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+
   try {
     const auth = req.headers.get("Authorization") || "";
     const jwt = auth.replace(/^Bearer\s+/i, "");
@@ -23,11 +24,14 @@ Deno.serve(async (req: Request) => {
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const authClient = createClient(url, anon);
     const { data: userData, error: userError } = await authClient.auth.getUser(jwt);
-    if (userError || !userData.user) return Response.json({ error: "Unauthorized" }, { status: 401, headers: cors });
+    if (userError || !userData.user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401, headers: cors });
+    }
 
     const body = await req.json().catch(() => ({}));
     const results = Array.isArray(body?.results) ? body.results.slice(0, 20) : [];
-    if (!results.length) return Response.json({ updated: 0 }, { headers: cors });
+    const country = String(body?.country || "").trim() || null;
+    if (!results.length) return Response.json({ updated: 0, inserted: 0 }, { headers: cors });
 
     const admin = createClient(url, service, { auth: { persistSession: false } });
     const { data: restaurants, error: readError } = await admin
@@ -45,23 +49,25 @@ Deno.serve(async (req: Request) => {
     }
 
     const now = new Date();
-    const expires = new Date(now.getTime() + 30 * 86400000);
+    const expires = new Date(now.getTime() + 20 * 86400000);
     let updated = 0;
+    let inserted = 0;
+    const savedRows: any[] = [];
 
     for (const item of results) {
       const placeId = String(item?.provider_place_id || "");
       const lat = Number(item?.latitude);
       const lng = Number(item?.longitude);
-      if (!placeId || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      const name = String(item?.name || "").trim();
+      if (!placeId || !name || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
 
       let match = byPlaceId.get(placeId);
       if (!match) {
-        const candidates = byName.get(key(item?.name)) || [];
+        const candidates = byName.get(key(name)) || [];
         if (candidates.length === 1) match = candidates[0];
       }
-      if (!match) continue;
 
-      const { error } = await admin.from("restaurants").update({
+      const cacheFields = {
         provider: "google",
         provider_place_id: placeId,
         latitude: lat,
@@ -70,13 +76,59 @@ Deno.serve(async (req: Request) => {
         google_location_expires_at: expires.toISOString(),
         google_location_last_used_at: now.toISOString(),
         updated_at: now.toISOString(),
-      }).eq("id", match.id);
-      if (!error) updated++;
+      };
+
+      if (match) {
+        const { data: row, error } = await admin
+          .from("restaurants")
+          .update(cacheFields)
+          .eq("id", match.id)
+          .select("*")
+          .single();
+        if (error) throw error;
+        updated++;
+        savedRows.push(row);
+        continue;
+      }
+
+      const newRow: Record<string, unknown> = {
+        name,
+        provider: "google",
+        provider_place_id: placeId,
+        address: String(item?.address || "").trim() || null,
+        latitude: lat,
+        longitude: lng,
+        cuisine: String(item?.cuisine || item?.place_type || "restaurant"),
+        country,
+        created_by: userData.user.id,
+        status: "active",
+        verified: false,
+        google_location_obtained_at: now.toISOString(),
+        google_location_expires_at: expires.toISOString(),
+        google_location_last_used_at: now.toISOString(),
+      };
+
+      const { data: row, error } = await admin
+        .from("restaurants")
+        .insert(newRow)
+        .select("*")
+        .single();
+      if (error) throw error;
+      inserted++;
+      savedRows.push(row);
+      byPlaceId.set(placeId, row);
+      byName.set(key(name), [...(byName.get(key(name)) || []), row]);
     }
 
-    return Response.json({ updated }, { headers: { ...cors, "Content-Type": "application/json" } });
+    return Response.json(
+      { updated, inserted, rows: savedRows },
+      { headers: { ...cors, "Content-Type": "application/json" } },
+    );
   } catch (error) {
     console.error("restaurant-location-cache", error);
-    return Response.json({ error: error instanceof Error ? error.message : "Cache update failed" }, { status: 500, headers: cors });
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Cache update failed" },
+      { status: 500, headers: cors },
+    );
   }
 });
