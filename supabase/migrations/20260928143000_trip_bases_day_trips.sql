@@ -7,7 +7,7 @@ create table if not exists public.trip_bases (
   city text not null, country text,
   start_date date, end_date date,
   nights integer check (nights is null or nights >= 0),
-  hotel_area text, sort_order integer not null default 0,
+  hotel_area text, destination_place_id bigint references public.places(id) on delete set null, sort_order integer not null default 0,
   created_at timestamptz not null default now(),
   unique (trip_id, city, start_date)
 );
