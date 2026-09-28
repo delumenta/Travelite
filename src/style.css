@@ -1424,3 +1424,11 @@ html[data-theme="dark"] .day-trip-card h3{color:#eee7e9}
 html[data-theme="dark"] .day-trip-card p,html[data-theme="dark"] .day-trip-card small{color:#aaa0a3}
 @media(max-width:900px){.day-trip-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.day-trip-grid{grid-template-columns:1fr 1fr;gap:8px}.day-trip-card{padding:14px}.day-trip-card h3{font-size:16px}}
+
+/* Travelite+ expense receipts */
+.form-note{display:flex;align-items:center;gap:7px;padding:10px 12px;border:1px solid #eadcdf;border-radius:10px;background:#fff8f7;color:#8c6d72;font-size:10px;line-height:1.4}
+.form-note svg{width:15px;height:15px;color:#a93041;flex:none}
+#expense-form input[type=file]{padding:9px 10px;background:var(--surface,#fffdfa);border:1px dashed #dfc9cc;border-radius:10px;color:#7e6f73;font-size:10px}
+html[data-theme="dark"] .form-note{background:#211a1d;border-color:#463238;color:#c8b6ba}
+html[data-theme="dark"] .form-note svg{color:#ef8a95}
+html[data-theme="dark"] #expense-form input[type=file]{background:#191619;border-color:#5a3d44;color:#c8b6ba}
