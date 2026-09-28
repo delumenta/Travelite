@@ -109,6 +109,30 @@ const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Singapore',y
 const time = t => t ? String(t).slice(0,5) : '';
 const placePhotoIsStored = place => typeof place?.image_url === 'string' && place.image_url.startsWith(`${SB_URL}/storage/v1/object/public/place-photos/`);
 const maps = row => { const u=row?.maps_url; if (u && /^https:\/\//i.test(u)) return u; if (row?.latitude != null && row?.longitude != null) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${row.latitude},${row.longitude}`)}`; return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row?.address || row?.location_name || row?.name || row?.title || '')}`; };
+
+let screenshotLibraryPromise;
+function loadScreenshotLibrary(){
+  if(window.html2canvas)return Promise.resolve(window.html2canvas);
+  if(screenshotLibraryPromise)return screenshotLibraryPromise;
+  screenshotLibraryPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    script.onload=()=>window.html2canvas?resolve(window.html2canvas):reject(new Error('Screenshot library unavailable.'));
+    script.onerror=()=>reject(new Error('Could not load screenshot tools.'));
+    document.head.appendChild(script);
+  });
+  return screenshotLibraryPromise;
+}
+async function captureScheduleScreenshot(){
+  const target=document.querySelector('.plan-day-panel');
+  if(!target)throw Error('Open a day plan first.');
+  const canvas=await (await loadScreenshotLibrary())(target,{backgroundColor:state.theme==='dark'?'#0b0c0e':'#f8f5f2',scale:Math.min(2,window.devicePixelRatio||1),useCORS:true});
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+  if(!blob)throw Error('Could not create the screenshot.');
+  const date=state.day||today(),file=new File([blob],`travelite-${date}.png`,{type:'image/png'});
+  if(navigator.share&&navigator.canShare?.({files:[file]})){await navigator.share({title:`Travelite · ${fmtDay(date)}`,files:[file]});toast('Schedule ready to share.');return;}
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Schedule screenshot downloaded.');
+}
 const directions = row => { const destination=(row?.latitude!=null&&row?.longitude!=null)?`${row.latitude},${row.longitude}`:(row?.address||row?.location_name||row?.name||''); if(!destination)return maps(row); return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`; };
 const destinationScript = trip => { const country=(trip?.country||'').toLowerCase(); if(country.includes('japan')||country.includes('日本'))return {word:'日本',label:'JAPAN',lang:'ja'}; if(country.includes('china')||country.includes('中国'))return {word:'中国',label:'CHINA',lang:'zh'}; if(country.includes('korea')||country.includes('한국')||country.includes('대한민국'))return {word:'한국',label:'KOREA',lang:'ko'}; return null; };
 const countryKey = country => String(country||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('en');
@@ -1577,7 +1601,7 @@ function planView(){
             <h2>${rows.length?`${rows.length} ${rows.length===1?'stop':'stops'} planned`:'Nothing planned yet'}</h2>
           </div>
           <div class="day-heading-actions">
-            ${rows.length?`<button class="icon-action" data-action="route-map">${icon('Route')} Route map</button>`:''}
+            ${rows.length?`<button class="icon-action" data-action="route-map">${icon('Route')} Route map</button><button class="icon-action" data-action="screenshot-plan">${icon('Copy')} Screenshot</button>`:''}
             ${rows.filter(x=>hasValidCoordinates(x)).length>=2?`<button class="icon-action" data-action="between-route">${icon('Sparkles')} Between</button>`:''}
             <button class="icon-action plan-add-top" data-action="new-stop">${icon('Plus')} Add place</button>
           </div>
@@ -2244,6 +2268,7 @@ case 'add-nearby-plan':{let result=state.nearbyFood.find(x=>(el.dataset.placeId&
 case 'save-nearby':{let result=state.nearbyFood.find(x=>(el.dataset.placeId&&x.provider_place_id===el.dataset.placeId)||(id&&Number(x.id)===id));if(!result)break;await saveSelectionForLater({...result,__source:result.__source||'google',__kind:'food'});break;}
 case 'day':state.day=v;render();break;
 case 'route-map':openModal('routeMap',{date:state.day});break;
+case 'screenshot-plan':await captureScheduleScreenshot();break;break;
 case 'route-map-focus':{
   const ctx=window.__traveliteRouteMap;
   const index=Number(el.dataset.index);
