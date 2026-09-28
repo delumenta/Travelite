@@ -1463,3 +1463,45 @@ html[data-theme="dark"] .stop-actions button.is-done{color:#9cdbad;background:#1
 html[data-theme="dark"] .plus-card-preview{background:#191619;border-color:#423438}
 html[data-theme="dark"] .plus-card-preview b{color:#eee5e7}
 html[data-theme="dark"] .plus-card-preview small{color:#b7a8ac}
+
+
+/* Mobile home feature cards: keep icon + copy together instead of squeezing copy right */
+@media(max-width:630px){
+  .home-page .feature-card{
+    grid-template-columns:52px minmax(0,1fr) 18px;
+    grid-template-rows:auto auto;
+    column-gap:14px;
+    row-gap:4px;
+    align-items:center;
+    min-height:112px;
+    padding:20px;
+  }
+  .home-page .feature-card .feature-icon{
+    grid-column:1;
+    grid-row:1 / 3;
+    width:46px;
+    height:46px;
+    align-self:center;
+  }
+  .home-page .feature-card b{
+    grid-column:2;
+    grid-row:1;
+    align-self:end;
+    min-width:0;
+    font-size:15px;
+    line-height:1.2;
+  }
+  .home-page .feature-card>span:not(.feature-icon){
+    grid-column:2;
+    grid-row:2;
+    align-self:start;
+    min-width:0;
+    font-size:11px;
+    line-height:1.45;
+  }
+  .home-page .feature-card>svg{
+    grid-column:3;
+    grid-row:1 / 3;
+    align-self:center;
+  }
+}
