@@ -1407,3 +1407,20 @@ html[data-theme="dark"] .home-intel-grid>button{background:#171416;border-color:
 html[data-theme="dark"] .home-intel-grid small{color:#aaa0a3}
 @media(max-width:900px){.home-command-hero,.home-focus-grid{grid-template-columns:1fr}.home-trip-glance{min-height:180px}.home-intel-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.home-command{gap:15px}.home-command-hero{padding:21px 17px;border-radius:18px}.home-command-copy h1{font-size:38px;letter-spacing:-1.8px}.home-command-copy>p{font-size:12px}.home-command-actions{display:grid;grid-template-columns:1fr 1fr;margin-top:18px}.home-command-actions .btn{padding:0 10px;font-size:10px}.home-trip-glance{padding:18px;min-height:155px}.home-trip-glance h2{font-size:21px}.home-focus-grid{gap:12px}.home-next-card,.home-now-card{padding:17px}.home-next-stop{grid-template-columns:60px minmax(0,1fr) 36px}.home-next-time{font-size:14px}.home-intel-grid{gap:8px}}
+
+/* Curated day-trip trades: only surfaced from Travelite's own data. */
+.home-day-trips{padding-top:3px}
+.home-day-trips .section-head p{margin:5px 0 0;color:#8c8084;font-size:11px}
+.day-trip-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.day-trip-card{padding:17px;border:1px solid #eadfdd;border-radius:16px;background:#fffdfa}
+.day-trip-card>span{display:inline-flex;padding:5px 8px;border-radius:999px;background:#f7e9eb;color:#a93041;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.45px}
+.day-trip-card h3{margin:13px 0 6px;font-size:19px;color:#3d3236}
+.day-trip-card p{margin:0;color:#74696c;font-size:10.5px;line-height:1.5}
+.day-trip-card small{display:block;margin-top:9px;color:#a19397;font-size:9px;line-height:1.4}
+html[data-theme="dark"] .home-day-trips .section-head p{color:#aaa0a3}
+html[data-theme="dark"] .day-trip-card{background:#171416;border-color:#382e32}
+html[data-theme="dark"] .day-trip-card>span{background:#2d1d22;color:#ee8997}
+html[data-theme="dark"] .day-trip-card h3{color:#eee7e9}
+html[data-theme="dark"] .day-trip-card p,html[data-theme="dark"] .day-trip-card small{color:#aaa0a3}
+@media(max-width:900px){.day-trip-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.day-trip-grid{grid-template-columns:1fr 1fr;gap:8px}.day-trip-card{padding:14px}.day-trip-card h3{font-size:16px}}
