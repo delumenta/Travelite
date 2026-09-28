@@ -1432,3 +1432,15 @@ html[data-theme="dark"] .day-trip-card p,html[data-theme="dark"] .day-trip-card 
 html[data-theme="dark"] .form-note{background:#211a1d;border-color:#463238;color:#c8b6ba}
 html[data-theme="dark"] .form-note svg{color:#ef8a95}
 html[data-theme="dark"] #expense-form input[type=file]{background:#191619;border-color:#5a3d44;color:#c8b6ba}
+
+/* On-the-go live day */
+.on-the-go-strip{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 18px;padding:14px 16px;border:1px solid #e6d2d5;border-radius:15px;background:linear-gradient(135deg,#fff8f7,#fbefef)}
+.on-the-go-strip>div{display:grid;gap:3px}
+.on-the-go-strip b{font-size:14px;color:#44373a}
+.on-the-go-strip small{font-size:10px;color:#8e7c80}
+.on-the-go-strip .eyebrow{color:#a93041}
+.stop-actions button.is-done{color:#43815e;background:#eef8f0;border-color:#c8e4cf}
+html[data-theme="dark"] .on-the-go-strip{background:linear-gradient(135deg,#25191c,#1b1718);border-color:#52343a}
+html[data-theme="dark"] .on-the-go-strip b,html[data-theme="dark"] .on-the-go-strip small{color:#eee4e6}
+html[data-theme="dark"] .stop-actions button.is-done{color:#9cdbad;background:#1b3022;border-color:#355d40}
+@media(max-width:650px){.on-the-go-strip{align-items:flex-start;flex-direction:column}.on-the-go-strip .btn{width:100%}}
