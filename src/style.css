@@ -1564,3 +1564,5 @@ html[data-theme="dark"] .packed-day-prompt,html[data-theme="dark"] .day-balance-
 .plan-day-strip .day-optional-count{display:block;margin-top:2px;font-style:normal;font-size:7.5px;font-weight:700;letter-spacing:.15px;color:var(--muted,#8d8d8d);text-transform:none}
 
 .plan-day-strip .day-capacity-label{display:block;margin-top:2px;font-style:normal;font-size:7.5px;font-weight:900;letter-spacing:.55px;text-transform:uppercase;color:var(--muted,#777)}
+
+.day-remove-options{display:grid;gap:10px;margin:12px 0}.day-remove-option{border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:6px;background:var(--card)}.day-remove-option small{font-size:9px;font-weight:900;letter-spacing:.9px;color:var(--muted)}.day-remove-option b{font-size:15px}.day-remove-option p,.day-remove-option span{margin:0;font-size:12px;line-height:1.45}.day-remove-option span{color:var(--muted)}.day-remove-option .btn{margin-top:4px}
