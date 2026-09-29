@@ -1560,3 +1560,5 @@ html[data-theme="dark"] .plan-day-strip .day-load-red .day-load-label{color:#ee7
 .day-balance-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.day-balance-actions .text-link{grid-column:1/-1;justify-self:center}
 html[data-theme="dark"] .packed-day-prompt,html[data-theme="dark"] .day-balance-warning{background:#291b1f;border-color:#633842}html[data-theme="dark"] .day-balance-suggestion{background:#191619;border-color:#423438}
 @media(max-width:600px){.packed-day-prompt{align-items:flex-start;flex-direction:column}.packed-day-prompt button{width:100%}.day-balance-actions{grid-template-columns:1fr}}
+
+.plan-day-strip .day-optional-count{display:block;margin-top:2px;font-style:normal;font-size:7.5px;font-weight:700;letter-spacing:.15px;color:var(--muted,#8d8d8d);text-transform:none}
