@@ -1021,7 +1021,8 @@ html[data-theme="dark"] .plan-stop .stop-reorder button:disabled{
 
   .plan-stop .stop-rail i{
     position:absolute;
-    left:calc(100% + 5px);
+    /* Keep the mobile timeline rail inside the stop card instead of in the gutter. */
+    left:calc(100% + 18px);
     right:auto;
     top:-16px;
     bottom:-16px;
@@ -1037,7 +1038,8 @@ html[data-theme="dark"] .plan-stop .stop-reorder button:disabled{
   .plan-stop .stop-rail:after{
     content:'';
     position:absolute;
-    left:calc(100% + 5px);
+    /* Match the rail: the whole marker now sits just inside the card edge. */
+    left:calc(100% + 18px);
     right:auto;
     top:22px;
     width:14px;
