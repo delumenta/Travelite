@@ -1065,6 +1065,11 @@ html[data-theme="dark"] .plan-stop .stop-rail:after{
   background:var(--bg,#101014);
 }
 
+/* Mobile plan: keep the inset rail, but remove the circular stop marker. */
+@media(max-width:700px){
+  .plan-stop .stop-rail:after{display:none}
+}
+
 html[data-theme="dark"] .plan-stop .stop-rail i{
   background:color-mix(in srgb,var(--accent,#d5485c) 40%,#342a2f);
 }
