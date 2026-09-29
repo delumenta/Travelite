@@ -1531,3 +1531,20 @@ html[data-theme="dark"] .plus-card-preview small{color:#b7a8ac}
 .home-intel-grid .home-intel-arrow{display:grid!important;place-items:center!important;flex:0 0 18px!important;align-self:center!important;margin-left:auto!important;color:#b9abad}
 .home-intel-grid .home-intel-arrow>svg{width:17px!important;height:17px!important}
 @media(max-width:700px){.home-intel-grid>button{gap:12px!important;padding:15px!important;min-height:94px!important}.home-intel-grid>button>.feature-icon{flex-basis:42px!important;width:42px!important;height:42px!important}.home-intel-grid .home-intel-copy>b{font-size:14px!important}.home-intel-grid .home-intel-copy>small{font-size:10px!important}}
+
+
+/* Plan day load: green = chill, yellow = moderate, red = packed. */
+.plan-day-strip .day-pill{overflow:hidden}
+.plan-day-strip .day-load-label{display:block;margin-top:6px;font-style:normal;font:800 8px Manrope,sans-serif;letter-spacing:.65px;text-transform:uppercase}
+.plan-day-strip .day-load-green{border-bottom:3px solid #63a976}
+.plan-day-strip .day-load-yellow{border-bottom:3px solid #d5a848}
+.plan-day-strip .day-load-red{border-bottom:3px solid #bd5260}
+.plan-day-strip .day-load-green .day-load-label{color:#559568}
+.plan-day-strip .day-load-yellow .day-load-label{color:#a77c1d}
+.plan-day-strip .day-load-red .day-load-label{color:#b84454}
+.plan-day-strip .day-pill.active.day-load-green{box-shadow:inset 0 -3px #63a976}
+.plan-day-strip .day-pill.active.day-load-yellow{box-shadow:inset 0 -3px #d5a848}
+.plan-day-strip .day-pill.active.day-load-red{box-shadow:inset 0 -3px #bd5260}
+html[data-theme="dark"] .plan-day-strip .day-load-green .day-load-label{color:#83c993}
+html[data-theme="dark"] .plan-day-strip .day-load-yellow .day-load-label{color:#e2bb5d}
+html[data-theme="dark"] .plan-day-strip .day-load-red .day-load-label{color:#ee7584}
