@@ -1605,22 +1605,23 @@ async function findAroundStop(stop){
   }
 }
 function dayTravelMode(date){
-  const rows=dayRows(date);
+  const committed=dayRows(date).filter(x=>!x.is_optional),rows=committed.length?committed:dayRows(date);
   const hay=rows.map(x=>[x.item_type,x.title,x.location_name,x.description,x.notes].filter(Boolean).join(' ')).join(' ').toLowerCase();
   if(/\\b(drive|driving|driver|car|rental car|road trip|roadtrip|self-drive|self drive|taxi)\\b/.test(hay))return 'driving';
   if(/\\b(train|rail|shinkansen|bus|coach|flight|ferry)\\b/.test(hay))return 'transit';
   return 'walking';
 }
 function dayLoadStatus(date){
-  const rows=dayRows(date); if(!rows.length)return {level:'empty',label:'Open',score:0,mode:'walking'};
+  const all=dayRows(date),rows=all.filter(x=>!x.is_optional),optionalCount=all.length-rows.length;
+  if(!rows.length)return {level:optionalCount?'green':'empty',label:optionalCount?'Chill':'Open',score:0,mode:'walking',optionalCount,committedCount:0};
   const mode=dayTravelMode(date);
-  const mins=rows.map(x=>{const m=String(x.start_time||'').slice(0,5).match(/^(\\d{1,2}):(\\d{2})$/);return m?(Number(m[1])*60+Number(m[2])):null}).filter(Number.isFinite).sort((a,b)=>a-b);
+  const mins=rows.map(x=>{const m=String(x.start_time||'').slice(0,5).match(/^(\\d{1,2}):(\\d{2})$/);return m?(Number(m[1])*60+Number(m[2])):null}).filter(Number.isFinite).sort((x,y)=>x-y);
   const span=mins.length>=2?Math.max(0,mins[mins.length-1]-mins[0]):0;
   const stopWeight=rows.reduce((sum,x)=>{const type=String(x.item_type||'').toLowerCase();return sum+(type==='accommodation'?0.25:type==='transport'?(mode==='driving'?0.18:0.4):1)},0);
-  const factor=mode==='driving'?0.55:mode==='transit'?0.78:1,score=(stopWeight+(span/180))*factor;
-  if(score>=8||(mode==='walking'&&rows.length>=8)||(mode!=='driving'&&span>=720))return {level:'red',label:'Packed',score,mode};
-  if(score>=5||(mode==='walking'&&rows.length>=5)||(mode!=='driving'&&span>=480))return {level:'yellow',label:'Moderate',score,mode};
-  return {level:'green',label:'Chill',score,mode};
+  const factor=mode==='driving'?0.55:mode==='transit'?0.78:1,score=(stopWeight+(span/180))*factor,base={score,mode,optionalCount,committedCount:rows.length,span};
+  if(score>=8||(mode==='walking'&&rows.length>=8)||(mode!=='driving'&&span>=720))return {...base,level:'red',label:'Packed'};
+  if(score>=5||(mode==='walking'&&rows.length>=5)||(mode!=='driving'&&span>=480))return {...base,level:'yellow',label:'Moderate'};
+  return {...base,level:'green',label:'Chill'};
 }
 function balanceSuggestion(date,skipId){
   const days=dayList(state.trip),from=days.indexOf(date),rows=dayRows(date); if(from<0||!rows.length)return null;
@@ -1635,7 +1636,7 @@ function planView(){
   const bookingsToday=state.bookings.filter(b=>b.booking_date===state.day);
   return `${title('PLAN','Build your trip, one day at a time.','Add your main stops, then use Around here to discover ideas that fit the route.','')}
     ${onTheGo?`<div class="on-the-go-strip"><div><span class="eyebrow">ON THE GO</span><b>Today’s city day</b><small>Mark stops done as you move. Add spending directly to a stop.</small></div><button class="btn primary" data-action="food-finder">${icon('Utensils')} Find food nearby</button></div>`:''}
-    <div class="day-strip plan-day-strip">${days.length?days.map((d,i)=>{const load=dayLoadStatus(d);return `<button class="day-pill day-load-${load.level} ${state.day===d?'active':''}" data-action="day" data-value="${d}" title="${load.label} day"><small>DAY ${String(i+1).padStart(2,'0')}</small><b>${fmtDate(d,{weekday:'short'})}</b><span>${fmtDate(d,{day:'numeric',month:'short'})}</span>${load.level!=='empty'?`<em class="day-load-label">${load.label}</em>`:''}</button>`}).join(''):`<div class="empty-note">Add dates to this trip to build its itinerary. <button data-action="edit-trip">Add dates ${icon('ArrowRight')}</button></div>`}</div>
+    <div class="day-strip plan-day-strip">${days.length?days.map((d,i)=>{const load=dayLoadStatus(d);return `<button class="day-pill day-load-${load.level} ${state.day===d?'active':''}" data-action="day" data-value="${d}" title="${load.label} day"><small>DAY ${String(i+1).padStart(2,'0')}</small><b>${fmtDate(d,{weekday:'short'})}</b><span>${fmtDate(d,{day:'numeric',month:'short'})}</span>${load.level!=='empty'?`<em class="day-load-label">${load.label}</em>${load.optionalCount?`<em class="day-optional-count">+${load.optionalCount} optional</em>`:''}`:''}</button>`}).join(''):`<div class="empty-note">Add dates to this trip to build its itinerary. <button data-action="edit-trip">Add dates ${icon('ArrowRight')}</button></div>`}</div>
     <div class="plan-workspace">
       <section class="plan-day-panel">
         <div class="day-heading">
