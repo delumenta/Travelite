@@ -1022,22 +1022,9 @@ html[data-theme="dark"] .plan-stop .stop-reorder button:disabled{
   /* Hide the old continuous rail from the time column. */
   .plan-stop .stop-rail i{display:none}
 
-  /* Marker sits comfortably inside the card rather than on its border. */
-  .plan-stop .stop-rail:after{
-    content:'';
-    position:absolute;
-    left:calc(100% + 25px);
-    right:auto;
-    top:20px;
-    width:14px;
-    height:14px;
-    box-sizing:border-box;
-    border:4px solid var(--accent,#c45360);
-    background:var(--bg,#f8f5f2);
-    border-radius:50%;
-    transform:translateX(-50%);
-    z-index:4;
-  }
+  /* Keep the mobile timeline minimal: no stop circle. */
+  .plan-stop .stop-rail:after{display:none}
+
 
   .plan-stop .stop-card{
     position:relative;
@@ -1061,9 +1048,6 @@ html[data-theme="dark"] .plan-stop .stop-reorder button:disabled{
   .plan-stop:last-of-type .stop-card:before{bottom:30px}
 }
 
-html[data-theme="dark"] .plan-stop .stop-rail:after{
-  background:var(--bg,#101014);
-}
 
 /* Mobile plan: keep the inset rail, but remove the circular stop marker. */
 @media(max-width:700px){
