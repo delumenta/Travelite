@@ -1505,3 +1505,10 @@ html[data-theme="dark"] .plus-card-preview small{color:#b7a8ac}
     align-self:center;
   }
 }
+
+/* Expense receipt photo actions */
+.receipt-photo-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.receipt-photo-btn{display:flex!important;align-items:center;justify-content:center;gap:7px;min-height:42px;border:1px solid var(--border,#34343d);border-radius:10px;background:rgba(255,255,255,.025);color:var(--text,#eee)!important;font-size:10px!important;font-weight:800;cursor:pointer;text-align:center}
+.receipt-photo-btn:hover{border-color:rgba(218,64,81,.65);background:rgba(218,64,81,.07)}
+.receipt-photo-btn svg{width:15px;height:15px}
+@media(max-width:520px){.receipt-photo-actions{grid-template-columns:1fr}}
