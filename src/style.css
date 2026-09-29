@@ -998,10 +998,9 @@ html[data-theme="dark"] .plan-stop .stop-reorder button:disabled{
    PLAN — CLEAN MOBILE TIMELINE RAIL
 ========================================================= */
 @media(max-width:700px){
-  .plan-timeline{
-    position:relative;
-  }
+  .plan-timeline{position:relative}
 
+  /* Time stays outside; the journey marker gets its own inset gutter. */
   .plan-stop.stop{
     grid-template-columns:54px minmax(0,1fr);
     gap:10px;
@@ -1011,6 +1010,7 @@ html[data-theme="dark"] .plan-stop .stop-reorder button:disabled{
     position:relative;
     padding-top:22px;
     align-items:flex-end;
+    z-index:3;
   }
 
   .plan-stop .stop-rail span{
@@ -1019,29 +1019,16 @@ html[data-theme="dark"] .plan-stop .stop-reorder button:disabled{
     line-height:1;
   }
 
-  .plan-stop .stop-rail i{
-    position:absolute;
-    /* Keep the mobile timeline rail inside the stop card instead of in the gutter. */
-    left:calc(100% + 18px);
-    right:auto;
-    top:-16px;
-    bottom:-16px;
-    width:2px;
-    background:color-mix(in srgb,var(--accent,#c45360) 32%,var(--line));
-    transform:translateX(-50%);
-  }
+  /* Hide the old continuous rail from the time column. */
+  .plan-stop .stop-rail i{display:none}
 
-  .plan-stop:first-child .stop-rail i{
-    top:29px;
-  }
-
+  /* Marker sits comfortably inside the card rather than on its border. */
   .plan-stop .stop-rail:after{
     content:'';
     position:absolute;
-    /* Match the rail: the whole marker now sits just inside the card edge. */
-    left:calc(100% + 18px);
+    left:calc(100% + 25px);
     right:auto;
-    top:22px;
+    top:20px;
     width:14px;
     height:14px;
     box-sizing:border-box;
@@ -1049,12 +1036,33 @@ html[data-theme="dark"] .plan-stop .stop-reorder button:disabled{
     background:var(--bg,#f8f5f2);
     border-radius:50%;
     transform:translateX(-50%);
-    z-index:2;
+    z-index:4;
   }
 
-  .plan-stop:last-of-type .stop-rail i{
-    bottom:29px;
+  .plan-stop .stop-card{
+    position:relative;
+    padding-left:30px;
+    overflow:hidden;
   }
+
+  /* A short rail belongs to each card, leaving a clean break between stops. */
+  .plan-stop .stop-card:before{
+    content:'';
+    position:absolute;
+    left:14px;
+    top:31px;
+    bottom:18px;
+    width:2px;
+    border-radius:2px;
+    background:color-mix(in srgb,var(--accent,#c45360) 32%,var(--line));
+    pointer-events:none;
+  }
+
+  .plan-stop:last-of-type .stop-card:before{bottom:30px}
+}
+
+html[data-theme="dark"] .plan-stop .stop-rail:after{
+  background:var(--bg,#101014);
 }
 
 html[data-theme="dark"] .plan-stop .stop-rail i{
