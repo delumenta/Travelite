@@ -1604,6 +1604,17 @@ async function findAroundStop(stop){
     render();
   }
 }
+function dayLoadStatus(date){
+  const rows=dayRows(date);
+  if(!rows.length)return {level:'empty',label:'Open',score:0};
+  const mins=rows.map(x=>{const m=String(x.start_time||'').slice(0,5).match(/^(\\d{1,2}):(\\d{2})$/);return m?(Number(m[1])*60+Number(m[2])):null}).filter(Number.isFinite).sort((a,b)=>a-b);
+  const span=mins.length>=2?Math.max(0,mins[mins.length-1]-mins[0]):0;
+  const stopWeight=rows.reduce((sum,x)=>{const type=String(x.item_type||'').toLowerCase();return sum+(type==='accommodation'?0.35:type==='transport'?0.55:1)},0);
+  const score=stopWeight+(span/180);
+  if(score>=8||rows.length>=8||span>=720)return {level:'red',label:'Packed',score};
+  if(score>=5||rows.length>=5||span>=480)return {level:'yellow',label:'Moderate',score};
+  return {level:'green',label:'Chill',score};
+}
 function planView(){
   let t=state.trip,days=dayList(t),onTheGo=state.day===today();
   if(!state.day||!days.includes(state.day))state.day=days.find(d=>d>=today())||days[0]||today();
@@ -1611,7 +1622,7 @@ function planView(){
   const bookingsToday=state.bookings.filter(b=>b.booking_date===state.day);
   return `${title('PLAN','Build your trip, one day at a time.','Add your main stops, then use Around here to discover ideas that fit the route.','')}
     ${onTheGo?`<div class="on-the-go-strip"><div><span class="eyebrow">ON THE GO</span><b>Today’s city day</b><small>Mark stops done as you move. Add spending directly to a stop.</small></div><button class="btn primary" data-action="food-finder">${icon('Utensils')} Find food nearby</button></div>`:''}
-    <div class="day-strip plan-day-strip">${days.length?days.map((d,i)=>`<button class="day-pill ${state.day===d?'active':''}" data-action="day" data-value="${d}"><small>DAY ${String(i+1).padStart(2,'0')}</small><b>${fmtDate(d,{weekday:'short'})}</b><span>${fmtDate(d,{day:'numeric',month:'short'})}</span><i class="${state.schedule.some(x=>x.schedule_date===d)?'has-stops':''}"></i></button>`).join(''):`<div class="empty-note">Add dates to this trip to build its itinerary. <button data-action="edit-trip">Add dates ${icon('ArrowRight')}</button></div>`}</div>
+    <div class="day-strip plan-day-strip">${days.length?days.map((d,i)=>{const load=dayLoadStatus(d);return `<button class="day-pill day-load-${load.level} ${state.day===d?'active':''}" data-action="day" data-value="${d}" title="${load.label} day"><small>DAY ${String(i+1).padStart(2,'0')}</small><b>${fmtDate(d,{weekday:'short'})}</b><span>${fmtDate(d,{day:'numeric',month:'short'})}</span>${load.level!=='empty'?`<em class="day-load-label">${load.label}</em>`:''}</button>`}).join(''):`<div class="empty-note">Add dates to this trip to build its itinerary. <button data-action="edit-trip">Add dates ${icon('ArrowRight')}</button></div>`}</div>
     <div class="plan-workspace">
       <section class="plan-day-panel">
         <div class="day-heading">
