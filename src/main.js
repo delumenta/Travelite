@@ -327,9 +327,9 @@ function homeView(){
     <section class="home-plan-intelligence">
       <div class="section-head"><div><div class="eyebrow">SMARTER DAYS</div><h2>Good timing matters.</h2><p>Some places belong at sunrise, some at sunset, and some are better moved to another day.</p></div></div>
       <div class="home-intel-grid">
-        <button data-action="tab" data-value="plan"><span class="feature-icon coral">${icon('Sunrise')}</span><b>Arrange my days</b><small>Protect the best time windows first, then build the route around them.</small>${icon('ArrowUpRight')}</button>
-        <button data-action="explore-kind" data-value="place"><span class="feature-icon green">${icon('Compass')}</span><b>My places</b><small>Keep the places you care about in one pool, even when they do not fit yet.</small>${icon('ArrowUpRight')}</button>
-        <button data-action="food-finder"><span class="feature-icon coral">${icon('Utensils')}</span><b>Food Finder</b><small>Find food around where you actually are when hunger wins.</small>${icon('ArrowUpRight')}</button>
+        <button data-action="tab" data-value="plan"><span class="feature-icon coral">${icon('Sunrise')}</span><span class="home-intel-copy"><b>Arrange my days</b><small>Protect the best time windows first, then build the route around them.</small></span><span class="home-intel-arrow">${icon('ArrowUpRight')}</span></button>
+        <button data-action="explore-kind" data-value="place"><span class="feature-icon green">${icon('Compass')}</span><span class="home-intel-copy"><b>My places</b><small>Keep the places you care about in one pool, even when they do not fit yet.</small></span><span class="home-intel-arrow">${icon('ArrowUpRight')}</span></button>
+        <button data-action="food-finder"><span class="feature-icon coral">${icon('Utensils')}</span><span class="home-intel-copy"><b>Food Finder</b><small>Find food around where you actually are when hunger wins.</small></span><span class="home-intel-arrow">${icon('ArrowUpRight')}</span></button>
       </div>
     </section>
   </div>`;
