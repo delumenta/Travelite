@@ -1623,6 +1623,11 @@ function dayLoadStatus(date){
   if(score>=5||(mode==='walking'&&rows.length>=5)||(mode!=='driving'&&span>=480))return {...base,level:'yellow',label:'Moderate'};
   return {...base,level:'green',label:'Chill'};
 }
+function dayCapacity(date){
+ const rows=dayRows(date).filter(x=>!x.is_optional); const t=rows.map(x=>[x.title,x.location_name,x.description,x.notes].filter(Boolean).join(' ')).join(' ').toLowerCase();
+ const locked=rows.some(x=>x.is_locked), full=/\\b(full day|whole day|all day|day trip|daytrip|full-day|whole-day)\\b/.test(t); const mode=locked?'locked':full?'full':'flexible';
+ return {mode,label:mode==='locked'?'Locked':mode==='full'?'Full day':'Flexible',canReceive:mode==='flexible'};
+}
 function balanceSuggestion(date,skipId){
   const days=dayList(state.trip),from=days.indexOf(date),sourceRows=dayRows(date);
   if(from<0||!sourceRows.length)return null;
@@ -1631,7 +1636,7 @@ function balanceSuggestion(date,skipId){
   for(const stop of movable){
     for(let i=0;i<days.length;i++){
       const targetDate=days[i]; if(targetDate===date)continue;
-      const load=dayLoadStatus(targetDate); if(load.level==='red')continue;
+      const load=dayLoadStatus(targetDate),capacity=dayCapacity(targetDate); if(load.level==='red'||!capacity.canReceive)continue;
       const targetRows=dayRows(targetDate).filter(x=>!x.is_optional&&hasValidCoordinates(x));
       if(!targetRows.length)continue; // never dump a POI onto an unrelated empty day
       const distances=targetRows.map(x=>distanceMeters(Number(stop.latitude),Number(stop.longitude),Number(x.latitude),Number(x.longitude)));
@@ -1653,7 +1658,7 @@ function planView(){
   const bookingsToday=state.bookings.filter(b=>b.booking_date===state.day);
   return `${title('PLAN','Build your trip, one day at a time.','Add your main stops, then use Around here to discover ideas that fit the route.','')}
     ${onTheGo?`<div class="on-the-go-strip"><div><span class="eyebrow">ON THE GO</span><b>Today’s city day</b><small>Mark stops done as you move. Add spending directly to a stop.</small></div><button class="btn primary" data-action="food-finder">${icon('Utensils')} Find food nearby</button></div>`:''}
-    <div class="day-strip plan-day-strip">${days.length?days.map((d,i)=>{const load=dayLoadStatus(d);return `<button class="day-pill day-load-${load.level} ${state.day===d?'active':''}" data-action="day" data-value="${d}" title="${load.label} day"><small>DAY ${String(i+1).padStart(2,'0')}</small><b>${fmtDate(d,{weekday:'short'})}</b><span>${fmtDate(d,{day:'numeric',month:'short'})}</span>${load.level!=='empty'?`<em class="day-load-label">${load.label}</em>${load.optionalCount?`<em class="day-optional-count">+${load.optionalCount} optional</em>`:''}`:''}</button>`}).join(''):`<div class="empty-note">Add dates to this trip to build its itinerary. <button data-action="edit-trip">Add dates ${icon('ArrowRight')}</button></div>`}</div>
+    <div class="day-strip plan-day-strip">${days.length?days.map((d,i)=>{const load=dayLoadStatus(d);return `<button class="day-pill day-load-${load.level} ${state.day===d?'active':''}" data-action="day" data-value="${d}" title="${load.label} day"><small>DAY ${String(i+1).padStart(2,'0')}</small><b>${fmtDate(d,{weekday:'short'})}</b><span>${fmtDate(d,{day:'numeric',month:'short'})}</span>${load.level!=='empty'?`<em class="day-load-label">${load.label}</em>${dayCapacity(d).mode!=='flexible'?`<em class="day-capacity-label">${dayCapacity(d).label}</em>`:''}${load.optionalCount?`<em class="day-optional-count">+${load.optionalCount} optional</em>`:''}`:''}</button>`}).join(''):`<div class="empty-note">Add dates to this trip to build its itinerary. <button data-action="edit-trip">Add dates ${icon('ArrowRight')}</button></div>`}</div>
     <div class="plan-workspace">
       <section class="plan-day-panel">
         <div class="day-heading">
