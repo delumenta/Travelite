@@ -37,3 +37,50 @@ export function balanceCards(cards,dates){
   return result;
 }
 export function flattenBalancedDays(days){return days.flatMap(day=>day.cards.flatMap(card=>card.items.map((item,index)=>({...item,schedule_date:day.date,sort_order:index+1,card_title:card.title,effort_level:card.effort}))))}
+
+
+// Internal under-specification / day-trip opportunity logic.
+// This does not hard-code destinations. It only decides WHEN Travelite should
+// look for an excursion; destination discovery remains data-driven.
+export function assessTripCapacity({tripDays=0,cards=[],targetDayScore=55}={}){
+  const days=Math.max(0,Number(tripDays)||0);
+  if(!days)return {underSpecified:false,plannedDayEquivalents:0,openDayEquivalents:0,mode:'no_dates'};
+  const totalLoad=(cards||[]).reduce((sum,card)=>sum+clamp(Number(card?.score)||0,0,100),0);
+  const plannedDayEquivalents=Math.min(days,totalLoad/Math.max(1,targetDayScore));
+  const openDayEquivalents=Math.max(0,days-plannedDayEquivalents);
+  const underSpecified=openDayEquivalents>=0.75;
+  return {
+    underSpecified,
+    plannedDayEquivalents:Number(plannedDayEquivalents.toFixed(1)),
+    openDayEquivalents:Number(openDayEquivalents.toFixed(1)),
+    mode:underSpecified?'suggest_fill':'enough_content'
+  };
+}
+
+export function shouldDiscoverDayTrips({tripDays=0,cards=[],userKeptLoose=false}={}){
+  const capacity=assessTripCapacity({tripDays,cards});
+  return {
+    ...capacity,
+    discover:capacity.underSpecified&&!userKeptLoose,
+    choices:capacity.underSpecified?['add_local_scene','explore_day_trip','keep_it_loose']:[]
+  };
+}
+
+export function qualifyDayTripCandidate(candidate,{baseCities=[],maxMinutes=540,targetMinutes=480}={}){
+  const destination=String(candidate?.destination||candidate?.city||'').trim();
+  const bases=(baseCities||[]).map(x=>String(x||'').trim().toLowerCase()).filter(Boolean);
+  if(!destination)return {eligible:false,reason:'missing_destination'};
+  if(bases.includes(destination.toLowerCase()))return {eligible:false,reason:'already_a_base'};
+  const poiCount=Number(candidate?.usablePoiCount??candidate?.pois?.length??0);
+  if(poiCount<2)return {eligible:false,reason:'not_enough_pois'};
+  if(candidate?.geographicallyCoherent===false)return {eligible:false,reason:'poor_geography'};
+  const total=Number(candidate?.totalMinutes);
+  if(!Number.isFinite(total))return {eligible:false,reason:'needs_route_time'};
+  if(total>maxMinutes)return {eligible:false,reason:'over_nine_hours',totalMinutes:total};
+  return {
+    eligible:true,
+    reason:'valid_return_excursion',
+    totalMinutes:total,
+    durationBand:total<=targetMinutes?'about_eight_hours':'eight_to_nine_hours'
+  };
+}
