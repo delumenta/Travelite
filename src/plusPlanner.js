@@ -7,6 +7,32 @@ const distanceKm=(a,b)=>{
 };
 const centroid=rows=>{const valid=rows.filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)));if(!valid.length)return {latitude:null,longitude:null};return {latitude:valid.reduce((s,x)=>s+Number(x.latitude),0)/valid.length,longitude:valid.reduce((s,x)=>s+Number(x.longitude),0)/valid.length};};
 const cardTitle=rows=>{const names=rows.map(x=>x.name||x.title).filter(Boolean);return names.length<=2?names.join(' + '):`${names[0]} + ${names.length-1} nearby`;};
+const norm=v=>String(v??'').trim().toLowerCase();
+const timingOf=row=>row?.timing_intelligence||row?.timingIntelligence||{};
+const sceneOf=row=>({
+  region:norm(row?.region), area:norm(row?.area),
+  daypart:norm(timingOf(row).preferred_daypart||row?.preferred_daypart),
+  behavior:norm(timingOf(row).schedule_behavior||row?.schedule_behavior)
+});
+const daypartFamily=v=>{
+  if(!v)return '';
+  if(v.includes('dawn')||v.includes('sunrise')||v.includes('early_morning'))return 'early';
+  if(v.includes('morning'))return 'morning';
+  if(v.includes('sunset')||v.includes('evening'))return 'evening';
+  if(v.includes('night')||v.includes('after_dark'))return 'night';
+  return v;
+};
+const sceneCompatible=(a,b,maxRadiusKm)=>{
+  const d=distanceKm(a,b); if(d==null||d>maxRadiusKm)return false;
+  const A=sceneOf(a),B=sceneOf(b);
+  // Region is a planning boundary inside large destinations: East Kyoto and South Kyoto
+  // are not the same outing merely because both pins say city=Kyoto.
+  if(A.region&&B.region&&A.region!==B.region)return false;
+  const da=daypartFamily(A.daypart),db=daypartFamily(B.daypart);
+  if(da&&db&&da!==db&&((da==='early'&&['evening','night'].includes(db))||(db==='early'&&['evening','night'].includes(da))))return false;
+  if((A.behavior.includes('sunset_lock')&&db==='early')||(B.behavior.includes('sunset_lock')&&da==='early'))return false;
+  return true;
+};
 export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5}={}){
   const remaining=[...input],cards=[];
   while(remaining.length){
@@ -14,17 +40,21 @@ export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5}={}){
     while(rows.length<maxStops&&remaining.length){
       const centre=centroid(rows);
       let best=-1,bestDistance=Infinity;
-      remaining.forEach((row,index)=>{const d=distanceKm(centre,row);if(d!=null&&d<bestDistance){best=index;bestDistance=d;}});
+      remaining.forEach((row,index)=>{
+        const d=distanceKm(centre,row);
+        if(d!=null&&d<bestDistance&&rows.every(existing=>sceneCompatible(existing,row,maxRadiusKm))){best=index;bestDistance=d;}
+      });
       if(best<0||bestDistance>maxRadiusKm)break;
       rows.push(remaining.splice(best,1)[0]);
     }
     const totalKm=rows.reduce((sum,row,index)=>sum+(index?distanceKm(rows[index-1],row)||0:0),0);
     const score=clamp(Math.round(rows.length*12+totalKm*8),8,100);
     const effort=score>=65?'red':score>=38?'yellow':'green';
-    cards.push({title:cardTitle(rows),items:rows,centre:centroid(rows),distanceKm:totalKm,score,effort});
+    cards.push({title:cardTitle(rows),items:rows,centre:centroid(rows),distanceKm:totalKm,score,effort,scene:{region:sceneOf(seed).region||null,area:sceneOf(seed).area||null,daypart:sceneOf(seed).daypart||null}});
   }
   return cards.sort((a,b)=>b.score-a.score).map((card,index)=>({...card,order:index+1}));
 }
+
 export function balanceCards(cards,dates){
   const result=Array.from({length:dates.length},(_,index)=>({date:dates[index],cards:[],score:0}));
   const ordered=[...cards].sort((a,b)=>b.score-a.score);
