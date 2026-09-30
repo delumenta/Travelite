@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Travelite — First Trip Test</title>
+<style>
+:root{--bg:#0b0c0e;--card:#15171b;--soft:#202329;--text:#f5f1ed;--muted:#9c9da2;--red:#e54848;--line:#2b2e34}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}.wrap{max-width:480px;margin:auto;min-height:100vh;padding:22px 18px 90px}
+.brand{font-weight:800;letter-spacing:.18em;font-size:13px}.step{color:var(--muted);font-size:12px;margin-top:6px}.bar{height:3px;background:var(--soft);margin:18px 0 28px;border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:var(--red);transition:.3s}
+h1{font-size:30px;line-height:1.08;margin:0 0 10px}p{color:var(--muted);line-height:1.5;margin:0 0 20px}.card,.choice{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:16px;margin:10px 0}.choice{cursor:pointer}.choice.active{border-color:var(--red)}.choice b{display:block;margin-bottom:5px}.choice small{color:var(--muted);line-height:1.4}
+label{display:block;color:var(--muted);font-size:12px;margin:15px 0 7px}input,select,textarea{width:100%;background:#101216;border:1px solid var(--line);color:var(--text);padding:14px;border-radius:12px;font:inherit}textarea{min-height:120px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.buttons{display:flex;gap:10px;margin-top:24px}.btn{border:0;border-radius:12px;padding:14px 16px;font-weight:700;cursor:pointer}.primary{background:var(--red);color:white;flex:1}.back{background:var(--soft);color:var(--text)}
+.pill{display:inline-block;background:var(--soft);border-radius:99px;padding:7px 10px;margin:4px 4px 0 0;font-size:12px}.day{border-left:2px solid var(--red);padding-left:14px;margin:18px 0}.day b{display:block}.day span{display:block;color:var(--muted);font-size:13px;margin-top:5px}.hidden{display:none}.note{font-size:12px;color:var(--muted);margin-top:15px}
+</style></head><body><main class="wrap">
+<div class="brand">TRAVELITE</div><div class="step" id="stepLabel">FIRST TRIP · 1 OF 6</div><div class="bar"><i id="progress" style="width:16.6%"></i></div>
+<section class="screen" data-step="1"><h1>Where are you going?</h1><p>Start with the trip, not the schedule. Travelite only needs enough to understand your base and available days.</p>
+<label>Country</label><select id="country"><option>Japan</option><option>South Korea</option><option>Taiwan</option><option>Singapore</option></select>
+<label>Base city</label><select id="city"><option>Kyoto</option><option>Osaka</option><option>Nara</option><option>Nagoya</option></select>
+<div class="row"><div><label>Arrive</label><input type="date" value="2026-10-18"></div><div><label>Leave</label><input type="date" value="2026-10-23"></div></div>
+<div class="buttons"><button class="btn primary" onclick="next()">Continue</button></div></section>
+
+<section class="screen hidden" data-step="2"><h1>How do you want to start?</h1><p>Your places remain yours. Travelite can start empty or help only when you need ideas.</p>
+<div class="choice active" onclick="pick(this)"><b>I already have places</b><small>Paste names, type them, or upload a screenshot of your list.</small></div>
+<div class="choice" onclick="pick(this)"><b>Give me a starter scene</b><small>Start with 2–3 curated anchors, then you decide what to keep.</small></div>
+<div class="choice" onclick="pick(this)"><b>Keep it loose</b><small>Create the trip first. Add places later.</small></div>
+<div class="buttons"><button class="btn back" onclick="back()">Back</button><button class="btn primary" onclick="next()">Continue</button></div></section>
+
+<section class="screen hidden" data-step="3"><h1>Add your places.</h1><p>Don't organize them. Just give Travelite the pile.</p>
+<textarea id="pois">Fushimi Inari
+Arashiyama Bamboo Grove
+Kiyomizu-dera
+Gion
+Nanzen-ji
+Philosopher's Path
+Kifune Shrine</textarea>
+<div class="card"><b>＋ Upload itinerary screenshot</b><div class="note">Test screen only — demonstrates the intended import entry point.</div></div>
+<div class="buttons"><button class="btn back" onclick="back()">Back</button><button class="btn primary" onclick="next()">Build cards</button></div></section>
+
+<section class="screen hidden" data-step="4"><h1>Travelite makes scenes first.</h1><p>No dates yet. Nearby places that belong to the same outing become a card. Your selected places are protected anchors.</p>
+<div class="day"><b>Fushimi scene</b><span>Fushimi Inari · early morning preferred</span></div>
+<div class="day"><b>Arashiyama scene</b><span>Bamboo Grove · morning-sensitive</span></div>
+<div class="day"><b>Higashiyama scene</b><span>Kiyomizu-dera → Gion</span></div>
+<div class="day"><b>Nanzenji corridor</b><span>Nanzen-ji → Philosopher's Path</span></div>
+<div class="day"><b>Kibune scene</b><span>Kifune Shrine · return transport needs checking</span></div>
+<div class="buttons"><button class="btn back" onclick="back()">Back</button><button class="btn primary" onclick="next()">Balance my days</button></div></section>
+
+<section class="screen hidden" data-step="5"><h1>Then it balances the cards.</h1><p>Travelite checks travel, duration, opening/access constraints and timing before assigning scenes to dates.</p>
+<div class="card"><span class="pill">GREEN · CHILL</span><b style="display:block;margin-top:10px">Higashiyama + Gion</b><div class="note">Natural walking scene. Flexible finish.</div></div>
+<div class="card"><span class="pill">YELLOW · ACTIVE</span><b style="display:block;margin-top:10px">Fushimi + Arashiyama</b><div class="note">Early start. Travel between scenes matters.</div></div>
+<div class="card"><span class="pill">GREEN · CHILL</span><b style="display:block;margin-top:10px">Nanzenji corridor</b></div>
+<div class="card"><span class="pill">YELLOW · CHECK</span><b style="display:block;margin-top:10px">Kibune</b><div class="note">Transport constraint must work for the chosen date.</div></div>
+<div class="buttons"><button class="btn back" onclick="back()">Back</button><button class="btn primary" onclick="next()">See trip</button></div></section>
+
+<section class="screen hidden" data-step="6"><h1>Your first trip is ready.</h1><p>The result is editable. Travelite suggests structure; it doesn't silently add or remove your places.</p>
+<div class="day"><b>Day 1 · Higashiyama</b><span>Kiyomizu-dera → Gion</span></div>
+<div class="day"><b>Day 2 · Fushimi + Arashiyama</b><span>Timing-aware arrangement</span></div>
+<div class="day"><b>Day 3 · Nanzenji</b><span>Nanzen-ji → Philosopher's Path</span></div>
+<div class="day"><b>Day 4 · Kibune</b><span>Verify transport before locking</span></div>
+<div class="card"><b>You still have space.</b><div class="note">Travelite can suggest a Kyoto scene, a qualifying day trip, or simply leave the day free.</div></div>
+<div class="buttons"><button class="btn back" onclick="back()">Back</button><button class="btn primary" onclick="restart()">Restart test</button></div></section>
+</main><script>
+let step=1;function show(){document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('hidden',+x.dataset.step!==step));document.getElementById('stepLabel').textContent='FIRST TRIP · '+step+' OF 6';document.getElementById('progress').style.width=(step/6*100)+'%';scrollTo(0,0)}function next(){if(step<6)step++;show()}function back(){if(step>1)step--;show()}function restart(){step=1;show()}function pick(el){el.parentNode.querySelectorAll('.choice').forEach(x=>x.classList.remove('active'));el.classList.add('active')}
+</script></body></html>
