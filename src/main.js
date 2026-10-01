@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createIcons, Compass, House, CalendarDays, Heart, Menu, Plus, ArrowRight, ArrowLeft, ArrowUpRight, MapPin, Clock3, Sparkles, Bookmark, Utensils, Ticket, Wallet, Search, ChevronDown, ChevronLeft, ChevronRight, X, Check, Trash2, Send, Navigation, LogOut, LoaderCircle, LockKeyhole, Mail, Plane, TrainFront, BedDouble, CircleHelp, SlidersHorizontal, ExternalLink, GripVertical, Pencil, Globe2, Leaf, Coffee, Route, CalendarPlus, CheckCircle2, MoreHorizontal, MessageCircle, Map, Copy, Sunrise, Sunset, ListFilter, UserRound, Sun, Moon } from 'lucide';
 import './style.css';
 import { needsTransport, validTransportCheck, saveTripTransportChecks, routeSignature, savedCheckForRoute } from './transportChecks.js';
-import { buildUndatedCards, balanceCards, flattenBalancedDays, baseForDate, baseTransferForDate, excursionTransport, assignCardsToTripDays, scheduleScene } from './plusPlanner.js';
+import { buildUndatedCards, balanceCards, flattenBalancedDays, baseForDate, baseTransferForDate, excursionTransport, assignCardsToTripDays, scheduleScene, resolvePlaceHours } from './plusPlanner.js';
 
 const SB_URL = 'https://zngncasvdrrxyrkjqutj.supabase.co';
 const SB_KEY = 'sb_publishable_wUrH6t12z4tRKruS28LqWQ_2GG06U9m';
@@ -2530,6 +2530,7 @@ case 'balance-plus-cards':{
   for(const day of proposed){
     let order=state.schedule.filter(x=>x.schedule_date===day.date).length;
     let dayCursor=480;
+    const dayLimit=480+(state.plusPace==='chill'?420:state.plusPace==='packed'?540:480);
     for(const [cardIndex,card] of (day.cards||[]).entries()){
       transportWarnings.push(...(card.transportWarnings||[]).map(w=>w.name+' ('+day.date+'): '+w.reason));
       const cardItems=card.items||[];
@@ -2537,11 +2538,14 @@ case 'balance-plus-cards':{
       const firstCheck=cardItems.length&&needsTransport(cardItems[0])?confirmedFor(cardItems[0],0):null;
       if(firstCheck){if(cardIndex>0)dayCursor=Math.max(0,dayCursor-30);dayCursor+=Number(firstCheck.inbound_minutes)||0;}
       const timed=scheduleScene(cardItems,day.date,{
+        resolveHours:(place,date)=>resolvePlaceHours(place,date),
+        crowdPreference:state.plusCrowds,
         timeZone:state.trip?.time_zone||(String(state.trip?.country||'').toLowerCase()==='japan'?'Asia/Tokyo':Intl.DateTimeFormat().resolvedOptions().timeZone),
-        dayStart:dayCursor,dayEnd:1260,
+        dayStart:dayCursor,dayEnd:dayLimit,
         travelMinutes:(a,b)=>{const index=cardItems.indexOf(b),check=index>=0?confirmedFor(b,index):null;if(check)return Number(check.inbound_minutes);return null;}
       });
       if(timed.scheduled.length){dayCursor=Math.max(...timed.scheduled.map(x=>x.end))+30;const last=timed.scheduled[timed.scheduled.length-1].place,idx=cardItems.indexOf(last),lastCheck=idx>=0?confirmedFor(last,idx):null;if(lastCheck&&cardIndex===(day.cards||[]).length-1)dayCursor+=Number(lastCheck.onward_minutes)||0;}
+      if(dayCursor>dayLimit)warnings.push('Journey time exceeds your '+Math.round((dayLimit-480)/60*10)/10+'-hour day ('+day.date+')');
       if(timed.unplaced.length){
         warnings.push(...timed.unplaced.map(x=>(x.place.name||x.place.title||'Place')+' ('+day.date+')'));
         continue;
@@ -2558,7 +2562,7 @@ case 'balance-plus-cards':{
   if(warnings.length)throw Error('These stops could not fit their day: '+warnings.slice(0,5).join(', ')+'. No changes saved.');
   // Preserve the user's existing stops; new POIs are appended with suggested local times.
   for(const item of flat){
-    const note=(item.matchedPreference?' · Suggested '+item.matchedPreference.label+' (check hours and weather)':'')+(item.transportWarning?' · ⚠ '+item.transportWarning:'');
+    const note=(item.openingVerified?' · Scheduled within recorded opening hours':' · Opening hours unverified')+(item.matchedPreference?' · Suggested '+item.matchedPreference.label+' (check hours and weather)':'')+(item.transportWarning?' · ⚠ '+item.transportWarning:'');
     await saveRow('schedule',{trip_id:state.trip.id,schedule_date:item.schedule_date,
       sort_order:item.sort_order,start_time:item.start_time,title:item.name||item.title,
       item_type:'attraction',location_name:item.name||item.title,address:item.address||null,
