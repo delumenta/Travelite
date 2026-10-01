@@ -403,7 +403,7 @@ function fitPlace(place,date,{timeZone='Asia/Tokyo',resolveHours,dayStart=480,da
     }
   }
   candidates.sort((a,b)=>b.bonus-a.bonus||a.start-b.start);
-  return {place,scheduled:true,candidates:candidates.slice(0,32),preferences:prefs,openingVerified:!!opening};
+  return {place,scheduled:true,candidates:candidates.slice(0,32),preferences:prefs,openingVerified:!!opening&&place.opening_hours?.verified!==false&&place.opening_hours?.status!=='provisional'};
 }
 /**
  * Schedules one geographically coherent scene for one date.
