@@ -336,7 +336,7 @@ export function resolvePlaceHours(place,date){
  const month=d.getUTCMonth()+1;
  const monthInRange=(range)=>{
   const names={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
-  const parts=String(range||'').toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\\d{1,2})/g)||[];
+  const parts=String(range||'').toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2})/g)||[];
   const values=parts.slice(0,2).map(x=>names[x]||Number(x));
   if(values.length<2)return false;
   return values[0]<=values[1]?month>=values[0]&&month<=values[1]:month>=values[0]||month<=values[1];
@@ -345,9 +345,8 @@ export function resolvePlaceHours(place,date){
  const weekdays=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
  // Holiday exceptions and irregular closures still require user confirmation.
  if(weekdays.some((w,i)=>i===d.getUTCDay()&&new RegExp('\\b'+w+'\\b').test(closed)))return [];
- const md=String(month).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
- if(/dec\\s*29\\s*[-–]\\s*jan\\s*3/i.test(closed)&&((month===12&&d.getUTCDate()>=29)||(month===1&&d.getUTCDate()<=3)))return [];
- const context=String(place.visit_context||place.access_context||place.subfacility||'').trim().toLowerCase().replace(/[\\s-]+/g,'_');
+ if(/dec\s*29\s*[-–]\s*jan\s*3/i.test(closed)&&((month===12&&d.getUTCDate()>=29)||(month===1&&d.getUTCDate()<=3)))return [];
+ const context=String(place.visit_context||place.access_context||place.subfacility||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
  const selected=(context&&h[context])||h.seasonal?.find(x=>monthInRange(x.months))||h.regular||h.main||h.general;
  if(!selected)return null;
  return Array.isArray(selected)?selected:[selected];
