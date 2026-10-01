@@ -1614,3 +1614,7 @@ html[data-theme="dark"] .journey-locate{color:#8d989f}html[data-theme="dark"] .j
 .japan-journey-next{margin-top:17px;padding-top:13px;border-top:1px solid rgba(255,255,255,.07);color:#8d989f;font-size:7px;line-height:1.5}.japan-journey-next strong{display:block;margin-top:3px;color:#e9e5df;font-size:10px}
 html:not([data-theme="dark"]) .japan-journey-place{color:#403639}html:not([data-theme="dark"]) .japan-journey-meta,html:not([data-theme="dark"]) .japan-journey-kicker{color:#8e8386}html:not([data-theme="dark"]) .japan-journey-next{border-color:#eadfdd;color:#95888c}html:not([data-theme="dark"]) .japan-journey-next strong{color:#4b4043}
 .japan-journey-action.skip{border-color:rgba(228,189,105,.32);background:rgba(228,189,105,.045);color:#d8bd7d}
+
+.japan-journey-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.japan-journey-full{border:0;background:none;padding:0;color:#ff6b78;font-size:7px;font-weight:900;letter-spacing:.035em;cursor:pointer;text-transform:uppercase}
+.japan-journey-full:hover{opacity:.78}
