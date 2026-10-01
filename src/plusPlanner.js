@@ -9,6 +9,13 @@ const centroid=rows=>{const valid=rows.filter(x=>Number.isFinite(Number(x.latitu
 const cardTitle=rows=>{const names=rows.map(x=>x.name||x.title).filter(Boolean);return names.length<=2?names.join(' + '):`${names[0]} + ${names.length-1} nearby`;};
 const norm=v=>String(v??'').trim().toLowerCase();
 const timingOf=row=>row?.timing_intelligence||row?.timingIntelligence||{};
+const windowsOf=row=>Array.isArray(row?.time_windows)?row.time_windows:[];
+const hardWindowFamily=row=>{
+  const kinds=windowsOf(row).filter(w=>['ideal','strong'].includes(norm(w.strength))).map(w=>norm(w.window_kind)+' '+norm(w.label));
+  if(kinds.some(v=>v.includes('sunrise')||v.includes('dawn')))return 'dawn';
+  if(kinds.some(v=>v.includes('sunset')))return 'sunset';
+  return '';
+};
 const sceneOf=row=>({
   region:norm(row?.region), area:norm(row?.area),
   daypart:norm(timingOf(row).preferred_daypart||row?.preferred_daypart),
@@ -24,6 +31,9 @@ const daypartFamily=v=>{
 };
 const sceneCompatible=(a,b,maxRadiusKm)=>{
   const d=distanceKm(a,b); if(d==null||d>maxRadiusKm)return false;
+  const hardA=hardWindowFamily(a),hardB=hardWindowFamily(b);
+  // Two separate strong dawn/sunrise anchors should not be silently packed into one day card.
+  if(hardA==='dawn'&&hardB==='dawn')return false;
   const A=sceneOf(a),B=sceneOf(b);
   // Region is a planning boundary inside large destinations: East Kyoto and South Kyoto
   // are not the same outing merely because both pins say city=Kyoto.
