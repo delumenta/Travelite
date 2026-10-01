@@ -113,7 +113,7 @@ function buildSchedule(){
    var title='Day '+(i+1)+' · '+d.date.toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short'});
    if(!d.base)return '<div class="card"><div class="dayhead"><b>'+title+'</b><span class="tag">No base</span></div></div>';
    if(!d.items.length)return '<div class="card"><div class="dayhead"><b>'+title+'</b><span class="tag">'+safe(d.base.city)+'</span></div><div class="meta">Free day · no POIs assigned</div></div>';
-   var transfer=transferMinutesForDay(d,days),t=540+transfer,body='';if(transfer)body+='<div class="meta" style="margin:8px 0 10px">Base transfer → '+safe(d.base.city)+' · ~'+transfer+' min intercity</div>';var tripTargets=Array.from(new Set(d.items.map(function(p){return destinationCity(p)}).filter(function(x){return x&&norm(x)!==norm(d.base.city)})));if(tripTargets.length){var dt=dayTripMinutes(d);body+='<div class="meta" style="margin:8px 0 10px">Day trip from '+safe(d.base.city)+' → '+safe(tripTargets.join(' / '))+(dt?' · ~'+dt+' min return transport':'')+'</div>';if(dt)t+=Math.round(dt/2);}
+   var transfer=transferMinutesForDay(d,days),t=540+transfer,body='';if(transfer)body+='<div class="meta" style="margin:8px 0 10px">Base transfer → '+safe(d.base.city)+' · ~'+transfer+' min intercity</div>';var tripTargets=Array.from(new Set(d.items.map(function(p){return destinationCity(p)}).filter(function(x){return x&&norm(x)!==norm(d.base.city)})));if(tripTargets.length){var dt=d.items.some(function(p){return needsTransport(p)})?0:dayTripMinutes(d);body+='<div class="meta" style="margin:8px 0 10px">Day trip from '+safe(d.base.city)+' → '+safe(tripTargets.join(' / '))+(dt?' · ~'+dt+' min return transport':'')+'</div>';if(dt)t+=Math.round(dt/2);}
    d.items.forEach(function(p,j){
      if(j>0)t+=30;
      if(t>=720&&t<780){body+='<div class="timeitem"><div class="time">12:00</div><div><b>Lunch / break</b><div class="meta">60 min</div></div></div>';t=780}
@@ -121,7 +121,7 @@ function buildSchedule(){
      body+='<div class="timeitem"><div class="time">'+clock(t)+'</div><div><b>'+safe(p.name)+'</b><div class="meta">'+safe(p.area||p.region||p.city)+' · ~'+dur+' min'+(p.visit_behavior?' · '+safe(p.visit_behavior):'')+'</div></div></div>';
      t+=dur;if(checked){body+='<div class="timeitem"><div class="time">'+clock(t)+'</div><div><b>Onward / return journey</b><div class="meta">'+Number(check.outbound)+' min (user estimate)</div></div></div>';t+=Number(check.outbound)}
    });
-   if(tripTargets.length){var ret=dayTripMinutes(d);if(ret)t+=Math.round(ret/2);}
+   if(tripTargets.length){var ret=d.items.some(function(p){return needsTransport(p)})?0:dayTripMinutes(d);if(ret)t+=Math.round(ret/2);}
    return '<div class="card"><div class="dayhead"><b>'+title+'</b><span class="tag">'+safe(d.base.city)+'</span></div>'+body+'</div>';
  }).join('');
  show(5);
