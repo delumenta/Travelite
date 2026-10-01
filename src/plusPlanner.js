@@ -114,3 +114,48 @@ export function qualifyDayTripCandidate(candidate,{baseCities=[],maxMinutes=540,
     durationBand:total<=targetMinutes?'about_eight_hours':'eight_to_nine_hours'
   };
 }
+
+
+// Destination transport graph helpers.
+// Same graph, different semantics:
+// - excursion: A -> B -> A and must fit the day cap
+// - base transfer: A -> B once; the minutes reduce usable time on the incoming-base day.
+export function transportGraphMinutes(fromDestinationId,toDestinationId,{anchors=[],estimates=[]}={}){
+  if(fromDestinationId==null||toDestinationId==null)return null;
+  if(String(fromDestinationId)===String(toDestinationId))return 0;
+  const starts=new Set(anchors.filter(a=>String(a.destination_id)===String(fromDestinationId)).map(a=>a.id));
+  const goals=new Set(anchors.filter(a=>String(a.destination_id)===String(toDestinationId)).map(a=>a.id));
+  if(!starts.size||!goals.size)return null;
+  const adj=new Map();
+  for(const e of estimates){if(e.active===false)continue;if(!adj.has(e.from_anchor_id))adj.set(e.from_anchor_id,[]);adj.get(e.from_anchor_id).push([e.to_anchor_id,Number(e.typical_minutes)]);}
+  const dist=new Map(),queue=[];
+  for(const id of starts){dist.set(id,0);queue.push([0,id]);}
+  while(queue.length){
+    queue.sort((a,b)=>a[0]-b[0]);const [d,u]=queue.shift();if(d!==dist.get(u))continue;if(goals.has(u))return Math.round(d);
+    for(const [v,w] of adj.get(u)||[]){if(!Number.isFinite(w))continue;const nd=d+w;if(nd<(dist.get(v)??Infinity)){dist.set(v,nd);queue.push([nd,v]);}}
+  }
+  return null;
+}
+export function baseForDate(date,bases=[]){
+  const ordered=[...(bases||[])].sort((a,b)=>String(a.start_date||a.from||'').localeCompare(String(b.start_date||b.from||'')));
+  const hits=ordered.filter(b=>String(b.start_date||b.from||'')<=date&&String(b.end_date||b.to||'')>=date);
+  return hits.length?hits[hits.length-1]:null; // shared boundary belongs to incoming base
+}
+export function baseTransferForDate(date,bases=[],destinations=[],graph={}){
+  const ordered=[...(bases||[])].sort((a,b)=>String(a.start_date||a.from||'').localeCompare(String(b.start_date||b.from||'')));
+  const current=baseForDate(date,ordered);if(!current)return null;
+  const i=ordered.indexOf(current);if(i<=0)return null;
+  const previous=ordered[i-1];
+  const city=x=>String(x?.city||x?.name||'').trim().toLowerCase();
+  if(city(previous)===city(current))return null;
+  const find=x=>destinations.find(d=>String(d.id)===String(x.destination_id)||String(d.name||'').trim().toLowerCase()===city(x));
+  const from=find(previous),to=find(current);
+  const minutes=from&&to?transportGraphMinutes(from.id,to.id,graph):null;
+  return {kind:'base_transfer',from:previous,to:current,fromDestination:from||null,toDestination:to||null,minutes,returnRequired:false};
+}
+export function excursionTransport({baseDestinationId,targetDestinationId,sceneMinutes=0,localTransferMinutes=30,mealMinutes=60,maxDayMinutes=540,graph={}}={}){
+  const oneWay=transportGraphMinutes(baseDestinationId,targetDestinationId,graph);
+  if(oneWay==null)return {eligible:false,reason:'needs_route_time'};
+  const total=oneWay*2+Number(sceneMinutes||0)+Number(localTransferMinutes||0)+Number(mealMinutes||0);
+  return {eligible:total<=maxDayMinutes,reason:total<=maxDayMinutes?'valid_return_excursion':'over_nine_hours',oneWayMinutes:oneWay,returnMinutes:oneWay,totalMinutes:total,remainingMinutes:Math.max(0,maxDayMinutes-oneWay*2-localTransferMinutes-mealMinutes)};
+}
