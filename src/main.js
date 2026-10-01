@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createIcons, Compass, House, CalendarDays, Heart, Menu, Plus, ArrowRight, ArrowLeft, ArrowUpRight, MapPin, Clock3, Sparkles, Bookmark, Utensils, Ticket, Wallet, Search, ChevronDown, ChevronLeft, ChevronRight, X, Check, Trash2, Send, Navigation, LogOut, LoaderCircle, LockKeyhole, Mail, Plane, TrainFront, BedDouble, CircleHelp, SlidersHorizontal, ExternalLink, GripVertical, Pencil, Globe2, Leaf, Coffee, Route, CalendarPlus, CheckCircle2, MoreHorizontal, MessageCircle, Map, Copy, Sunrise, Sunset, ListFilter, UserRound, Sun, Moon } from 'lucide';
 import './style.css';
-import { buildUndatedCards, balanceCards, flattenBalancedDays, baseForDate, baseTransferForDate, excursionTransport, assignCardsToTripDays } from './plusPlanner.js';
+import { buildUndatedCards, balanceCards, flattenBalancedDays, baseForDate, baseTransferForDate, excursionTransport, assignCardsToTripDays, scheduleScene } from './plusPlanner.js';
 
 const SB_URL = 'https://zngncasvdrrxyrkjqutj.supabase.co';
 const SB_KEY = 'sb_publishable_wUrH6t12z4tRKruS28LqWQ_2GG06U9m';
@@ -2505,7 +2505,54 @@ case 'plus-pace':state.plusPace=v;await savePlanningState();render();break;
 case 'plus-crowds':state.plusCrowds=v;await savePlanningState();render();break;
 case 'plus-under':state.plusUnderSpecifiedChoice=v;await savePlanningState();if(v==='scene'){state.modal={type:'plusStart'};render();toast('Add another scene or a few places you want to build around.');}else if(v==='daytrip'){render();}else{render();toast('Loose days will stay intentionally open.');}break;
 case 'plus-daytrip':{const suggestion=state.dayTripSuggestions.find(x=>Number(x.id)===id);if(!suggestion)break;state.plusUnderSpecifiedChoice='daytrip';await savePlanningState();toast(`${suggestion.destination_city} selected as a free-day idea. Add its places to the card pack when ready.`);render();break;}
-case 'balance-plus-cards':{const dates=dayList(state.trip);if(!dates.length)throw Error('Add trip dates before balancing your cards.');const graph=traveliteGraph();state.plusBalanced=state.tripBases.length?assignCardsToTripDays(state.plusCards,{dates,bases:state.tripBases,destinations:state.destinations,graph,pace:state.plusPace,crowdPreference:state.plusCrowds}):balanceCards(state.plusCards,dates);const flat=state.plusBalanced.flatMap(day=>(day.cards||[]).flatMap(card=>(card.items||[]).map((item,index)=>({...item,schedule_date:day.date,sort_order:index+1,card_title:card.title,effort_level:card.effort,travel_kind:card.travelKind||'local',travel_minutes:card.travelMinutes||0}))));for(const item of flat){await saveRow('schedule',{trip_id:state.trip.id,schedule_date:item.schedule_date,sort_order:item.sort_order,title:item.name||item.title,item_type:'attraction',location_name:item.name||item.title,address:item.address||null,latitude:item.latitude??null,longitude:item.longitude??null,description:item.card_title?`Card: ${item.card_title} · ${item.effort_level}${item.travel_kind==='day_trip'?` · Day trip transport ~${item.travel_minutes} min`:''}`:null,is_optional:false});}state.plusCards=[];state.plusBalanced=[];state.modal=null;state.tab='plan';await loadTripData();toast('Your cards were assigned by base, transfer day and travel time.');break;}
+case 'balance-plus-cards':{
+  const dates=dayList(state.trip);
+  if(!dates.length)throw Error('Add trip dates before balancing your cards.');
+  const graph=traveliteGraph();
+  const enrichedCards=(state.plusCards||[]).map(card=>({...card,items:enrichPlannerPlaces(card.items||[])}));
+  const proposed=state.tripBases.length
+    ?assignCardsToTripDays(enrichedCards,{dates,bases:state.tripBases,destinations:state.destinations,graph,pace:state.plusPace,crowdPreference:state.plusCrowds})
+    :balanceCards(enrichedCards,dates);
+  const assigned=new Set(proposed.flatMap(day=>(day.cards||[]).flatMap(card=>(card.items||[]).map(p=>String(p.place_id??p.id??p.name)))));
+  const omitted=enrichedCards.flatMap(c=>c.items||[]).filter(p=>!assigned.has(String(p.place_id??p.id??p.name)));
+  if(omitted.length)throw Error(omitted.length+' selected places could not fit the trip dates or travel limits. Adjust your dates or pace before saving.');
+  const flat=[],warnings=[];
+  for(const day of proposed){
+    let order=state.schedule.filter(x=>x.schedule_date===day.date).length;
+    for(const card of day.cards||[]){
+      const timed=scheduleScene(card.items||[],day.date,{
+        timeZone:state.trip?.time_zone||'Asia/Tokyo',
+        dayStart:480,dayEnd:1260
+      });
+      if(timed.unplaced.length){
+        warnings.push(...timed.unplaced.map(x=>(x.place.name||x.place.title||'Place')+' ('+day.date+')'));
+        continue;
+      }
+      for(const stop of timed.scheduled){
+        const item=stop.place;
+        flat.push({...item,schedule_date:day.date,sort_order:++order,start_time:stop.arrival,
+          card_title:card.title,effort_level:card.effort,travel_kind:card.travelKind||'local',
+          travel_minutes:card.travelMinutes||0,matchedPreference:stop.matchedPreference,
+          openingVerified:stop.openingVerified});
+      }
+    }
+  }
+  if(warnings.length)throw Error('These stops could not fit their day: '+warnings.slice(0,5).join(', ')+'. No changes saved.');
+  // Preserve the user's existing stops; new POIs are appended with suggested local times.
+  for(const item of flat){
+    const note=item.matchedPreference?' · Suggested '+item.matchedPreference.label+' (check hours and weather)':'';
+    await saveRow('schedule',{trip_id:state.trip.id,schedule_date:item.schedule_date,
+      sort_order:item.sort_order,start_time:item.start_time,title:item.name||item.title,
+      item_type:'attraction',location_name:item.name||item.title,address:item.address||null,
+      latitude:item.latitude??null,longitude:item.longitude??null,
+      description:item.card_title?`Card: ${item.card_title} · ${item.effort_level}${item.travel_kind==='day_trip'?` · Day trip transport ~${item.travel_minutes} min`:''}${note}`:null,
+      is_optional:false});
+  }
+  state.plusBalanced=proposed;state.plusCards=[];state.modal=null;state.tab='plan';
+  await loadTripData();
+  toast('Day cards scheduled with date-aware sunrise and sunset preferences. Confirm venue hours.');
+  break;
+}
 case 'new-expense':state.onTheGoStop=null;openModal('expense');break;
 case 'new-expense-stop':state.onTheGoStop=state.schedule.find(x=>Number(x.id)===id)||null;openModal('expense');break;
 case 'edit-expense':openModal('expense',state.expenses.find(x=>x.id===id));break;
