@@ -1,61 +1,126 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Travelite — First Trip Test</title>
-<!-- redeploy 2026-10-01 -->
-<style>
-:root{--bg:#0b0c0e;--card:#15171b;--soft:#202329;--text:#f5f1ed;--muted:#9c9da2;--red:#e54848;--line:#2b2e34}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}.wrap{max-width:480px;margin:auto;min-height:100vh;padding:22px 18px 90px}
-.brand{font-weight:800;letter-spacing:.18em;font-size:13px}.step{color:var(--muted);font-size:12px;margin-top:6px}.bar{height:3px;background:var(--soft);margin:18px 0 28px;border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:var(--red);transition:.3s}
-h1{font-size:30px;line-height:1.08;margin:0 0 10px}p{color:var(--muted);line-height:1.5;margin:0 0 20px}.card,.choice{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:16px;margin:10px 0}.choice{cursor:pointer}.choice.active{border-color:var(--red)}.choice b{display:block;margin-bottom:5px}.choice small{color:var(--muted);line-height:1.4}
-label{display:block;color:var(--muted);font-size:12px;margin:15px 0 7px}input,select,textarea{width:100%;background:#101216;border:1px solid var(--line);color:var(--text);padding:14px;border-radius:12px;font:inherit}textarea{min-height:120px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.buttons{display:flex;gap:10px;margin-top:24px}.btn{border:0;border-radius:12px;padding:14px 16px;font-weight:700;cursor:pointer}.primary{background:var(--red);color:white;flex:1}.back{background:var(--soft);color:var(--text)}
-.pill{display:inline-block;background:var(--soft);border-radius:99px;padding:7px 10px;margin:4px 4px 0 0;font-size:12px}.day{border-left:2px solid var(--red);padding-left:14px;margin:18px 0}.day b{display:block}.day span{display:block;color:var(--muted);font-size:13px;margin-top:5px}.hidden{display:none}.note{font-size:12px;color:var(--muted);margin-top:15px}
-</style></head><body><main class="wrap">
-<div class="brand">TRAVELITE</div><div class="step" id="stepLabel">FIRST TRIP · 1 OF 6</div><div class="bar"><i id="progress" style="width:16.6%"></i></div>
-<section class="screen" data-step="1"><h1>Where are you going?</h1><p>Start with the trip, not the schedule. Travelite only needs enough to understand your base and available days.</p>
-<label>Country</label><select id="country"><option>Japan</option><option>South Korea</option><option>Taiwan</option><option>Singapore</option></select>
-<label>Base city</label><select id="city"><option>Kyoto</option><option>Osaka</option><option>Nara</option><option>Nagoya</option></select>
-<div class="row"><div><label>Arrive</label><input type="date" value="2026-10-18"></div><div><label>Leave</label><input type="date" value="2026-10-23"></div></div>
-<div class="buttons"><button class="btn primary" onclick="next()">Continue</button></div></section>
-
-<section class="screen hidden" data-step="2"><h1>How do you want to start?</h1><p>Your places remain yours. Travelite can start empty or help only when you need ideas.</p>
-<div class="choice active" onclick="pick(this)"><b>I already have places</b><small>Paste names, type them, or upload a screenshot of your list.</small></div>
-<div class="choice" onclick="pick(this)"><b>Give me a starter scene</b><small>Start with 2–3 curated anchors, then you decide what to keep.</small></div>
-<div class="choice" onclick="pick(this)"><b>Keep it loose</b><small>Create the trip first. Add places later.</small></div>
-<div class="buttons"><button class="btn back" onclick="back()">Back</button><button class="btn primary" onclick="next()">Continue</button></div></section>
-
-<section class="screen hidden" data-step="3"><h1>Add your places.</h1><p>Don't organize them. Just give Travelite the pile.</p>
-<textarea id="pois">Fushimi Inari
-Arashiyama Bamboo Grove
-Kiyomizu-dera
-Gion
-Nanzen-ji
-Philosopher's Path
-Kifune Shrine</textarea>
-<div class="card"><b>＋ Upload itinerary screenshot</b><div class="note">Test screen only — demonstrates the intended import entry point.</div></div>
-<div class="buttons"><button class="btn back" onclick="back()">Back</button><button class="btn primary" onclick="next()">Build cards</button></div></section>
-
-<section class="screen hidden" data-step="4"><h1>Travelite makes scenes first.</h1><p>No dates yet. Nearby places that belong to the same outing become a card. Your selected places are protected anchors.</p>
-<div class="day"><b>Fushimi scene</b><span>Fushimi Inari · early morning preferred</span></div>
-<div class="day"><b>Arashiyama scene</b><span>Bamboo Grove · morning-sensitive</span></div>
-<div class="day"><b>Higashiyama scene</b><span>Kiyomizu-dera → Gion</span></div>
-<div class="day"><b>Nanzenji corridor</b><span>Nanzen-ji → Philosopher's Path</span></div>
-<div class="day"><b>Kibune scene</b><span>Kifune Shrine · return transport needs checking</span></div>
-<div class="buttons"><button class="btn back" onclick="back()">Back</button><button class="btn primary" onclick="next()">Balance my days</button></div></section>
-
-<section class="screen hidden" data-step="5"><h1>Then it balances the cards.</h1><p>Travelite checks travel, duration, opening/access constraints and timing before assigning scenes to dates.</p>
-<div class="card"><span class="pill">GREEN · CHILL</span><b style="display:block;margin-top:10px">Higashiyama + Gion</b><div class="note">Natural walking scene. Flexible finish.</div></div>
-<div class="card"><span class="pill">YELLOW · ACTIVE</span><b style="display:block;margin-top:10px">Fushimi + Arashiyama</b><div class="note">Early start. Travel between scenes matters.</div></div>
-<div class="card"><span class="pill">GREEN · CHILL</span><b style="display:block;margin-top:10px">Nanzenji corridor</b></div>
-<div class="card"><span class="pill">YELLOW · CHECK</span><b style="display:block;margin-top:10px">Kibune</b><div class="note">Transport constraint must work for the chosen date.</div></div>
-<div class="buttons"><button class="btn back" onclick="back()">Back</button><button class="btn primary" onclick="next()">See trip</button></div></section>
-
-<section class="screen hidden" data-step="6"><h1>Your first trip is ready.</h1><p>The result is editable. Travelite suggests structure; it doesn't silently add or remove your places.</p>
-<div class="day"><b>Day 1 · Higashiyama</b><span>Kiyomizu-dera → Gion</span></div>
-<div class="day"><b>Day 2 · Fushimi + Arashiyama</b><span>Timing-aware arrangement</span></div>
-<div class="day"><b>Day 3 · Nanzenji</b><span>Nanzen-ji → Philosopher's Path</span></div>
-<div class="day"><b>Day 4 · Kibune</b><span>Verify transport before locking</span></div>
-<div class="card"><b>You still have space.</b><div class="note">Travelite can suggest a Kyoto scene, a qualifying day trip, or simply leave the day free.</div></div>
-<div class="buttons"><button class="btn back" onclick="back()">Back</button><button class="btn primary" onclick="restart()">Restart test</button></div></section>
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Travelite Test</title>
+<style>body{margin:0;background:#0b0c0e;color:#f5f1ed;font-family:Arial}.wrap{max-width:540px;margin:auto;padding:24px 18px}h1{font-size:30px}.muted,label{color:#aaa}label{display:block;font-size:12px;margin:12px 0 6px}input,select,textarea{width:100%;box-sizing:border-box;background:#111318;color:#fff;border:1px solid #303238;border-radius:11px;padding:13px}textarea{min-height:150px}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cityrow{display:grid;grid-template-columns:1.2fr 1fr 1fr auto;gap:7px;align-items:end;margin:8px 0}.btn{border:0;border-radius:11px;padding:13px 15px;font-weight:bold;cursor:pointer}.dark{background:#22252b;color:#fff}.red{background:#eb474b;color:#fff}.wide{width:100%;margin-top:10px}.buttons{display:flex;gap:8px;margin-top:22px}.buttons .red{flex:1}.hidden{display:none}.card{background:#15171b;border:1px solid #2b2e34;border-radius:14px;padding:14px;margin:10px 0}.meta{font-size:12px;color:#aaa;margin-top:6px}.timeitem{display:grid;grid-template-columns:58px 1fr;gap:10px;padding:10px 0;border-top:1px solid #2b2e34}.timeitem:first-of-type{border-top:0}.time{font-weight:bold;font-size:13px}.dayhead{display:flex;justify-content:space-between;gap:10px}.tag{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.08em}@media(max-width:520px){.cityrow{grid-template-columns:1fr 1fr}.citybox{grid-column:1/-1}}</style></head><body><main class="wrap">
+<div style="font-weight:bold;letter-spacing:.15em;font-size:13px">TRAVELITE · TEST</div><div id="stepText" class="muted" style="font-size:12px;margin-top:6px">TRIP · 1 OF 5</div>
+<section id="s1"><h1>Build your trip.</h1><p class="muted">Add every city where you will stay.</p><label>Country</label><select><option>Japan</option></select><div class="row"><div><label>Trip starts</label><input id="start" type="date" value="2026-10-18"></div><div><label>Trip ends</label><input id="end" type="date" value="2026-10-30"></div></div><label>Cities</label><div id="cities"></div><button id="add" type="button" class="btn dark wide">＋ Add City</button><div class="buttons"><button id="next1" class="btn red">Continue</button></div></section>
+<section id="s2" class="hidden"><h1>Add your places.</h1><textarea id="pois" placeholder="Kiyomizu-dera&#10;USJ&#10;Nara"></textarea><div class="buttons"><button class="btn dark back">Back</button><button id="next2" class="btn red">Match places</button></div></section>
+<section id="s3" class="hidden"><h1>Travelite understood this.</h1><div id="matches"></div><div class="buttons"><button class="btn dark back">Back</button><button id="next3" class="btn red">Build scenes</button></div></section>
+<section id="s4" class="hidden"><h1>Scene cards.</h1><div id="scenes"></div><div class="buttons"><button class="btn dark back">Back</button><button id="next4" class="btn red">Balance trip</button></div></section>
+<section id="s5" class="hidden"><h1>Balanced trip.</h1><div id="trip"></div><div class="buttons"><button class="btn dark back">Back</button></div></section>
 </main><script>
-let step=1;function show(){document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('hidden',+x.dataset.step!==step));document.getElementById('stepLabel').textContent='FIRST TRIP · '+step+' OF 6';document.getElementById('progress').style.width=(step/6*100)+'%';scrollTo(0,0)}function next(){if(step<6)step++;show()}function back(){if(step>1)step--;show()}function restart(){step=1;show()}function pick(el){el.parentNode.querySelectorAll('.choice').forEach(x=>x.classList.remove('active'));el.classList.add('active')}
+(function(){
+var step=1, resolved=[], places=[];
+function el(id){return document.getElementById(id)}
+function show(n){step=n;for(var i=1;i<=5;i++)el('s'+i).classList.toggle('hidden',i!==n);el('stepText').textContent='TRIP · '+n+' OF 5'}
+function addCity(city,from,to){var r=document.createElement('div');r.className='cityrow';r.innerHTML='<div class="citybox"><label>City</label><select class="c"><option>Kyoto</option><option>Osaka</option><option>Nara</option><option>Nagoya</option><option>Tokyo</option><option>Kobe</option><option>Himeji</option><option>Uji</option></select></div><div><label>From</label><input class="f" type="date"></div><div><label>To</label><input class="t" type="date"></div><button type="button" class="btn dark x">×</button>';el('cities').appendChild(r);r.querySelector('.c').value=city||'Osaka';r.querySelector('.f').value=from||el('start').value;r.querySelector('.t').value=to||el('end').value;r.querySelector('.x').onclick=function(){if(document.querySelectorAll('.cityrow').length>1)r.remove()}}
+function cityRows(){return Array.prototype.map.call(document.querySelectorAll('.cityrow'),function(r){return {city:r.querySelector('.c').value,from:r.querySelector('.f').value,to:r.querySelector('.t').value}})}
+el('add').onclick=function(){var rs=document.querySelectorAll('.cityrow'),last=rs[rs.length-1];addCity('Osaka',last?last.querySelector('.t').value:el('start').value,el('end').value)};
+el('next1').onclick=function(){show(2)};
+var SB='https://zngncasvdrrxyrkjqutj.supabase.co';
+var KEY='sb_publishable_wUrH6t12z4tRKruS28LqWQ_2GG06U9m';
+function norm(s){return String(s||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]/g,' ').replace(/\\b(temple|shrine|taisha|ji|dera|the|of|park)\\b/g,' ').replace(/\\s+/g,' ').trim()}
+function safe(s){return String(s||'').replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]})}
+async function loadPlaces(){if(places.length)return;var r=await fetch(SB+'/rest/v1/places?select=id,name,name_japanese,city,area,region,country,estimated_minutes_min,estimated_minutes_max,visit_behavior,prominence,timing_intelligence,status&status=eq.active&country=eq.Japan&limit=2000',{headers:{apikey:KEY,Authorization:'Bearer '+KEY}});if(!r.ok)throw new Error('Place database '+r.status);places=await r.json()}
+function findPlace(q){var nq=norm(q),best=null,score=0;if(!nq)return null;places.forEach(function(p){var n=norm(p.name),s=0;if(!n)return;if(n===nq)s=100;else if(nq.length>=3&&n.length>=3&&(n.indexOf(nq)>=0||nq.indexOf(n)>=0))s=90;else{var a=nq.split(' '),b=n.split(' '),hit=a.filter(function(x){return b.indexOf(x)>=0}).length;s=80*hit/Math.max(a.length,b.length,1)}if(s>score){score=s;best=p}});return score>=52?best:null}
+function mins(p){var a=Number(p.estimated_minutes_min)||60,b=Number(p.estimated_minutes_max)||a;return Math.round((a+b)/2)}
+function clock(m){var h=Math.floor(m/60)%24,mm=m%60;return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0')}
+function baseFor(iso,bs){var hits=bs.filter(function(b){return b.from<=iso&&b.to>=iso});if(hits.length)return hits[hits.length-1];if(!bs.length)return null;if(iso<bs[0].from)return bs[0];if(iso>bs[bs.length-1].to)return bs[bs.length-1];return null}
+function destinationCity(p){
+ var city=String(p.city||'');
+ var area=String(p.area||'');
+ var region=String(p.region||'');
+ var all=(city+' '+area+' '+region).toLowerCase();
+ if(all.indexOf('osaka')>=0||all.indexOf('minoh')>=0)return 'Osaka';
+ if(all.indexOf('nara')>=0)return 'Nara';
+ if(all.indexOf('uji')>=0)return 'Uji';
+ if(all.indexOf('kyoto')>=0)return 'Kyoto';
+ if(all.indexOf('kobe')>=0)return 'Kobe';
+ if(all.indexOf('himeji')>=0)return 'Himeji';
+ if(all.indexOf('nagoya')>=0)return 'Nagoya';
+ return city;
+}
+var transportGraph={anchors:[],estimates:[]};
+async function sbRows(table,query){var r=await fetch(SB+'/rest/v1/'+table+'?'+query,{headers:{apikey:KEY,Authorization:'Bearer '+KEY}});if(!r.ok)throw new Error(table+' '+r.status);return r.json()}
+async function loadTransportGraph(){
+ try{
+  var all=await Promise.all([
+   sbRows('destinations','select=id,name,slug,country&country=eq.Japan&status=eq.active'),
+   sbRows('destination_transport_anchors','select=id,destination_id,name,priority&active=eq.true'),
+   sbRows('destination_travel_estimates','select=from_anchor_id,to_anchor_id,typical_minutes&active=eq.true')
+  ]);
+  window.destinationRows=all[0]||[];transportGraph={anchors:all[1]||[],estimates:all[2]||[]};
+ }catch(e){console.warn('transport graph unavailable',e);window.destinationRows=[];transportGraph={anchors:[],estimates:[]}}
+}
+function graphMinutes(fromId,toId){
+ if(String(fromId)===String(toId))return 0;
+ var starts=transportGraph.anchors.filter(function(a){return String(a.destination_id)===String(fromId)}).map(function(a){return a.id});
+ var goals=transportGraph.anchors.filter(function(a){return String(a.destination_id)===String(toId)}).map(function(a){return a.id});
+ if(!starts.length||!goals.length)return null;
+ var dist={},q=starts.map(function(id){dist[id]=0;return [0,id]});
+ while(q.length){q.sort(function(a,b){return a[0]-b[0]});var cur=q.shift(),d=cur[0],u=cur[1];if(d!==dist[u])continue;if(goals.indexOf(u)>=0)return Math.round(d);
+  transportGraph.estimates.filter(function(x){return x.from_anchor_id===u}).forEach(function(x){var nd=d+Number(x.typical_minutes||9999);if(nd<(dist[x.to_anchor_id]??Infinity)){dist[x.to_anchor_id]=nd;q.push([nd,x.to_anchor_id])}});
+ } return null;
+}
+function destinationRecordForCity(city){return (window.destinationRows||[]).find(function(d){return norm(d.name)===norm(city)})||null}
+function canDayTrip(base,target){
+ var b=destinationRecordForCity(base),t=destinationRecordForCity(target);
+ if(!b||!t)return false;
+ var m=graphMinutes(b.id,t.id);
+ return m!=null && (m*2)<540;
+}
+function chooseDaysForCity(city,days){
+ var exact=days.filter(function(d){return d.base&&norm(d.base.city)===norm(city)});
+ if(exact.length)return exact;
+ return days.filter(function(d){return d.base&&canDayTrip(d.base.city,city)});
+}
+function transferMinutesForDay(day,days){
+ var i=days.indexOf(day);if(i<=0||!day.base)return 0;
+ var prev=days[i-1].base;if(!prev||norm(prev.city)===norm(day.base.city))return 0;
+ var a=destinationRecordForCity(prev.city),b=destinationRecordForCity(day.base.city);
+ return a&&b?(graphMinutes(a.id,b.id)||0):0;
+}
+function dayTripMinutes(day){
+ var targets=Array.from(new Set(day.items.map(function(p){return destinationCity(p)}).filter(function(x){return x&&norm(x)!==norm(day.base.city)})));
+ if(!targets.length)return 0;
+ var b=destinationRecordForCity(day.base.city);if(!b)return 0;
+ return targets.reduce(function(sum,x){var t=destinationRecordForCity(x),m=t&&graphMinutes(b.id,t.id);return sum+(m?m*2:0)},0);
+}
+function buildSchedule(){
+ var bs=cityRows(),a=new Date(el('start').value+'T00:00:00'),end=new Date(el('end').value+'T00:00:00'),days=[];
+ while(a<=end){var iso=a.toISOString().slice(0,10);days.push({date:new Date(a),iso:iso,base:baseFor(iso,bs),items:[]});a.setDate(a.getDate()+1)}
+ var matched=resolved.filter(function(r){return r.place});
+ var byCity={};matched.forEach(function(r){var city=destinationCity(r.place)||'Other';(byCity[city]||(byCity[city]=[])).push(r.place)});
+ Object.keys(byCity).forEach(function(city){
+   var eligible=chooseDaysForCity(city,days);
+   if(!eligible.length)return;
+   byCity[city].sort(function(x,y){return String(x.region||x.area||'').localeCompare(String(y.region||y.area||''))});
+   byCity[city].forEach(function(p){
+     var target=eligible.slice().sort(function(x,y){return x.items.reduce(function(s,z){return s+mins(z)},0)-y.items.reduce(function(s,z){return s+mins(z)},0)})[0];
+     target.items.push(p);
+   });
+ });
+ el('trip').innerHTML=days.map(function(d,i){
+   var title='Day '+(i+1)+' · '+d.date.toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short'});
+   if(!d.base)return '<div class="card"><div class="dayhead"><b>'+title+'</b><span class="tag">No base</span></div></div>';
+   if(!d.items.length)return '<div class="card"><div class="dayhead"><b>'+title+'</b><span class="tag">'+safe(d.base.city)+'</span></div><div class="meta">Free day · no POIs assigned</div></div>';
+   var transfer=transferMinutesForDay(d,days),t=540+transfer,body='';if(transfer)body+='<div class="meta" style="margin:8px 0 10px">Base transfer → '+safe(d.base.city)+' · ~'+transfer+' min intercity</div>';var tripTargets=Array.from(new Set(d.items.map(function(p){return destinationCity(p)}).filter(function(x){return x&&norm(x)!==norm(d.base.city)})));if(tripTargets.length){var dt=dayTripMinutes(d);body+='<div class="meta" style="margin:8px 0 10px">Day trip from '+safe(d.base.city)+' → '+safe(tripTargets.join(' / '))+(dt?' · ~'+dt+' min return transport':'')+'</div>';if(dt)t+=Math.round(dt/2);}
+   d.items.forEach(function(p,j){
+     if(j>0)t+=30;
+     if(t>=720&&t<780){body+='<div class="timeitem"><div class="time">12:00</div><div><b>Lunch / break</b><div class="meta">60 min</div></div></div>';t=780}
+     var dur=mins(p);
+     body+='<div class="timeitem"><div class="time">'+clock(t)+'</div><div><b>'+safe(p.name)+'</b><div class="meta">'+safe(p.area||p.region||p.city)+' · ~'+dur+' min'+(p.visit_behavior?' · '+safe(p.visit_behavior):'')+'</div></div></div>';
+     t+=dur;
+   });
+   if(tripTargets.length){var ret=dayTripMinutes(d);if(ret)t+=Math.round(ret/2);}
+   return '<div class="card"><div class="dayhead"><b>'+title+'</b><span class="tag">'+safe(d.base.city)+'</span></div>'+body+'</div>';
+ }).join('');
+ show(5);
+}
+el('next2').onclick=async function(){var lines=el('pois').value.split(/\\n|,/).map(function(x){return x.trim()}).filter(Boolean);el('matches').innerHTML='<div class="card">Reading Travelite place data…</div>';show(3);try{await loadPlaces();resolved=lines.map(function(q){var p=findPlace(q);return {raw:q,place:p}});el('matches').innerHTML=resolved.length?resolved.map(function(r){return r.place?'<div class="card"><b>'+safe(r.raw)+' → '+safe(r.place.name)+'</b><div class="meta">'+safe(r.place.city)+' · '+safe(r.place.region||r.place.area||'')+' · ~'+mins(r.place)+' min</div></div>':'<div class="card"><b>'+safe(r.raw)+'</b><div class="meta">Not confidently matched — not scheduled.</div></div>'}).join(''):'<div class="card">No places entered.</div>'}catch(e){el('matches').innerHTML='<div class="card">Could not load Travelite data: '+safe(e.message)+'</div>'}};
+el('next3').onclick=function(){var matched=resolved.filter(function(r){return r.place});el('scenes').innerHTML=matched.length?matched.map(function(r){var p=r.place;return '<div class="card"><b>'+safe(p.name)+'</b><div class="meta">'+safe(p.city)+' · '+safe(p.region||p.area||'')+' · '+mins(p)+' min</div></div>'}).join(''):'<div class="card">No matched POIs.</div>';show(4)};
+el('next4').onclick=buildSchedule;
+Array.prototype.forEach.call(document.querySelectorAll('.back'),function(b){b.onclick=function(){show(step-1)}});
+addCity('Kyoto',el('start').value,el('end').value);
+
+loadTransportGraph();
+})();
 </script></body></html>
