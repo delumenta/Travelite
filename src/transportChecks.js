@@ -27,10 +27,15 @@ export function loadTransportChecks(key){try{return JSON.parse(sessionStorage.ge
 export function saveTransportChecks(key,checks){try{sessionStorage.setItem(key,JSON.stringify(checks))}catch{}}
 // Use only with an authenticated Supabase client and an existing owned trip.
 // RLS enforces that the user can only write checks for trips they own.
+export function routeSignature(date,previous,place,next){
+ const key=p=>String(p?.place_id??p?.id??p?.name??p?.title??p?.location_name??'hotel').trim().toLowerCase();
+ return JSON.stringify([date||'',key(previous),key(place),key(next)]);
+}
+export function savedCheckForRoute(row,signature){return Boolean(row?.confirmed&&row?.route_signature&&row.route_signature===signature);}
 export async function saveTripTransportChecks(supabase,tripId,checks){
  const rows=Object.entries(checks).filter(([,v])=>validTransportCheck(v)).map(([placeId,v])=>({
   trip_id:tripId,place_id:Number(placeId),transport_mode:v.mode,origin_label:v.origin.trim(),
-  inbound_minutes:Number(v.inbound),onward_minutes:Number(v.outbound),confirmed:true,checked_at:new Date().toISOString(),updated_at:new Date().toISOString()
+  inbound_minutes:Number(v.inbound),onward_minutes:Number(v.outbound),confirmed:true,route_signature:v.routeSignature||null,checked_at:new Date().toISOString(),updated_at:new Date().toISOString()
  }));
  if(!rows.length)return {data:[],error:null};
  return supabase.from('trip_transport_checks').upsert(rows,{onConflict:'trip_id,place_id'});
