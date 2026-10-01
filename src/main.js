@@ -325,7 +325,7 @@ function homeView(){
     <section class="home-focus-grid">
       <div class="panel home-next-card home-next-card-japan">
         ${(()=>{const journey=traveliteJourneyMode(nextStop,tripIsLive);const distance=journey.distance!=null?` · ~${journey.distance<1000?journey.distance+' m':(journey.distance/1000).toFixed(1)+' km'}`:'';const next=activeDayStops.find(x=>x!==nextStop);return `
-        <div class="japan-journey-kicker">TODAY</div>
+        <div class="japan-journey-top"><div class="japan-journey-kicker">TODAY</div><button class="japan-journey-full" data-action="tab" data-value="plan">VIEW FULL SCHEDULE</button></div>
         <div class="japan-journey-state">${journey.state}</div>
         ${nextStop?`<div class="japan-journey-place">${esc(nextStop.title)}${distance}</div><div class="japan-journey-meta">${time(nextStop.start_time)?esc(time(nextStop.start_time))+' · ':''}${journey.mode==='offline'?'Location unavailable · using saved itinerary':'Part of today\'s journey'}</div>
         <div class="japan-journey-actions"><a class="japan-journey-action" href="${esc(directions(nextStop))}" target="_blank" rel="noopener noreferrer">DIRECTIONS</a><button class="japan-journey-action" data-action="journey-location">${state.journeyLocationBusy?'LOCATING…':state.journeyLocation?'REFRESH GPS':'CHECK GPS'}</button><button class="japan-journey-action done" data-action="toggle-stop-done" data-id="${nextStop.id}">✓ DONE</button><button class="japan-journey-action skip" data-action="journey-skip" data-id="${nextStop.id}">SKIP</button></div>
