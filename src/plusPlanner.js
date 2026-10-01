@@ -309,7 +309,7 @@ function windows(place,date,timeZone){
       start=anchor+Number(w.start_offset_min||0);end=anchor+Number(w.end_offset_min||0);
     }else continue; // opening/closing anchors require verified structured hours
     if(start==null||end==null)continue;
-    result.push({label:w.label||w.window_kind,kind:w.window_kind,start,end,strength:w.strength||'preferred',priority:Number(w.priority||50)});
+    result.push({label:w.label||w.window_kind,kind:w.window_kind,start,end,strength:w.strength||'preferred',priority:Number(w.priority??50),experienceScore:clamp(Number(w.experience_score??70),0,100),crowdScore:clamp(Number(w.crowd_score??50),0,100)});
   }
   return result;
 }
@@ -348,7 +348,20 @@ function openIntervals(place,date,resolveHours){
     return {...x,end};
   });
 }
-function fitPlace(place,date,{timeZone='Asia/Tokyo',resolveHours,dayStart=480,dayEnd=1260}={}){
+const preferenceMode=v=>{const x=norm(v);return x==='avoid'||x==='avoid_crowds'?'avoid':x==='timing'||x==='best_time'||x==='best_time_windows'?'timing':'balanced';};
+function windowScore(w,crowdPreference='balanced'){
+  const mode=preferenceMode(crowdPreference);
+  const strength={ideal:100,strong:82,preferred:62,acceptable:42,avoid:0}[norm(w.strength)]??55;
+  const experience=clamp(Number(w.experienceScore??70),0,100);
+  const quiet=100-clamp(Number(w.crowdScore??50),0,100);
+  const priority=clamp(Number(w.priority??50),0,100);
+  const weights=mode==='avoid'?{experience:.25,quiet:.55,strength:.20}:mode==='timing'?{experience:.60,quiet:.10,strength:.30}:{experience:.40,quiet:.30,strength:.30};
+  let score=experience*weights.experience+quiet*weights.quiet+strength*weights.strength;
+  score+=(priority-50)*0.08;
+  if(norm(w.strength)==='avoid')score-=45;
+  return score;
+}
+function fitPlace(place,date,{timeZone='Asia/Tokyo',resolveHours,dayStart=480,dayEnd=1260,crowdPreference='balanced'}={}){
   const duration=clamp(Number(place.estimated_minutes_max||place.estimated_minutes_min||60),15,360);
   const prefs=windows(place,date,timeZone);
   const opening=openIntervals(place,date,resolveHours);
@@ -361,8 +374,7 @@ function fitPlace(place,date,{timeZone='Asia/Tokyo',resolveHours,dayStart=480,da
       let bonus=0,matched=null;
       for(const p of prefs){
         if(midpoint>=p.start&&midpoint<=p.end){
-          const strength={ideal:35,strong:24,preferred:12,acceptable:5,avoid:-30}[p.strength]??10;
-          const value=strength+(100-p.priority)/25;
+          const value=windowScore(p,crowdPreference);
           if(value>bonus){bonus=value;matched=p;}
         }
       }
@@ -377,8 +389,8 @@ function fitPlace(place,date,{timeZone='Asia/Tokyo',resolveHours,dayStart=480,da
  * Travel estimates are deliberately injectable; without a routing API a conservative
  * walking estimate is used and flagged as estimated.
  */
-export function scheduleScene(items,date,{timeZone='Asia/Tokyo',resolveHours,travelMinutes,dayStart=480,dayEnd=1260}={}){
-  const pending=items.map(p=>fitPlace(p,date,{timeZone,resolveHours,dayStart,dayEnd}));
+export function scheduleScene(items,date,{timeZone='Asia/Tokyo',resolveHours,travelMinutes,dayStart=480,dayEnd=1260,crowdPreference='balanced'}={}){
+  const pending=items.map(p=>fitPlace(p,date,{timeZone,resolveHours,dayStart,dayEnd,crowdPreference}));
   const scheduled=[],unplaced=[];
   const estimate=(a,b)=>{if(travelMinutes){const n=travelMinutes(a,b);if(Number.isFinite(n))return n;}const km=distanceKm(a,b);return km==null?30:Math.ceil((km/4.2*60+8)/5)*5;};
   while(pending.length){
@@ -395,13 +407,14 @@ export function scheduleScene(items,date,{timeZone='Asia/Tokyo',resolveHours,tra
           else {ok=false;break;}
         }
         if(!ok)continue;
+        // Preference quality chooses the time; travel is the tie-breaker/scene cost.
         const score=c.bonus-(travel/10)+(scheduled.length?0:-c.start/1000);
         if(!best||score>best.score)best={i,c,score};
       }
     }
     if(!best)break;
     const chosen=pending.splice(best.i,1)[0];
-    scheduled.push({place:chosen.place,start:best.c.start,end:best.c.end,arrival:hhmm(best.c.start),departure:hhmm(best.c.end),matchedPreference:best.c.matched,openingVerified:chosen.openingVerified});
+    scheduled.push({place:chosen.place,start:best.c.start,end:best.c.end,arrival:hhmm(best.c.start),departure:hhmm(best.c.end),matchedPreference:best.c.matched,preferenceScore:Math.round(best.c.bonus),crowdPreference:preferenceMode(crowdPreference),openingVerified:chosen.openingVerified});
   }
   for(const item of pending)unplaced.push({place:item.place,reason:item.reason||'no_feasible_slot'});
   scheduled.sort((a,b)=>a.start-b.start);
