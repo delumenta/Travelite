@@ -1595,3 +1595,9 @@ html:not([data-theme="dark"]) .home-next-card-japan{border-color:#eadfdd;backgro
 .home-next-card-japan .section-head{padding-bottom:13px;border-bottom:1px solid rgba(255,255,255,.08)}
 .home-next-card-japan .home-next-stop{border-top:0;margin-top:0;padding-top:18px}
 html:not([data-theme="dark"]) .home-next-card-japan .section-head{border-color:#eadfdd}
+
+.home-card-head-actions{display:flex;align-items:center;gap:10px}
+.journey-locate{border:0;background:none;color:#8f8386;font-size:7px;font-weight:900;letter-spacing:.06em;cursor:pointer;text-transform:uppercase}
+.journey-locate:hover{color:#a93041}
+html[data-theme="dark"] .journey-locate{color:#8d989f}html[data-theme="dark"] .journey-locate:hover{color:#efa7a2}
+@media(max-width:560px){.home-card-head-actions{gap:6px}.journey-locate{font-size:6px}}
