@@ -317,7 +317,6 @@ function homeView(){
         <h2>${esc(t.name)}</h2>
         <p>${esc(dateRange(t.start_date,t.end_date))}</p>
         <div class="home-glance-numbers">
-          <span><b>${state.schedule.length}</b><small>planned</small></span>
           <span><b>${state.savedPlaces.length+state.savedFood.length}</b><small>saved</small></span>
           <span><b>${state.bookings.length}</b><small>fixed</small></span>
         </div>
