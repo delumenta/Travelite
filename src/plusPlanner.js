@@ -325,29 +325,51 @@ function windows(place,date,timeZone){
  * place.visit_context / place.access_context / place.subfacility.
  * The main place never inherits a sub-facility's earlier closing time.
  */
-function openIntervals(place,date,resolveHours){
-  let raw=typeof resolveHours==='function'?resolveHours(place,date):place.verified_hours;
-  const hours=place.opening_hours;
-  if((!Array.isArray(raw)||!raw.length)&&hours&&typeof hours==='object'){
-    if(hours.open_access===true||hours.access==='24_hours')return [{start:0,end:1440,source:'open_access'}];
-    const context=String(place.visit_context||place.access_context||place.subfacility||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
-    const selected=(context&&hours[context])||hours.regular||hours.main||hours.general;
-    if(Array.isArray(selected))raw=selected;
-    else if(selected&&typeof selected==='object')raw=[selected];
-    else if((hours.open||hours.start)&&(hours.close||hours.end))raw=[hours];
-  }
-  if(!Array.isArray(raw)||!raw.length)return null;
-  return raw.map(x=>({
-    start:mins(x.open??x.start),
-    end:mins(x.close??x.end),
-    lastAdmission:mins(x.last_admission??x.lastAdmission),
-    source:x.source||'structured_hours'
-  })).filter(x=>x.start!=null&&x.end!=null).map(x=>{
-    let end=x.end<=x.start?x.end+1440:x.end;
-    if(x.lastAdmission!=null)end=Math.min(end,x.lastAdmission);
-    return {...x,end};
-  });
+// Read the existing Supabase opening_hours format without treating provisional
+// or holiday-dependent entries as guaranteed live venue availability.
+export function resolvePlaceHours(place,date){
+ const h=place?.opening_hours;
+ if(!h||typeof h!=='object')return null;
+ if(h.open_access===true||h.access==='24_hours')return [{open:'00:00',close:'24:00',source:'open_access'}];
+ const d=new Date(String(date).slice(0,10)+'T12:00:00Z');
+ if(!Number.isFinite(d.getTime()))return null;
+ const month=d.getUTCMonth()+1;
+ const monthInRange=(range)=>{
+  const names={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+  const parts=String(range||'').toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\\d{1,2})/g)||[];
+  const values=parts.slice(0,2).map(x=>names[x]||Number(x));
+  if(values.length<2)return false;
+  return values[0]<=values[1]?month>=values[0]&&month<=values[1]:month>=values[0]||month<=values[1];
+ };
+ const closed=String(h.closed||'').toLowerCase();
+ const weekdays=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+ // Holiday exceptions and irregular closures still require user confirmation.
+ if(weekdays.some((w,i)=>i===d.getUTCDay()&&new RegExp('\\b'+w+'\\b').test(closed)))return [];
+ const md=String(month).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
+ if(/dec\\s*29\\s*[-–]\\s*jan\\s*3/i.test(closed)&&((month===12&&d.getUTCDate()>=29)||(month===1&&d.getUTCDate()<=3)))return [];
+ const context=String(place.visit_context||place.access_context||place.subfacility||'').trim().toLowerCase().replace(/[\\s-]+/g,'_');
+ const selected=(context&&h[context])||h.seasonal?.find(x=>monthInRange(x.months))||h.regular||h.main||h.general;
+ if(!selected)return null;
+ return Array.isArray(selected)?selected:[selected];
 }
+function openIntervals(place,date,resolveHours){
+ let raw=typeof resolveHours==='function'?resolveHours(place,date):null;
+ if(raw==null)raw=place.verified_hours;
+ if(raw==null)raw=resolvePlaceHours(place,date);
+ if(raw===null)return null;
+ if(!Array.isArray(raw))raw=[raw];
+ if(!raw.length)return [];
+ return raw.map(x=>({
+  start:mins(x.open??x.start),end:mins(x.close??x.end),
+  lastAdmission:mins(x.last_admission??x.lastAdmission),
+  source:x.source||place.opening_hours?.status||'structured_hours'
+ })).filter(x=>x.start!=null&&x.end!=null).map(x=>{
+  const end=x.end<=x.start?x.end+1440:x.end;
+  // Last admission constrains entry, not the end of the visit.
+  return {...x,end};
+ });
+}
+
 const preferenceMode=v=>{const x=norm(v);return x==='avoid'||x==='avoid_crowds'?'avoid':x==='timing'||x==='best_time'||x==='best_time_windows'?'timing':'balanced';};
 function windowScore(w,crowdPreference='balanced'){
   const mode=preferenceMode(crowdPreference);
@@ -365,11 +387,11 @@ function fitPlace(place,date,{timeZone='Asia/Tokyo',resolveHours,dayStart=480,da
   const duration=clamp(Number(place.estimated_minutes_max||place.estimated_minutes_min||60),15,360);
   const prefs=windows(place,date,timeZone);
   const opening=openIntervals(place,date,resolveHours);
-  const feasible=(opening||[{start:dayStart,end:dayEnd}]).map(x=>({start:Math.max(dayStart,x.start),end:Math.min(dayEnd,x.end)})).filter(x=>x.end-x.start>=duration);
+  const feasible=(opening??[{start:dayStart,end:dayEnd}]).map(x=>({start:Math.max(dayStart,x.start),end:Math.min(dayEnd,x.end),lastAdmission:x.lastAdmission})).filter(x=>x.end-x.start>=duration);
   if(!feasible.length)return {place,scheduled:false,reason:'outside_opening_hours'};
   const candidates=[];
   for(const span of feasible){
-    for(let t=span.start;t+duration<=span.end;t+=15){
+    for(let t=span.start;t+duration<=span.end&&(span.lastAdmission==null||t<=span.lastAdmission);t+=15){
       const midpoint=t+duration/2;
       let bonus=0,matched=null;
       for(const p of prefs){
