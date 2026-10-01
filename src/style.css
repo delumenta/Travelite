@@ -1601,3 +1601,15 @@ html:not([data-theme="dark"]) .home-next-card-japan .section-head{border-color:#
 .journey-locate:hover{color:#a93041}
 html[data-theme="dark"] .journey-locate{color:#8d989f}html[data-theme="dark"] .journey-locate:hover{color:#efa7a2}
 @media(max-width:560px){.home-card-head-actions{gap:6px}.journey-locate{font-size:6px}}
+
+/* Exact Japan-style journey content inside Travelite's existing card footprint */
+.home-next-card-japan{padding:18px!important;min-height:238px}
+.japan-journey-kicker{color:#9ca8b0;font-size:7px;font-weight:900;letter-spacing:.19em;text-transform:uppercase}
+.japan-journey-state{margin-top:13px;color:#ff8c88;font-size:7px;font-weight:900;letter-spacing:.13em}
+.japan-journey-place{margin-top:6px;color:#faf7f2;font-family:Georgia,"Times New Roman",serif;font-size:24px;font-weight:700;line-height:1.04}
+.japan-journey-meta{margin-top:7px;color:#8e9aa2;font-size:8px;line-height:1.5}
+.japan-journey-actions{display:flex;flex-wrap:nowrap;align-items:center;gap:7px;margin-top:15px;overflow-x:auto;scrollbar-width:none}.japan-journey-actions::-webkit-scrollbar{display:none}
+.japan-journey-action{flex:0 0 auto;min-height:29px;display:inline-flex;align-items:center;justify-content:center;padding:0 9px;border-radius:8px;border:1px solid rgba(255,107,104,.35);background:rgba(255,107,104,.055);color:#efa7a2;font-size:6px;font-weight:900;letter-spacing:.035em;text-decoration:none;cursor:pointer}
+.japan-journey-action.done{border-color:rgba(121,201,149,.34);background:rgba(121,201,149,.055);color:#9edab3}
+.japan-journey-next{margin-top:17px;padding-top:13px;border-top:1px solid rgba(255,255,255,.07);color:#8d989f;font-size:7px;line-height:1.5}.japan-journey-next strong{display:block;margin-top:3px;color:#e9e5df;font-size:10px}
+html:not([data-theme="dark"]) .japan-journey-place{color:#403639}html:not([data-theme="dark"]) .japan-journey-meta,html:not([data-theme="dark"]) .japan-journey-kicker{color:#8e8386}html:not([data-theme="dark"]) .japan-journey-next{border-color:#eadfdd;color:#95888c}html:not([data-theme="dark"]) .japan-journey-next strong{color:#4b4043}
