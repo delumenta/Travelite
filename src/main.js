@@ -274,6 +274,14 @@ function dayTripStrip(){
   if(!rows.length)return '';
   return '<section class="home-day-trips"><div class="section-head"><div><div class="eyebrow">DAY TRIPS</div><h2>Only if you have room.</h2><p>These are curated trades for an open half or full day — not places Travelite will add for you.</p></div></div><div class="day-trip-grid">'+rows.map(x=>'<article class="day-trip-card"><span>'+esc(dayTripCommitmentLabel(x.commitment))+'</span><h3>'+esc(x.destination_city)+'</h3><p>'+esc(x.why)+'</p><small>'+esc(x.headline||'')+'</small></article>').join('')+'</div></section>';
 }
+function traveliteJourneyMode(stop,tripIsLive){
+  if(!stop)return {mode:'offline',state:'CURRENT JOURNEY',distance:null};
+  if(!navigator.onLine)return {mode:'offline',state:'CURRENT JOURNEY',distance:null};
+  const loc=state.foodLocation;
+  if(!loc||!hasValidCoordinates(stop))return {mode:'online',state:tripIsLive?'CURRENT JOURNEY':'NEXT UP',distance:null};
+  const distance=Math.round(distanceMeters(Number(loc.latitude),Number(loc.longitude),Number(stop.latitude),Number(stop.longitude)));
+  return distance<=180?{mode:'nearby',state:'NEARBY NOW',distance}:{mode:'online',state:'CURRENT JOURNEY',distance};
+}
 function homeView(){
   const t=state.trip,dates=dayList(t),now=today();
   const current=dates.includes(now)?now:(dates.find(d=>d>=now)||dates[0]);
@@ -313,8 +321,10 @@ function homeView(){
 
     <section class="home-focus-grid">
       <div class="panel home-next-card home-next-card-japan">
-        <div class="section-head"><div><div class="eyebrow">${tripIsLive?'NEXT COMMITMENT':'NEXT UP'}</div><h2>${current?esc(fmtDate(current,{weekday:'long',day:'numeric',month:'short'})):'Nothing scheduled yet'}</h2></div><button class="text-link" data-action="tab" data-value="plan">Full plan</button></div>
-        ${nextStop?`<div class="home-next-stop"><span class="home-next-time">${esc(time(nextStop.start_time)||'Flexible')}</span><div><b>${esc(nextStop.title)}</b><small>${esc(nextStop.location_name||nextStop.address||'Part of your day')}</small></div><a href="${esc(directions(nextStop))}" target="_blank" rel="noopener noreferrer" aria-label="Directions">${icon('Navigation')}</a></div>`:`<div class="home-open-space">${icon('CalendarPlus')}<div><b>Your day has room.</b><small>Add the places you care about. Travelite can arrange the flexible ones around your fixed plans.</small></div><button data-action="new-stop">Add place</button></div>`}
+        ${(()=>{const journey=traveliteJourneyMode(nextStop,tripIsLive);const distance=journey.distance!=null?` · ~${journey.distance<1000?journey.distance+' m':(journey.distance/1000).toFixed(1)+' km'}`:'';return `
+        <div class="section-head"><div><div class="eyebrow">${journey.state}</div><h2>${current?esc(fmtDate(current,{weekday:'long',day:'numeric',month:'short'})):'Nothing scheduled yet'}</h2></div><button class="text-link" data-action="tab" data-value="plan">Full plan</button></div>
+        ${nextStop?`<div class="home-next-stop"><span class="home-next-time">${esc(time(nextStop.start_time)||'Flexible')}</span><div><b>${esc(nextStop.title)}${distance}</b><small>${journey.mode==='offline'?'Location unavailable · using saved itinerary':'Part of today\'s journey'}</small></div><a href="${esc(directions(nextStop))}" target="_blank" rel="noopener noreferrer" aria-label="Directions">${icon('Navigation')}</a></div>`:`<div class="home-open-space">${icon('CalendarPlus')}<div><b>Your day has room.</b><small>Add the places you care about. Travelite can arrange the flexible ones around your fixed plans.</small></div><button data-action="new-stop">Add place</button></div>`}
+        `;})()}
       </div>
       <div class="panel home-now-card">
         <div class="eyebrow">SPARE TIME</div>
