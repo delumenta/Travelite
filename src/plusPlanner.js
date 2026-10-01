@@ -126,16 +126,81 @@ export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanc
   return cards.sort((a,b)=>b.score-a.score).map((card,index)=>({...card,order:index+1}));
 }
 
-export function balanceCards(cards,dates){
-  const result=Array.from({length:dates.length},(_,index)=>({date:dates[index],cards:[],score:0}));
-  const ordered=[...cards].sort((a,b)=>b.score-a.score);
-  ordered.forEach(card=>{
-    const candidates=result.filter(day=>day.cards.length<2||card.effort!=='red');
-    const pool=candidates.length?candidates:result;
-    pool.sort((a,b)=>a.score-b.score||a.cards.length-b.cards.length);
-    pool[0].cards.push(card);pool[0].score+=card.score;
+const numericProfile=row=>{
+  const p=profileOf(row);
+  return {
+    duration:durationOf(row),
+    walkingKm:Number(row?.walking_km??p.walking_km??0)||0,
+    stairs:Number(row?.stairs_count??p.stairs_count??0)||0,
+    elevation:Number(row?.elevation_gain_m??p.elevation_gain_m??0)||0,
+    travelMin:Number(row?.travel_minutes??p.travel_minutes??0)||0,
+    transitions:Number(row?.transition_count??p.transition_count??0)||0,
+    early:!!(p.early_start_required||timingOf(row).early_start_required),
+    late:!!(p.late_finish_required||timingOf(row).late_finish_required),
+    pressure:Number(row?.time_pressure??p.time_pressure??0)||0,
+    hard:!!hardConstraint(row)
+  };
+};
+
+export function calculateDayEffort(card,{pace='balanced'}={}){
+  const items=card?.items||[];
+  const stats=items.reduce((s,row)=>{
+    const x=numericProfile(row);
+    s.duration+=x.duration;s.walkingKm+=x.walkingKm;s.stairs+=x.stairs;s.elevation+=x.elevation;
+    s.travelMin+=x.travelMin;s.transitions+=x.transitions;s.early+=x.early?1:0;s.late+=x.late?1:0;s.pressure+=x.pressure;s.hard+=x.hard?1:0;
+    return s;
+  },{duration:0,walkingKm:0,stairs:0,elevation:0,travelMin:0,transitions:0,early:0,late:0,pressure:0,hard:0});
+  // When detailed walking/elevation data is absent, the existing scene distance
+  // remains the fallback so effort never becomes falsely "chill".
+  const walking=stats.walkingKm>0?stats.walkingKm:Number(card?.distanceKm||0);
+  const travel=stats.travelMin+Math.max(0,Number(card?.distanceKm||0)-walking)*8;
+  let score=0;
+  score+=clamp(stats.duration/30,0,12)*4;
+  score+=clamp(walking,0,18)*2.2;
+  score+=clamp(travel/30,0,8)*2;
+  score+=clamp(stats.stairs/250,0,8)*5;
+  score+=clamp(stats.elevation/250,0,8)*5;
+  score+=clamp(stats.transitions,0,8)*3;
+  score+=stats.early*8+stats.late*6;
+  score+=clamp(stats.pressure,0,20)*2;
+  score+=Math.max(0,items.length-3)*5;
+  if(stats.hard>1)score+=8;
+  const paceAdj=pace==='chill'?8:pace==='packed'?-6:0;
+  score=clamp(Math.round(score+paceAdj),0,100);
+  const effort=score>=65?'red':score>=38?'yellow':'green';
+  return {...card,effortScore:score,effort,effortStats:{...stats,walkingKm:walking,travelMin:Math.round(travel)}};
+}
+
+export function balanceCards(cards,dates,{pace='balanced',fixedAssignments=[]}={}){
+  const scored=(cards||[]).map(card=>calculateDayEffort(card,{pace}));
+  const result=Array.from({length:dates.length},(_,index)=>({date:dates[index],cards:[],score:0,effortScore:0,effort:'green'}));
+  const fixed=new Map((fixedAssignments||[]).map(x=>[String(x.cardId||x.card_id),String(x.date)]));
+  const ordered=[...scored].sort((a,b)=>{
+    const ah=fixed.has(String(a.id||a.cardId)),bh=fixed.has(String(b.id||b.cardId));
+    return Number(bh)-Number(ah)||b.effortScore-a.effortScore;
   });
-  return result;
+  const add=(day,card)=>{
+    day.cards.push(card);day.score+=Number(card.score||0);day.effortScore=clamp(Math.round(day.cards.reduce((s,x)=>s+(x.effortScore??0),0)),0,100);
+    day.effort=day.effortScore>=65?'red':day.effortScore>=38?'yellow':'green';
+  };
+  for(const card of ordered){
+    const fixedDate=fixed.get(String(card.id||card.cardId));
+    let candidates=result.filter(day=>!fixedDate||String(day.date)===fixedDate);
+    if(!fixedDate){
+      candidates=result.filter(day=>day.cards.length<2);
+      if(!candidates.length)candidates=result;
+      // Prefer a day whose current load is below the trip average, while avoiding
+      // consecutive heavy days when another legal day is available.
+      const ranked=[...candidates].sort((a,b)=>{
+        const aPrev=result[result.indexOf(a)-1]?.effort==='red',bPrev=result[result.indexOf(b)-1]?.effort==='red';
+        const aNext=result[result.indexOf(a)+1]?.effort==='red',bNext=result[result.indexOf(b)+1]?.effort==='red';
+        return Number(aPrev||aNext)-Number(bPrev||bNext)||a.effortScore-b.effortScore||a.cards.length-b.cards.length;
+      });
+      candidates=ranked;
+    }
+    add(candidates[0]||result[0],card);
+  }
+  return result.map(day=>({...day,effortScore:clamp(day.effortScore,0,100)}));
 }
 export function flattenBalancedDays(days){return days.flatMap(day=>day.cards.flatMap(card=>card.items.map((item,index)=>({...item,schedule_date:day.date,sort_order:index+1,card_title:card.title,effort_level:card.effort}))))}
 
