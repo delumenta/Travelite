@@ -321,9 +321,12 @@ function homeView(){
 
     <section class="home-focus-grid">
       <div class="panel home-next-card home-next-card-japan">
-        ${(()=>{const journey=traveliteJourneyMode(nextStop,tripIsLive);const distance=journey.distance!=null?` · ~${journey.distance<1000?journey.distance+' m':(journey.distance/1000).toFixed(1)+' km'}`:'';return `
-        <div class="section-head"><div><div class="eyebrow">${journey.state}</div><h2>${current?esc(fmtDate(current,{weekday:'long',day:'numeric',month:'short'})):'Nothing scheduled yet'}</h2></div><div class="home-card-head-actions"><button class="journey-locate" data-action="journey-location" title="Check my location">${state.journeyLocationBusy?'LOCATING…':state.journeyLocation?'REFRESH LOCATION':'CHECK LOCATION'}</button><button class="text-link" data-action="tab" data-value="plan">Full plan</button></div></div>
-        ${nextStop?`<div class="home-next-stop"><span class="home-next-time">${esc(time(nextStop.start_time)||'Flexible')}</span><div><b>${esc(nextStop.title)}${distance}</b><small>${journey.mode==='offline'?'Location unavailable · using saved itinerary':'Part of today\'s journey'}</small></div><a href="${esc(directions(nextStop))}" target="_blank" rel="noopener noreferrer" aria-label="Open in Google Maps" title="Open in Google Maps">${icon('MapPin')}</a></div>`:`<div class="home-open-space">${icon('CalendarPlus')}<div><b>Your day has room.</b><small>Add the places you care about. Travelite can arrange the flexible ones around your fixed plans.</small></div><button data-action="new-stop">Add place</button></div>`}
+        ${(()=>{const journey=traveliteJourneyMode(nextStop,tripIsLive);const distance=journey.distance!=null?` · ~${journey.distance<1000?journey.distance+' m':(journey.distance/1000).toFixed(1)+' km'}`:'';const next=dayStops.find(x=>x!==nextStop);return `
+        <div class="japan-journey-kicker">TODAY</div>
+        <div class="japan-journey-state">${journey.state}</div>
+        ${nextStop?`<div class="japan-journey-place">${esc(nextStop.title)}${distance}</div><div class="japan-journey-meta">${time(nextStop.start_time)?esc(time(nextStop.start_time))+' · ':''}${journey.mode==='offline'?'Location unavailable · using saved itinerary':'Part of today\'s journey'}</div>
+        <div class="japan-journey-actions"><a class="japan-journey-action" href="${esc(directions(nextStop))}" target="_blank" rel="noopener noreferrer">MAPS</a><button class="japan-journey-action" data-action="journey-location">${state.journeyLocationBusy?'LOCATING…':state.journeyLocation?'REFRESH GPS':'CHECK GPS'}</button><button class="japan-journey-action done" data-action="toggle-stop-done" data-id="${nextStop.id}">${nextStop.completed_at?'✓ DONE':'DONE'}</button></div>
+        <div class="japan-journey-next">${next?'UP NEXT':'TODAY'}<strong>${esc(next?.title||fmtDate(current,{weekday:'long',day:'numeric',month:'short'}))}</strong></div>`:`<div class="japan-journey-place">Your day has room.</div><div class="japan-journey-meta">Nothing scheduled yet.</div>`}
         `;})()}
       </div>
       <div class="panel home-now-card">
