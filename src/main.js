@@ -291,6 +291,8 @@ function homeView(){
   const dayStops=rawDayStops.filter(stop=>!isHomeMovementStop(stop));
   const activeDayStops=dayStops.filter(x=>!x.completed_at&&!x.skipped_at);
   const nextStop=activeDayStops[0]||dayStops[dayStops.length-1];
+  const nextStopIndex=nextStop?dayStops.findIndex(x=>String(x.id)===String(nextStop.id)):-1;
+  const next=nextStopIndex>=0?dayStops.slice(nextStopIndex+1).find(x=>!x.completed_at&&!x.skipped_at):null;
   const countdown=t.start_date?Math.ceil((new Date(`${t.start_date}T12:00:00`)-new Date(`${now}T12:00:00`))/86400000):null;
   const tripIsLive=countdown!=null&&countdown<=0&&(!t.end_date||now<=t.end_date);
   const tripHasStarted=countdown!=null&&countdown<=0;
@@ -324,7 +326,7 @@ function homeView(){
 
     <section class="home-focus-grid">
       <div class="panel home-next-card home-next-card-japan">
-        ${(()=>{const journey=traveliteJourneyMode(nextStop,tripIsLive);const distance=journey.distance!=null?` · ~${journey.distance<1000?journey.distance+' m':(journey.distance/1000).toFixed(1)+' km'}`:'';const next=activeDayStops.find(x=>x!==nextStop);return `
+        ${(()=>{const journey=traveliteJourneyMode(nextStop,tripIsLive);const distance=journey.distance!=null?` · ~${journey.distance<1000?journey.distance+' m':(journey.distance/1000).toFixed(1)+' km'}`:'';return `
         <div class="japan-journey-top"><div class="japan-journey-kicker">TODAY</div><button class="japan-journey-full" data-action="tab" data-value="plan">VIEW FULL SCHEDULE</button></div>
         <div class="japan-journey-state">${journey.state}</div>
         ${nextStop?`<div class="japan-journey-place">${esc(nextStop.title)}${distance}</div><div class="japan-journey-meta">${time(nextStop.start_time)?esc(time(nextStop.start_time))+' · ':''}${journey.mode==='offline'?'Location unavailable · using saved itinerary':'Part of today\'s journey'}</div>
