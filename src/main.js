@@ -161,7 +161,7 @@ const inTripCountry = row => { const destination=canonicalCountry(state.trip?.co
 const cover = trip => { if (trip?.cover_image_url && /^https:\/\//.test(trip.cover_image_url)) return trip.cover_image_url; const saved=state.countryPhotos[countryKey(trip?.country)]; if(saved?.image_url)return saved.image_url; const destination=`${trip?.country||''} ${trip?.name||''}`.toLowerCase(); const images=[[/\b(italy|italia|rome|roma|venice|venezia|florence|firenze|milan|milano|cinque terre)\b/,'photo-1459085184239-463574c08a08'],[/japan|日本|tokyo|kyoto|osaka/i,'photo-1493976040374-85c8e12f0c0e'],[/taiwan|臺灣|台湾|taipei/i,'photo-1470004914212-05527e49370b']]; const image=images.find(([pattern])=>pattern.test(destination))?.[1]||'photo-1488646953014-85cb44e25828'; return `https://images.unsplash.com/${image}?w=1400&q=85`; };
 const coverCredit = trip => { if(trip?.cover_image_url)return '';const p=state.countryPhotos[countryKey(trip?.country)];return p?.source_page?.startsWith('https://commons.wikimedia.org/')?`<a class="hero-photo-credit" href="${esc(p.source_page)}" target="_blank" rel="noopener noreferrer">Photo: ${esc(p.author)} · ${esc(p.license)}</a>`:''; };
 const toast = (msg, error=false) => { let el=$('#toast'); if (!el) {el=document.createElement('div');el.id='toast';document.body.appendChild(el)} el.textContent=msg;el.className=error?'show error':'show';clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.className='',4000); };
-const state = {user:null,trips:[],trip:null,tab:'home',day:null,onTheGoStop:null,plusCards:[],plusBalanced:[],schedule:[],bookings:[],expenses:[],places:[],restaurants:[],savedPlaces:[],savedFood:[],ratingChecks:[],placeRatingChecks:[],search:'',kind:'all',savedKind:'all',modal:null,authMode:'login',loading:true,assistant:[],threadId:null,assistantBusy:false,assistantOpen:false,mobileMenu:false,nearbyFood:[],foodBusy:false,foodLocation:null,foodError:'',foodMode:'collection',foodFilter:'all',foodTab:'mine',foodCity:'',foodArea:'',foodCuisine:'',foodSearch:'',scheduleExpanded:false,scheduleAreaExpanded:{},theme:localStorage.getItem('travelite.theme')==='dark'?'dark':'light',googleResults:[],catalogSelection:null,googleBusy:false,countryPhotos:{},addSearch:'',addKind:'all',addSelection:null,addNearby:false,aroundStop:null,aroundResults:[],aroundBusy:false,aroundRadius:2000,discoveryMode:null,discoveryTitle:'',discoverySubtitle:'',starterCity:'',exploreSort:'default',exploreLocation:null,exploreLocationBusy:false,exploreLocationError:'',exploreAnchorDate:'',exploreAnchorKey:'',tripBases:[],dayTripSuggestions:[],destinations:[],transportAnchors:[],transportEstimates:[]};
+const state = {user:null,trips:[],trip:null,tab:'home',day:null,onTheGoStop:null,plusCards:[],plusBalanced:[],schedule:[],bookings:[],expenses:[],places:[],restaurants:[],savedPlaces:[],savedFood:[],ratingChecks:[],placeRatingChecks:[],search:'',kind:'all',savedKind:'all',modal:null,authMode:'login',loading:true,assistant:[],threadId:null,assistantBusy:false,assistantOpen:false,mobileMenu:false,nearbyFood:[],foodBusy:false,foodLocation:null,journeyLocation:null,journeyLocationBusy:false,journeyLocationError:'',foodError:'',foodMode:'collection',foodFilter:'all',foodTab:'mine',foodCity:'',foodArea:'',foodCuisine:'',foodSearch:'',scheduleExpanded:false,scheduleAreaExpanded:{},theme:localStorage.getItem('travelite.theme')==='dark'?'dark':'light',googleResults:[],catalogSelection:null,googleBusy:false,countryPhotos:{},addSearch:'',addKind:'all',addSelection:null,addNearby:false,aroundStop:null,aroundResults:[],aroundBusy:false,aroundRadius:2000,discoveryMode:null,discoveryTitle:'',discoverySubtitle:'',starterCity:'',exploreSort:'default',exploreLocation:null,exploreLocationBusy:false,exploreLocationError:'',exploreAnchorDate:'',exploreAnchorKey:'',tripBases:[],dayTripSuggestions:[],destinations:[],transportAnchors:[],transportEstimates:[]};
 document.documentElement.dataset.theme=state.theme;
 function drawIcons(){ createIcons({icons,attrs:{'stroke-width':1.85}}); }
 function render(){ document.documentElement.dataset.theme=state.theme; $('#app').innerHTML = !state.user ? authView() : shell(); drawIcons(); if(state.tab==='explore'||state.tab==='saved'||state.modal?.type==='addToDay')hydratePlacePhotos(); if(state.modal?.type==='routeMap')setTimeout(()=>initRouteMap(),0); if(state.assistantOpen) { const el=$('.chat-messages'); if(el)el.scrollTop=el.scrollHeight; } }
@@ -277,7 +277,7 @@ function dayTripStrip(){
 function traveliteJourneyMode(stop,tripIsLive){
   if(!stop)return {mode:'offline',state:'CURRENT JOURNEY',distance:null};
   if(!navigator.onLine)return {mode:'offline',state:'CURRENT JOURNEY',distance:null};
-  const loc=state.foodLocation;
+  const loc=state.journeyLocation;
   if(!loc||!hasValidCoordinates(stop))return {mode:'online',state:tripIsLive?'CURRENT JOURNEY':'NEXT UP',distance:null};
   const distance=Math.round(distanceMeters(Number(loc.latitude),Number(loc.longitude),Number(stop.latitude),Number(stop.longitude)));
   return distance<=180?{mode:'nearby',state:'NEARBY NOW',distance}:{mode:'online',state:'CURRENT JOURNEY',distance};
@@ -322,7 +322,7 @@ function homeView(){
     <section class="home-focus-grid">
       <div class="panel home-next-card home-next-card-japan">
         ${(()=>{const journey=traveliteJourneyMode(nextStop,tripIsLive);const distance=journey.distance!=null?` · ~${journey.distance<1000?journey.distance+' m':(journey.distance/1000).toFixed(1)+' km'}`:'';return `
-        <div class="section-head"><div><div class="eyebrow">${journey.state}</div><h2>${current?esc(fmtDate(current,{weekday:'long',day:'numeric',month:'short'})):'Nothing scheduled yet'}</h2></div><button class="text-link" data-action="tab" data-value="plan">Full plan</button></div>
+        <div class="section-head"><div><div class="eyebrow">${journey.state}</div><h2>${current?esc(fmtDate(current,{weekday:'long',day:'numeric',month:'short'})):'Nothing scheduled yet'}</h2></div><div class="home-card-head-actions"><button class="journey-locate" data-action="journey-location" title="Check my location">${state.journeyLocationBusy?'LOCATING…':state.journeyLocation?'REFRESH LOCATION':'CHECK LOCATION'}</button><button class="text-link" data-action="tab" data-value="plan">Full plan</button></div></div>
         ${nextStop?`<div class="home-next-stop"><span class="home-next-time">${esc(time(nextStop.start_time)||'Flexible')}</span><div><b>${esc(nextStop.title)}${distance}</b><small>${journey.mode==='offline'?'Location unavailable · using saved itinerary':'Part of today\'s journey'}</small></div><a href="${esc(directions(nextStop))}" target="_blank" rel="noopener noreferrer" aria-label="Open in Google Maps" title="Open in Google Maps">${icon('MapPin')}</a></div>`:`<div class="home-open-space">${icon('CalendarPlus')}<div><b>Your day has room.</b><small>Add the places you care about. Travelite can arrange the flexible ones around your fixed plans.</small></div><button data-action="new-stop">Add place</button></div>`}
         `;})()}
       </div>
@@ -428,6 +428,19 @@ function foodResult(r){
     <button type="button" data-action="add-nearby-plan" data-id="${esc(r.id||'')}" data-place-id="${esc(r.provider_place_id||'')}">${icon('CalendarPlus')} Add to plan</button>
     ${isSaved?`<button type="button" disabled>${icon('Check')} Saved</button>`:`<button type="button" data-action="save-nearby" data-id="${esc(r.id||'')}" data-place-id="${esc(r.provider_place_id||'')}">${icon('Heart')} Save</button>`}
   </article>`;
+}
+async function refreshJourneyLocation(){
+  if(state.journeyLocationBusy)return;
+  state.journeyLocationBusy=true;state.journeyLocationError='';render();
+  try{
+    const position=await new Promise((resolve,reject)=>{
+      if(!navigator.geolocation)return reject(new Error('Location is not available on this device.'));
+      navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:12000,maximumAge:120000});
+    });
+    state.journeyLocation={latitude:Number(position.coords.latitude),longitude:Number(position.coords.longitude),updatedAt:Date.now()};
+  }catch(error){
+    state.journeyLocationError=error?.code===1?'Location permission is needed to check nearby.':(error?.message||'Could not get your location.');
+  }finally{state.journeyLocationBusy=false;render();}
 }
 async function findNearbyFood(){
   if(state.foodBusy)return;
@@ -2356,6 +2369,7 @@ case 'toggle-schedule':state.scheduleExpanded=!state.scheduleExpanded;render();b
 case 'toggle-schedule-area':state.scheduleAreaExpanded[el.dataset.key]=!state.scheduleAreaExpanded[el.dataset.key];render();break;
 case 'explore-kind':if(v==='food'){state.tab='explore';state.kind='food';state.foodMode='collection';state.foodFilter='all';state.foodTab='discover';}else{state.tab='explore';state.kind='place';}render();window.scrollTo(0,0);break;
 case 'food-saved':state.tab='saved';state.savedKind='food';state.foodMode='collection';state.foodFilter='all';state.foodCity='';state.foodArea='';state.foodCuisine='';state.foodSearch='';render();window.scrollTo(0,0);break;
+case 'journey-location':await refreshJourneyLocation();break;
 case 'food-finder':state.tab='food';state.foodMode='nearby';render();window.scrollTo(0,0);findNearbyFood();break;
 case 'food-mode':state.foodMode=v;render();if(v==='nearby'&&!state.foodLocation)findNearbyFood();break;
 case 'food-filter':state.foodFilter=v;render();break;
