@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createIcons, Compass, House, CalendarDays, Heart, Menu, Plus, ArrowRight, ArrowLeft, ArrowUpRight, MapPin, Clock3, Sparkles, Bookmark, Utensils, Ticket, Wallet, Search, ChevronDown, ChevronLeft, ChevronRight, X, Check, Trash2, Send, Navigation, LogOut, LoaderCircle, LockKeyhole, Mail, Plane, TrainFront, BedDouble, CircleHelp, SlidersHorizontal, ExternalLink, GripVertical, Pencil, Globe2, Leaf, Coffee, Route, CalendarPlus, CheckCircle2, MoreHorizontal, MessageCircle, Map, Copy, Sunrise, Sunset, ListFilter, UserRound, Sun, Moon } from 'lucide';
 import './style.css';
-import { needsTransport, validTransportCheck, saveTripTransportChecks } from './transportChecks.js';
+import { needsTransport, validTransportCheck, saveTripTransportChecks, routeSignature, savedCheckForRoute } from './transportChecks.js';
 import { buildUndatedCards, balanceCards, flattenBalancedDays, baseForDate, baseTransferForDate, excursionTransport, assignCardsToTripDays, scheduleScene } from './plusPlanner.js';
 
 const SB_URL = 'https://zngncasvdrrxyrkjqutj.supabase.co';
@@ -1713,6 +1713,7 @@ function balanceSuggestion(date,skipId){
 }
 function transportPlaceForStop(stop){const linked=schedulePlaceMeta(stop);if(linked)return linked;const title=String(stop.title||stop.location_name||'').trim().toLowerCase();return state.places.find(p=>String(p.name||'').trim().toLowerCase()===title)||null;}
 function savedTransportForPlace(id){return state.tripTransportChecks.find(x=>Number(x.place_id)===Number(id));}
+function planTransportSignature(place){const rows=dayRows(state.day),i=rows.findIndex(x=>Number(transportPlaceForStop(x)?.id)===Number(place.id));return i<0?null:routeSignature(state.day,i?transportPlaceForStop(rows[i-1])||rows[i-1]:null,place,rows[i+1]?transportPlaceForStop(rows[i+1])||rows[i+1]:null);}
 function planView(){
   let t=state.trip,days=dayList(t),onTheGo=state.day===today();
   if(!state.day||!days.includes(state.day))state.day=days.find(d=>d>=today())||days[0]||today();
@@ -1747,7 +1748,7 @@ function planView(){
               <h3>${esc(x.title)}</h3>
               ${x.location_name||x.address?`<p>${icon('MapPin')} ${esc(x.location_name||x.address)}</p>`:''}
               ${x.description?`<p class="stop-desc">${esc(x.description)}</p>`:''}
-              ${(()=>{const p=transportPlaceForStop(x);if(!p||!needsTransport(p))return '';const check=savedTransportForPlace(p.id);return `<div class="transport-alert" style="padding:10px;margin:8px 0;border:1px solid #c99338;border-radius:10px"><b>${check?.confirmed?'✓ Transport checked':'⚠ Transport check required'}</b><p style="font-size:12px">${esc(p.timing_intelligence?.constraint_profile?.transport_note||'Double-check journey timing and transport arrangements.')}</p>${check?.confirmed?`<small>${esc(check.transport_mode.replaceAll('_',' '))} · ${check.inbound_minutes} min here · ${check.onward_minutes} min onward (your estimates)</small>`:''}<button class="btn outline" data-action="transport-check" data-id="${p.id}">${check?.confirmed?'Edit journey':'Enter journey times'}</button></div>`;})()}
+              ${(()=>{const p=transportPlaceForStop(x);if(!p||!needsTransport(p))return '';const check=savedTransportForPlace(p.id),verified=savedCheckForRoute(check,planTransportSignature(p));return `<div class="transport-alert" style="padding:10px;margin:8px 0;border:1px solid #c99338;border-radius:10px"><b>${verified?'✓ Transport checked':check?.confirmed?'⚠ Route changed · reconfirm':'⚠ Transport check required'}</b><p style="font-size:12px">${esc(p.timing_intelligence?.constraint_profile?.transport_note||'Double-check journey timing and transport arrangements.')}</p>${verified?`<small>${esc(check.transport_mode.replaceAll('_',' '))} · ${check.inbound_minutes} min here · ${check.onward_minutes} min onward (your estimates)</small>`:''}<button class="btn outline" data-action="transport-check" data-id="${p.id}">${verified?'Edit journey':'Enter journey times'}</button></div>`;})()}
               <div class="stop-actions compact-actions">
                 ${onTheGo?`<button data-action="toggle-stop-done" data-id="${x.id}" class="${x.completed_at?'is-done':''}">${icon(x.completed_at?'CheckCircle2':'Check')} ${x.completed_at?'Done':'Mark done'}</button><button data-action="new-expense-stop" data-id="${x.id}">${icon('Wallet')} Spend</button>`:''}
                 <a href="${esc(directions(x))}" target="_blank" rel="noopener noreferrer">${icon('Navigation')} Go</a>
@@ -2400,7 +2401,7 @@ if(form.id==='rating-form'){
   toast(summary?.total>1?'Community rating updated.':'Rating saved.');
   return;
 }
-if(form.id==='transport-check-form'){const placeId=Number(state.modal?.data?.placeId);const check={mode:field(fd,'mode'),origin:field(fd,'origin'),inbound:field(fd,'inbound'),outbound:field(fd,'outbound'),confirmed:fd.has('confirmed')};if(!validTransportCheck(check))throw Error('Enter both journey times and confirm that you checked them.');const saved=await saveTripTransportChecks(sb,state.trip.id,{[placeId]:check});if(saved.error)throw saved.error;state.modal=null;await loadTripData();toast('Journey saved to your trip.');return;}
+if(form.id==='transport-check-form'){const placeId=Number(state.modal?.data?.placeId);const place=state.places.find(p=>Number(p.id)===placeId);const check={mode:field(fd,'mode'),origin:field(fd,'origin'),inbound:field(fd,'inbound'),outbound:field(fd,'outbound'),confirmed:fd.has('confirmed'),routeSignature:place?planTransportSignature(place):null};if(!validTransportCheck(check)||!check.routeSignature)throw Error('Add this place to a dated plan before confirming its journey.');const saved=await saveTripTransportChecks(sb,state.trip.id,{[placeId]:check});if(saved.error)throw saved.error;state.modal=null;await loadTripData();toast('Journey saved to your trip.');return;}
 if(form.id==='password-form'){let r=await sb.auth.updateUser({password:field(fd,'password')});if(r.error)throw r.error;state.modal=null;render();toast('Password updated.');return;}
 if(form.id==='auth-form'){let email=field(fd,'email'),password=field(fd,'password'),mode=state.authMode;let r=mode==='signup'?await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}}):mode==='reset'?await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}):await sb.auth.signInWithPassword({email,password});if(r.error)throw r.error;if(mode==='reset'){toast('Password reset link sent. Check your email.');state.authMode='login';render();}else if(mode==='signup'&&!r.data.session)toast('Check your email to confirm your account.');return;}
 if(form.id==='delete-trip-form'){let trip=state.trips.find(t=>t.id===state.modal?.data?.id);if(!trip||trip.owner_id!==state.user?.id)throw Error('Only the trip owner can delete it.');if(field(fd,'tripName')!==trip.name)throw Error('Type the trip name exactly to confirm.');let {data,error}=await sb.from('trips').delete().eq('id',trip.id).eq('owner_id',state.user.id).select('id');if(error)throw error;if(!data?.length)throw Error('Trip could not be deleted. Please try again.');state.trips=state.trips.filter(t=>t.id!==trip.id);state.modal=null;if(state.trip?.id===trip.id){state.trip=null;state.day=null;state.schedule=[];state.bookings=[];state.expenses=[];state.savedPlaces=[];state.savedFood=[];state.assistant=[];state.threadId=null;state.nearbyFood=[];state.scheduleExpanded=false;localStorage.removeItem(`travelite.trip.${state.user.id}`);if(state.trips.length)chooseTrip(state.trips[0]);else{state.loading=false;render();}}else render();toast('Trip deleted.');return;}
@@ -2520,21 +2521,27 @@ case 'balance-plus-cards':{
   const graph=traveliteGraph();
   const enrichedCards=(state.plusCards||[]).map(card=>({...card,items:enrichPlannerPlaces(card.items||[])}));
   const proposed=state.tripBases.length
-    ?assignCardsToTripDays(enrichedCards,{dates,bases:state.tripBases,destinations:state.destinations,graph,pace:state.plusPace,crowdPreference:state.plusCrowds})
+    ?assignCardsToTripDays(enrichedCards,{dates,bases:state.tripBases,destinations:state.destinations,graph,pace:state.plusPace,crowdPreference:state.plusCrowds,transportChecks:state.tripTransportChecks,routeSignature})
     :balanceCards(enrichedCards,dates);
   const assigned=new Set(proposed.flatMap(day=>(day.cards||[]).flatMap(card=>(card.items||[]).map(p=>String(p.place_id??p.id??p.name)))));
   const omitted=enrichedCards.flatMap(c=>c.items||[]).filter(p=>!assigned.has(String(p.place_id??p.id??p.name)));
   if(omitted.length)throw Error(omitted.length+' selected places could not fit the trip dates or travel limits. Adjust your dates or pace before saving.');
-  const flat=[],warnings=[];
+  const flat=[],warnings=[],transportWarnings=[];
   for(const day of proposed){
     let order=state.schedule.filter(x=>x.schedule_date===day.date).length;
     let dayCursor=480;
     for(const card of day.cards||[]){
-      const timed=scheduleScene(card.items||[],day.date,{
+      transportWarnings.push(...(card.transportWarnings||[]).map(w=>w.name+' ('+day.date+'): '+w.reason));
+      const cardItems=card.items||[];
+      const confirmedFor=(p,i)=>{const check=savedTransportForPlace(p.place_id??p.id);return check&&savedCheckForRoute(check,routeSignature(day.date,cardItems[i-1]||null,p,cardItems[i+1]||null))?check:null;};
+      const firstCheck=cardItems.length&&needsTransport(cardItems[0])?confirmedFor(cardItems[0],0):null;
+      if(firstCheck)dayCursor+=Number(firstCheck.inbound_minutes)||0;
+      const timed=scheduleScene(cardItems,day.date,{
         timeZone:state.trip?.time_zone||(String(state.trip?.country||'').toLowerCase()==='japan'?'Asia/Tokyo':Intl.DateTimeFormat().resolvedOptions().timeZone),
-        dayStart:dayCursor,dayEnd:1260
+        dayStart:dayCursor,dayEnd:1260,
+        travelMinutes:(a,b)=>{const index=cardItems.indexOf(b),check=index>=0?confirmedFor(b,index):null;if(check)return Number(check.inbound_minutes);return null;}
       });
-      if(timed.scheduled.length)dayCursor=Math.max(...timed.scheduled.map(x=>x.end))+30;
+      if(timed.scheduled.length){dayCursor=Math.max(...timed.scheduled.map(x=>x.end))+30;const last=timed.scheduled[timed.scheduled.length-1].place,idx=cardItems.indexOf(last),lastCheck=idx>=0?confirmedFor(last,idx):null;if(lastCheck)dayCursor+=Number(lastCheck.onward_minutes)||0;}
       if(timed.unplaced.length){
         warnings.push(...timed.unplaced.map(x=>(x.place.name||x.place.title||'Place')+' ('+day.date+')'));
         continue;
@@ -2544,24 +2551,25 @@ case 'balance-plus-cards':{
         flat.push({...item,schedule_date:day.date,sort_order:++order,start_time:stop.arrival,
           card_title:card.title,effort_level:card.effort,travel_kind:card.travelKind||'local',
           travel_minutes:card.travelMinutes||0,matchedPreference:stop.matchedPreference,
-          openingVerified:stop.openingVerified});
+          openingVerified:stop.openingVerified,transportWarning:(card.transportWarnings||[]).find(w=>Number(w.placeId)===Number(item.place_id??item.id))?.reason||null});
       }
     }
   }
   if(warnings.length)throw Error('These stops could not fit their day: '+warnings.slice(0,5).join(', ')+'. No changes saved.');
   // Preserve the user's existing stops; new POIs are appended with suggested local times.
   for(const item of flat){
-    const note=item.matchedPreference?' · Suggested '+item.matchedPreference.label+' (check hours and weather)':'';
+    const note=(item.matchedPreference?' · Suggested '+item.matchedPreference.label+' (check hours and weather)':'')+(item.transportWarning?' · ⚠ '+item.transportWarning:'');
     await saveRow('schedule',{trip_id:state.trip.id,schedule_date:item.schedule_date,
       sort_order:item.sort_order,start_time:item.start_time,title:item.name||item.title,
       item_type:'attraction',location_name:item.name||item.title,address:item.address||null,
       latitude:item.latitude??null,longitude:item.longitude??null,
+      place_id:item.place_id??(state.places.some(p=>Number(p.id)===Number(item.id))?item.id:null),
       description:item.card_title?`Card: ${item.card_title} · ${item.effort_level}${item.travel_kind==='day_trip'?` · Day trip transport ~${item.travel_minutes} min`:''}${note}`:null,
       is_optional:false});
   }
   state.plusBalanced=proposed;state.plusCards=[];state.modal=null;state.tab='plan';
   await loadTripData();
-  toast('Day cards scheduled with date-aware sunrise and sunset preferences. Confirm venue hours.');
+  toast(transportWarnings.length?'Day cards saved. '+transportWarnings.length+' transport checks need confirmation in Plan.':'Day cards scheduled. Confirm venue hours and any changed routes.');
   break;
 }
 case 'new-expense':state.onTheGoStop=null;openModal('expense');break;
