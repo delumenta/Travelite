@@ -159,3 +159,58 @@ export function excursionTransport({baseDestinationId,targetDestinationId,sceneM
   const total=oneWay*2+Number(sceneMinutes||0)+Number(localTransferMinutes||0)+Number(mealMinutes||0);
   return {eligible:total<=maxDayMinutes,reason:total<=maxDayMinutes?'valid_return_excursion':'over_nine_hours',oneWayMinutes:oneWay,returnMinutes:oneWay,totalMinutes:total,remainingMinutes:Math.max(0,maxDayMinutes-oneWay*2-localTransferMinutes-mealMinutes)};
 }
+
+
+const isoDate=v=>String(v||'').slice(0,10);
+const baseCity=b=>String(b?.city||b?.name||'').trim();
+const destinationForBase=(base,destinations=[])=>{
+  const city=baseCity(base).toLowerCase();
+  return destinations.find(d=>String(d.id)===String(base?.destination_id||base?.destination_place_id))
+    ||destinations.find(d=>String(d.name||'').trim().toLowerCase()===city)
+    ||null;
+};
+export function buildTripDayContexts({dates=[],bases=[],destinations=[],graph={}}={}){
+  const ordered=[...(bases||[])].sort((a,b)=>isoDate(a.start_date||a.from).localeCompare(isoDate(b.start_date||b.from))||(Number(a.sort_order)||0)-(Number(b.sort_order)||0));
+  return (dates||[]).map(date=>{
+    const base=baseForDate(date,ordered);
+    const index=base?ordered.indexOf(base):-1;
+    const previous=index>0?ordered[index-1]:null;
+    const isIncomingBoundary=!!(base&&previous&&isoDate(base.start_date||base.from)===date&&isoDate(previous.end_date||previous.to)===date&&baseCity(base).toLowerCase()!==baseCity(previous).toLowerCase());
+    let transfer=null;
+    if(isIncomingBoundary){
+      const fromDestination=destinationForBase(previous,destinations),toDestination=destinationForBase(base,destinations);
+      transfer={kind:'base_transfer',from:previous,to:base,fromDestination,toDestination,minutes:fromDestination&&toDestination?transportGraphMinutes(fromDestination.id,toDestination.id,graph):null,returnRequired:false};
+    }
+    return {date,base,previousBase:previous,isTransferDay:isIncomingBoundary,transfer,availableMinutes:Math.max(0,540-Number(transfer?.minutes||0))};
+  });
+}
+export function destinationForPlace(place,destinations=[]){
+  if(place?.destination_id!=null){const exact=destinations.find(d=>String(d.id)===String(place.destination_id));if(exact)return exact;}
+  const values=[place?.city,place?.area,place?.region].filter(Boolean).map(x=>String(x).trim().toLowerCase());
+  return destinations.find(d=>values.includes(String(d.name||'').trim().toLowerCase()))||null;
+}
+export function assignCardsToTripDays(cards,{dates=[],bases=[],destinations=[],graph={},maxDayMinutes=540}={}){
+  const days=buildTripDayContexts({dates,bases,destinations,graph}).map(d=>({...d,cards:[],score:0,usedMinutes:0}));
+  const cardMinutes=card=>(card.items||[]).reduce((s,p)=>s+Number(p.estimated_minutes_max||p.estimated_minutes_min||60),0)+Math.max(0,(card.items?.length||0)-1)*30;
+  for(const card of [...(cards||[])].sort((a,b)=>b.score-a.score)){
+    const destinationsInCard=[...new Set((card.items||[]).map(p=>destinationForPlace(p,destinations)?.id).filter(Boolean))];
+    const candidates=days.map(day=>{
+      if(!day.base)return null;
+      const baseDest=destinationForBase(day.base,destinations);if(!baseDest)return null;
+      const sceneMinutes=cardMinutes(card);
+      let travelMinutes=0,kind='local',eligible=true;
+      for(const targetId of destinationsInCard){
+        if(String(targetId)===String(baseDest.id))continue;
+        const trip=excursionTransport({baseDestinationId:baseDest.id,targetDestinationId:targetId,sceneMinutes,graph,maxDayMinutes});
+        if(!trip.eligible){eligible=false;break;}
+        kind='day_trip';travelMinutes=Math.max(travelMinutes,trip.oneWayMinutes*2);
+      }
+      const required=sceneMinutes+travelMinutes;
+      if(required>day.availableMinutes)eligible=false;
+      return eligible?{day,required,kind,travelMinutes}:null;
+    }).filter(Boolean).sort((a,b)=>(a.day.usedMinutes+a.required)-(b.day.usedMinutes+b.required)||a.day.score-b.day.score);
+    if(!candidates.length)continue;
+    const pick=candidates[0];pick.day.cards.push({...card,travelKind:pick.kind,travelMinutes:pick.travelMinutes});pick.day.usedMinutes+=pick.required;pick.day.score+=card.score;
+  }
+  return days;
+}
