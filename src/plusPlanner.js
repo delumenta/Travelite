@@ -171,7 +171,18 @@ export function calculateDayEffort(card,{pace='balanced'}={}){
   return {...card,effortScore:score,effort,effortStats:{...stats,walkingKm:walking,travelMin:Math.round(travel)}};
 }
 
-export function balanceCards(cards,dates,{pace='balanced',fixedAssignments=[]}={}){
+const dateBlocked=(date,card,blockedDates=[])=>blockedDates.map(String).includes(String(date))||listify(card?.blocked_dates).map(String).includes(String(date));
+const dateFitsCard=(date,card,{blockedDates=[],dateRules=[]}={})=>{
+  if(dateBlocked(date,card,blockedDates))return false;
+  const rule=(dateRules||[]).find(r=>String(r.date)===String(date));
+  if(rule?.closed)return false;
+  const fixed=card?.fixedDate||card?.fixed_date||null;
+  if(fixed&&String(fixed)!==String(date))return false;
+  const weekday=String(new Date(String(date)+'T12:00:00Z').getUTCDay());
+  if(listify(card?.closed_weekdays).map(String).includes(weekday))return false;
+  return true;
+};
+export function balanceCards(cards,dates,{pace='balanced',fixedAssignments=[],blockedDates=[],dateRules=[]}={}){
   const scored=(cards||[]).map(card=>calculateDayEffort(card,{pace}));
   const result=Array.from({length:dates.length},(_,index)=>({date:dates[index],cards:[],score:0,effortScore:0,effort:'green'}));
   const fixed=new Map((fixedAssignments||[]).map(x=>[String(x.cardId||x.card_id),String(x.date)]));
@@ -185,10 +196,10 @@ export function balanceCards(cards,dates,{pace='balanced',fixedAssignments=[]}={
   };
   for(const card of ordered){
     const fixedDate=fixed.get(String(card.id||card.cardId));
-    let candidates=result.filter(day=>!fixedDate||String(day.date)===fixedDate);
+    let candidates=result.filter(day=>(!fixedDate||String(day.date)===fixedDate)&&dateFitsCard(day.date,card,{blockedDates,dateRules}));
     if(!fixedDate){
-      candidates=result.filter(day=>day.cards.length<2);
-      if(!candidates.length)candidates=result;
+      candidates=result.filter(day=>day.cards.length<2&&dateFitsCard(day.date,card,{blockedDates,dateRules}));
+      if(!candidates.length)candidates=result.filter(day=>dateFitsCard(day.date,card,{blockedDates,dateRules}));
       // Prefer a day whose current load is below the trip average, while avoiding
       // consecutive heavy days when another legal day is available.
       const ranked=[...candidates].sort((a,b)=>{
@@ -201,6 +212,11 @@ export function balanceCards(cards,dates,{pace='balanced',fixedAssignments=[]}={
     add(candidates[0]||result[0],card);
   }
   return result.map(day=>({...day,effortScore:clamp(day.effortScore,0,100)}));
+}
+/** Final calendar assignment: preserve cards, choose only legal dates. */
+export function assignCardsToDates(cards,dates,options={}){
+  const days=balanceCards(cards,dates,options);
+  return days.map(day=>({...day,items:day.cards.flatMap(card=>card.items||[])}));
 }
 export function flattenBalancedDays(days){return days.flatMap(day=>day.cards.flatMap(card=>card.items.map((item,index)=>({...item,schedule_date:day.date,sort_order:index+1,card_title:card.title,effort_level:card.effort}))))}
 
