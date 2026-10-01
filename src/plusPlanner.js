@@ -29,21 +29,76 @@ const daypartFamily=v=>{
   if(v.includes('night')||v.includes('after_dark'))return 'night';
   return v;
 };
-const sceneCompatible=(a,b,maxRadiusKm)=>{
+const listify=v=>Array.isArray(v)?v:(v==null||v===''?[]:[v]);
+const profileOf=row=>row?.planning_profile||row?.place_planning_profile||row?.planningProfile||{};
+const relationList=(row,key)=>listify(profileOf(row)?.[key]??row?.[key]).map(norm).filter(Boolean);
+const durationOf=row=>clamp(Number(
+  row?.typical_duration_min??row?.typical_duration_minutes??
+  row?.estimated_minutes_max??row?.estimated_minutes_min??
+  profileOf(row)?.typical_duration_min??profileOf(row)?.typical_duration_minutes??60
+),15,360);
+const minUsefulOf=row=>clamp(Number(row?.minimum_useful_time_min??profileOf(row)?.minimum_useful_time_min??Math.min(durationOf(row),45)),15,360);
+const timingClass=row=>norm(timingOf(row).timing_class||row?.timing_class);
+const hardConstraint=row=>['hard_scheduled_entry','hard_full_day_access','event_schedule_constraint'].includes(timingClass(row))||timingOf(row).hard_constraints;
+const pairGroup=row=>norm(profileOf(row).pairing_group||row?.pairing_group);
+const antiPairs=row=>relationList(row,'anti_pairs').concat(relationList(row,'anti_pairings'));
+const supports=row=>relationList(row,'supports');
+const anchors=row=>relationList(row,'anchors').concat(relationList(row,'anchor_for'));
+const placeKey=row=>norm(row?.place_key||row?.slug||row?.name);
+
+const timingCompatible=(a,b)=>{
+  const wa=windowsOf(a),wb=windowsOf(b);
+  if(!wa.length||!wb.length)return true;
+  const solarA=wa.filter(w=>['sunrise','sunset','golden_hour','dusk'].includes(norm(w.window_kind)));
+  const solarB=wb.filter(w=>['sunrise','sunset','golden_hour','dusk'].includes(norm(w.window_kind)));
+  if(solarA.some(w=>norm(w.window_kind)==='sunrise')&&solarB.some(w=>norm(w.window_kind)==='sunrise'))return false;
+  if(solarA.some(w=>norm(w.window_kind)==='sunset')&&solarB.some(w=>norm(w.window_kind)==='sunset')&&
+     hardWindowFamily(a)==='sunset'&&hardWindowFamily(b)==='sunset')return false;
+  return true;
+};
+
+const hardPairConflict=(a,b)=>{
+  const ak=placeKey(a),bk=placeKey(b);
+  if(antiPairs(a).includes(bk)||antiPairs(b).includes(ak))return true;
+  const aa=anchors(a),ab=anchors(b),sa=supports(a),sb=supports(b);
+  if(aa.includes(bk)&&hardConstraint(b))return true;
+  if(ab.includes(ak)&&hardConstraint(a))return true;
+  return false;
+};
+
+const candidatePackScore=(row,rows,centre,crowdPreference)=>{
+  const d=distanceKm(centre,row)??99;
+  let score=100-d*20;
+  const g=pairGroup(row);
+  if(g&&rows.some(x=>pairGroup(x)===g))score+=35;
+  if(rows.some(x=>pairGroup(x)&&g&&pairGroup(x)!==g))score+=5;
+  if(rows.some(x=>supports(row).includes(placeKey(x))||supports(x).includes(placeKey(row))))score+=30;
+  if(hardConstraint(row))score-=15;
+  const tw=windowsOf(row);
+  if(tw.length){
+    const best=Math.max(...tw.map(w=>windowScore({...w,experienceScore:w.experience_score,crowdScore:w.crowd_score},crowdPreference)));
+    score+=best*.08;
+  }
+  return score;
+};
+
+const sceneCompatible=(a,b,maxRadiusKm,{maxMinutes=540,crowdPreference='balanced',rows=[]}={})=>{
   const d=distanceKm(a,b); if(d==null||d>maxRadiusKm)return false;
+  if(hardPairConflict(a,b))return false;
   const hardA=hardWindowFamily(a),hardB=hardWindowFamily(b);
-  // Two separate strong dawn/sunrise anchors should not be silently packed into one day card.
   if(hardA==='dawn'&&hardB==='dawn')return false;
   const A=sceneOf(a),B=sceneOf(b);
-  // Region is a planning boundary inside large destinations: East Kyoto and South Kyoto
-  // are not the same outing merely because both pins say city=Kyoto.
   if(A.region&&B.region&&A.region!==B.region)return false;
   const da=daypartFamily(A.daypart),db=daypartFamily(B.daypart);
   if(da&&db&&da!==db&&((da==='early'&&['evening','night'].includes(db))||(db==='early'&&['evening','night'].includes(da))))return false;
   if((A.behavior.includes('sunset_lock')&&db==='early')||(B.behavior.includes('sunset_lock')&&da==='early'))return false;
+  if(!timingCompatible(a,b))return false;
+  const minutes=[...rows,a,b].reduce((sum,x)=>sum+durationOf(x),0);
+  if(minutes>maxMinutes)return false;
   return true;
 };
-export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanced',crowdPreference='balanced'}={}){
+
+export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanced',crowdPreference='balanced',maxSceneMinutes=540}={}){
   if(pace==='chill')maxStops=Math.min(maxStops,3);
   if(pace==='packed')maxStops=Math.max(maxStops,6);
   const remaining=[...input],cards=[];
@@ -51,18 +106,22 @@ export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanc
     const seed=remaining.shift(),rows=[seed];
     while(rows.length<maxStops&&remaining.length){
       const centre=centroid(rows);
-      let best=-1,bestDistance=Infinity;
+      let best=-1,bestScore=-Infinity;
       remaining.forEach((row,index)=>{
-        const d=distanceKm(centre,row);
-        if(d!=null&&d<bestDistance&&rows.every(existing=>sceneCompatible(existing,row,maxRadiusKm))){best=index;bestDistance=d;}
+        if(!rows.every(existing=>sceneCompatible(existing,row,maxRadiusKm,{maxMinutes:maxSceneMinutes,crowdPreference,rows})))return;
+        const score=candidatePackScore(row,rows,centre,crowdPreference);
+        if(score>bestScore){best=index;bestScore=score;}
       });
-      if(best<0||bestDistance>maxRadiusKm)break;
+      if(best<0)break;
       rows.push(remaining.splice(best,1)[0]);
     }
     const totalKm=rows.reduce((sum,row,index)=>sum+(index?distanceKm(rows[index-1],row)||0:0),0);
-    const score=clamp(Math.round(rows.length*12+totalKm*8),8,100);
+    const totalMinutes=rows.reduce((sum,row)=>sum+durationOf(row),0);
+    const score=clamp(Math.round(rows.length*12+totalKm*8+(totalMinutes/30)),8,100);
     const effort=score>=65?'red':score>=38?'yellow':'green';
-    cards.push({title:cardTitle(rows),items:rows,centre:centroid(rows),distanceKm:totalKm,score,effort,pace,crowdPreference,scene:{region:sceneOf(seed).region||null,area:sceneOf(seed).area||null,daypart:sceneOf(seed).daypart||null}});
+    cards.push({title:cardTitle(rows),items:rows,centre:centroid(rows),distanceKm:totalKm,totalMinutes,score,effort,pace,crowdPreference,
+      constraints:rows.map(x=>({placeKey:placeKey(x),durationMin:durationOf(x),minimumUsefulMin:minUsefulOf(x),timingClass:timingClass(x),hardConstraint:!!hardConstraint(x),pairingGroup:pairGroup(x)})),
+      scene:{region:sceneOf(seed).region||null,area:sceneOf(seed).area||null,daypart:sceneOf(seed).daypart||null}});
   }
   return cards.sort((a,b)=>b.score-a.score).map((card,index)=>({...card,order:index+1}));
 }
