@@ -8,7 +8,18 @@
 <section id="s5" class="hidden"><h1>Balanced trip.</h1><div id="trip"></div><div class="buttons"><button class="btn dark back">Back</button></div></section>
 </main><script>
 (function(){
-var step=1, resolved=[], places=[];
+var step=1, resolved=[], places=[], transportChecks={};
+function transportFlag(p){var c=(p.timing_intelligence||{}).constraint_profile||{};return c.transport||'normal_or_unknown'}
+function needsTransport(p){return ['limited_transit','special_transport','car_recommended','car_required','long_distance_access','verify_last_mile','verify_if_remote'].indexOf(transportFlag(p))>=0}
+function transportCard(p){if(!needsTransport(p))return '';var c=(p.timing_intelligence||{}).constraint_profile||{},v=transportChecks[p.id]||{},key=String(p.id);
+return '<div class="card" style="border-color:#c99338"><b>⚠ Transport check · '+safe(p.name)+'</b><div class="meta">'+safe(c.transport_note||'Please double-check your journey timing and transport arrangements.')+'</div>'+
+'<label>Transport</label><select data-tid="'+key+'" data-field="mode"><option value="">Choose transport</option>'+['Driving','Public transport','Private driver / tour'].map(function(x){return '<option '+(v.mode===x?'selected':'')+'>'+x+'</option>'}).join('')+'</select>'+
+'<label>Travelling from (previous stop or hotel)</label><input data-tid="'+key+'" data-field="origin" value="'+safe(v.origin||'')+'" placeholder="e.g. Kōyasan">'+
+'<div class="row"><div><label>Journey to this POI (min)</label><input type="number" min="1" data-tid="'+key+'" data-field="inbound" value="'+safe(v.inbound||'')+'" placeholder="e.g. 90"></div><div><label>Onward / return (min)</label><input type="number" min="1" data-tid="'+key+'" data-field="outbound" value="'+safe(v.outbound||'')+'" placeholder="e.g. 60"></div></div>'+
+'<label style="font-size:13px"><input type="checkbox" style="width:auto" data-tid="'+key+'" data-field="confirmed" '+(v.confirmed?'checked':'')+'> I checked these journey estimates</label><div class="meta">Optional for now. Unconfirmed journeys remain flagged in your itinerary.</div></div>'}
+function readTransportFields(){document.querySelectorAll('[data-tid]').forEach(function(e){var id=e.getAttribute('data-tid'),field=e.getAttribute('data-field'),v=transportChecks[id]||(transportChecks[id]={});v[field]=field==='confirmed'?e.checked:e.value});try{sessionStorage.setItem('travelite_transport_checks',JSON.stringify(transportChecks))}catch(e){}}
+try{transportChecks=JSON.parse(sessionStorage.getItem('travelite_transport_checks')||'{}')}catch(e){transportChecks={}}
+
 function el(id){return document.getElementById(id)}
 function show(n){step=n;for(var i=1;i<=5;i++)el('s'+i).classList.toggle('hidden',i!==n);el('stepText').textContent='TRIP · '+n+' OF 5'}
 function addCity(city,from,to){var r=document.createElement('div');r.className='cityrow';r.innerHTML='<div class="citybox"><label>City</label><select class="c"><option>Kyoto</option><option>Osaka</option><option>Nara</option><option>Nagoya</option><option>Tokyo</option><option>Kobe</option><option>Himeji</option><option>Uji</option></select></div><div><label>From</label><input class="f" type="date"></div><div><label>To</label><input class="t" type="date"></div><button type="button" class="btn dark x">×</button>';el('cities').appendChild(r);r.querySelector('.c').value=city||'Osaka';r.querySelector('.f').value=from||el('start').value;r.querySelector('.t').value=to||el('end').value;r.querySelector('.x').onclick=function(){if(document.querySelectorAll('.cityrow').length>1)r.remove()}}
@@ -106,9 +117,9 @@ function buildSchedule(){
    d.items.forEach(function(p,j){
      if(j>0)t+=30;
      if(t>=720&&t<780){body+='<div class="timeitem"><div class="time">12:00</div><div><b>Lunch / break</b><div class="meta">60 min</div></div></div>';t=780}
-     var dur=mins(p);
+     var dur=mins(p),check=transportChecks[p.id]||{},checked=needsTransport(p)&&check.confirmed&&check.mode&&check.origin&&Number(check.inbound)>0&&Number(check.outbound)>0;if(needsTransport(p)){if(checked){t+=Number(check.inbound);body+='<div class="timeitem"><div class="time">'+clock(t-Number(check.inbound))+'</div><div><b>Journey to '+safe(p.name)+'</b><div class="meta">'+safe(check.mode)+' from '+safe(check.origin)+' · '+Number(check.inbound)+' min (user estimate)</div></div></div>';}else{body+='<div class="meta" style="color:#e5b85b;margin:10px 0">⚠ '+safe(p.name)+': Transport unverified. Journey time not included; check before relying on this schedule.</div>';}}
      body+='<div class="timeitem"><div class="time">'+clock(t)+'</div><div><b>'+safe(p.name)+'</b><div class="meta">'+safe(p.area||p.region||p.city)+' · ~'+dur+' min'+(p.visit_behavior?' · '+safe(p.visit_behavior):'')+'</div></div></div>';
-     t+=dur;
+     t+=dur;if(checked){body+='<div class="timeitem"><div class="time">'+clock(t)+'</div><div><b>Onward / return journey</b><div class="meta">'+Number(check.outbound)+' min (user estimate)</div></div></div>';t+=Number(check.outbound)}
    });
    if(tripTargets.length){var ret=dayTripMinutes(d);if(ret)t+=Math.round(ret/2);}
    return '<div class="card"><div class="dayhead"><b>'+title+'</b><span class="tag">'+safe(d.base.city)+'</span></div>'+body+'</div>';
@@ -116,8 +127,8 @@ function buildSchedule(){
  show(5);
 }
 el('next2').onclick=async function(){var lines=el('pois').value.split(/\\n|,/).map(function(x){return x.trim()}).filter(Boolean);el('matches').innerHTML='<div class="card">Reading Travelite place data…</div>';show(3);try{await loadPlaces();resolved=lines.map(function(q){var p=findPlace(q);return {raw:q,place:p}});el('matches').innerHTML=resolved.length?resolved.map(function(r){return r.place?'<div class="card"><b>'+safe(r.raw)+' → '+safe(r.place.name)+'</b><div class="meta">'+safe(r.place.city)+' · '+safe(r.place.region||r.place.area||'')+' · ~'+mins(r.place)+' min</div></div>':'<div class="card"><b>'+safe(r.raw)+'</b><div class="meta">Not confidently matched — not scheduled.</div></div>'}).join(''):'<div class="card">No places entered.</div>'}catch(e){el('matches').innerHTML='<div class="card">Could not load Travelite data: '+safe(e.message)+'</div>'}};
-el('next3').onclick=function(){var matched=resolved.filter(function(r){return r.place});el('scenes').innerHTML=matched.length?matched.map(function(r){var p=r.place;return '<div class="card"><b>'+safe(p.name)+'</b><div class="meta">'+safe(p.city)+' · '+safe(p.region||p.area||'')+' · '+mins(p)+' min</div></div>'}).join(''):'<div class="card">No matched POIs.</div>';show(4)};
-el('next4').onclick=buildSchedule;
+el('next3').onclick=function(){var matched=resolved.filter(function(r){return r.place});el('scenes').innerHTML=matched.length?matched.map(function(r){var p=r.place;return '<div class="card"><b>'+safe(p.name)+'</b><div class="meta">'+safe(p.city)+' · '+safe(p.region||p.area||'')+' · '+mins(p)+' min</div></div>'+transportCard(p)}).join(''):'<div class="card">No matched POIs.</div>';show(4)};
+el('next4').onclick=function(){readTransportFields();buildSchedule()};
 Array.prototype.forEach.call(document.querySelectorAll('.back'),function(b){b.onclick=function(){show(step-1)}});
 addCity('Kyoto',el('start').value,el('end').value);
 
