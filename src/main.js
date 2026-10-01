@@ -280,14 +280,17 @@ function traveliteJourneyMode(stop,tripIsLive){
   const loc=state.journeyLocation;
   if(!loc||!hasValidCoordinates(stop))return {mode:'online',state:tripIsLive?'CURRENT JOURNEY':'NEXT UP',distance:null};
   const distance=Math.round(distanceMeters(Number(loc.latitude),Number(loc.longitude),Number(stop.latitude),Number(stop.longitude)));
-  return distance<=180?{mode:'nearby',state:'NEARBY NOW',distance}:{mode:'online',state:'CURRENT JOURNEY',distance};
+  const accuracy=Number(loc.accuracy);
+  const reliable=!Number.isFinite(accuracy)||accuracy<=100;
+  return reliable&&distance<=180?{mode:'nearby',state:'NEARBY NOW',distance}:{mode:'online',state:'CURRENT JOURNEY',distance:null};
 }
 function homeView(){
   const t=state.trip,dates=dayList(t),now=today();
   const current=dates.includes(now)?now:(dates.find(d=>d>=now)||dates[0]);
   const rawDayStops=state.schedule.filter(x=>x.schedule_date===current).sort((a,b)=>(time(a.start_time)||'99:99').localeCompare(time(b.start_time)||'99:99')||(a.sort_order||0)-(b.sort_order||0));
   const dayStops=rawDayStops.filter(stop=>!isHomeMovementStop(stop));
-  const nextStop=dayStops.find(x=>time(x.start_time))||dayStops[0];
+  const activeDayStops=dayStops.filter(x=>!x.completed_at&&!x.skipped_at);
+  const nextStop=activeDayStops[0]||dayStops[dayStops.length-1];
   const countdown=t.start_date?Math.ceil((new Date(`${t.start_date}T12:00:00`)-new Date(`${now}T12:00:00`))/86400000):null;
   const tripIsLive=countdown!=null&&countdown<=0&&(!t.end_date||now<=t.end_date);
   const tripHasStarted=countdown!=null&&countdown<=0;
@@ -321,11 +324,11 @@ function homeView(){
 
     <section class="home-focus-grid">
       <div class="panel home-next-card home-next-card-japan">
-        ${(()=>{const journey=traveliteJourneyMode(nextStop,tripIsLive);const distance=journey.distance!=null?` · ~${journey.distance<1000?journey.distance+' m':(journey.distance/1000).toFixed(1)+' km'}`:'';const next=dayStops.find(x=>x!==nextStop);return `
+        ${(()=>{const journey=traveliteJourneyMode(nextStop,tripIsLive);const distance=journey.distance!=null?` · ~${journey.distance<1000?journey.distance+' m':(journey.distance/1000).toFixed(1)+' km'}`:'';const next=activeDayStops.find(x=>x!==nextStop);return `
         <div class="japan-journey-kicker">TODAY</div>
         <div class="japan-journey-state">${journey.state}</div>
         ${nextStop?`<div class="japan-journey-place">${esc(nextStop.title)}${distance}</div><div class="japan-journey-meta">${time(nextStop.start_time)?esc(time(nextStop.start_time))+' · ':''}${journey.mode==='offline'?'Location unavailable · using saved itinerary':'Part of today\'s journey'}</div>
-        <div class="japan-journey-actions"><a class="japan-journey-action" href="${esc(directions(nextStop))}" target="_blank" rel="noopener noreferrer">MAPS</a><button class="japan-journey-action" data-action="journey-location">${state.journeyLocationBusy?'LOCATING…':state.journeyLocation?'REFRESH GPS':'CHECK GPS'}</button><button class="japan-journey-action done" data-action="toggle-stop-done" data-id="${nextStop.id}">${nextStop.completed_at?'✓ DONE':'DONE'}</button></div>
+        <div class="japan-journey-actions"><a class="japan-journey-action" href="${esc(directions(nextStop))}" target="_blank" rel="noopener noreferrer">DIRECTIONS</a><button class="japan-journey-action" data-action="journey-location">${state.journeyLocationBusy?'LOCATING…':state.journeyLocation?'REFRESH GPS':'CHECK GPS'}</button><button class="japan-journey-action done" data-action="toggle-stop-done" data-id="${nextStop.id}">✓ DONE</button><button class="japan-journey-action skip" data-action="journey-skip" data-id="${nextStop.id}">SKIP</button></div>
         <div class="japan-journey-next">${next?'UP NEXT':'TODAY'}<strong>${esc(next?.title||fmtDate(current,{weekday:'long',day:'numeric',month:'short'}))}</strong></div>`:`<div class="japan-journey-place">Your day has room.</div><div class="japan-journey-meta">Nothing scheduled yet.</div>`}
         `;})()}
       </div>
@@ -440,7 +443,7 @@ async function refreshJourneyLocation(){
       if(!navigator.geolocation)return reject(new Error('Location is not available on this device.'));
       navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:12000,maximumAge:120000});
     });
-    state.journeyLocation={latitude:Number(position.coords.latitude),longitude:Number(position.coords.longitude),updatedAt:Date.now()};
+    state.journeyLocation={latitude:Number(position.coords.latitude),longitude:Number(position.coords.longitude),accuracy:Number(position.coords.accuracy),updatedAt:Date.now()};
   }catch(error){
     state.journeyLocationError=error?.code===1?'Location permission is needed to check nearby.':(error?.message||'Could not get your location.');
   }finally{state.journeyLocationBusy=false;render();}
@@ -2434,6 +2437,7 @@ case 'add-preview':{let selection=null;const source=el.dataset.source||'catalog'
 case 'add-preview-back':state.addSelection=null;render();setTimeout(()=>$('#add-day-search')?.focus(),0);break;
 case 'add-selection-day':await addSelectionToDay(state.addSelection);break;
 case 'save-selection':await saveSelectionForLater(state.addSelection);break;
+case 'journey-skip':{const row=state.schedule.find(x=>Number(x.id)===id);if(!row)break;const r=await sb.from('schedule').update({skipped_at:new Date().toISOString(),completed_at:null}).eq('id',id).eq('trip_id',state.trip.id);if(r.error)throw r.error;await loadTripData();break;}
 case 'toggle-stop-done':{const row=state.schedule.find(x=>Number(x.id)===id);if(!row)break;const patch=row.completed_at?{completed_at:null}:{completed_at:new Date().toISOString(),skipped_at:null};const r=await sb.from('schedule').update(patch).eq('id',id).eq('trip_id',state.trip.id);if(r.error)throw r.error;await loadTripData();break;}
 case 'move-stop':await moveDayStop(id,Number(v));break;
 case 'edit-stop':openModal('stop',state.schedule.find(x=>x.id===id));break;
