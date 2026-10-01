@@ -311,32 +311,17 @@ function homeView(){
       </div>
     </section>
 
-    <section class="home-day-dashboard">
-      <div class="home-day-now">
-        <div class="home-day-kicker">TODAY</div>
-        ${nextStop?`<div class="home-day-state">${tripIsLive?'CURRENT JOURNEY':'NEXT UP'}</div>
-        <div class="home-day-place">${esc(nextStop.title)}</div>
-        <div class="home-day-meta">${esc(nextStop.location_name||nextStop.address||'Part of today\'s journey')}${time(nextStop.start_time)?` · ${esc(time(nextStop.start_time))}`:''}</div>
-        <div class="home-journey-controls">
-          <a class="home-day-action" href="${esc(directions(nextStop))}" target="_blank" rel="noopener noreferrer">DIRECTIONS</a>
-          <button class="home-day-action" data-action="tab" data-value="plan">PLAN</button>
-          <button class="home-day-action done ${nextStop.completed_at?'active':''}" data-action="toggle-stop-done" data-id="${nextStop.id}">${nextStop.completed_at?'✓ DONE':'DONE'}</button>
-        </div>
-        <div class="home-day-next">${dayStops[1]?'UP NEXT': 'TODAY\'S JOURNEY'}<strong>${esc(dayStops[1]?.title||fmtDate(current,{weekday:'long',day:'numeric',month:'short'}))}</strong></div>`:`<div class="home-day-state">CURRENT JOURNEY</div><div class="home-day-place">Your day has room.</div><div class="home-day-meta">Add the places you care about and Travelite can arrange them.</div><div class="home-journey-controls"><button class="home-day-action" data-action="new-stop">ADD PLACE</button><button class="home-day-action" data-action="tab" data-value="plan">FULL PLAN</button></div>`}
+    <section class="home-focus-grid">
+      <div class="panel home-next-card home-next-card-japan">
+        <div class="section-head"><div><div class="eyebrow">${tripIsLive?'NEXT COMMITMENT':'NEXT UP'}</div><h2>${current?esc(fmtDate(current,{weekday:'long',day:'numeric',month:'short'})):'Nothing scheduled yet'}</h2></div><button class="text-link" data-action="tab" data-value="plan">Full plan</button></div>
+        ${nextStop?`<div class="home-next-stop"><span class="home-next-time">${esc(time(nextStop.start_time)||'Flexible')}</span><div><b>${esc(nextStop.title)}</b><small>${esc(nextStop.location_name||nextStop.address||'Part of your day')}</small></div><a href="${esc(directions(nextStop))}" target="_blank" rel="noopener noreferrer" aria-label="Directions">${icon('Navigation')}</a></div>`:`<div class="home-open-space">${icon('CalendarPlus')}<div><b>Your day has room.</b><small>Add the places you care about. Travelite can arrange the flexible ones around your fixed plans.</small></div><button data-action="new-stop">Add place</button></div>`}
       </div>
-      <div class="home-day-side">
-        <div class="home-day-tool">
-          <div class="home-day-tool-kicker">FOOD FINDER</div>
-          <div class="home-day-tool-title">Food around you</div>
-          <div class="home-day-tool-copy">Your saved picks + restaurants near your actual location.</div>
-          <button class="home-day-tool-button" data-action="food-finder">FIND FOOD →</button>
-        </div>
-        <div class="home-day-tool">
-          <div class="home-day-tool-kicker">NEARBY</div>
-          <div class="home-day-tool-title">Worth a detour?</div>
-          <div class="home-day-tool-copy">Places not already in your plan that could fit before your next stop.</div>
-          <button class="home-day-tool-button" data-action="explore-sort" data-value="near-me">FIND NEARBY →</button>
-        </div>
+      <div class="panel home-now-card">
+        <div class="eyebrow">SPARE TIME</div>
+        <h2>Find something that fits.</h2>
+        <p>Nearby is not enough. Use the time you have and where you need to be next.</p>
+        <button class="home-now-button" data-action="assistant"><span>${icon('Sparkles')}</span><div><b>What Now?</b><small>Use my itinerary as context</small></div>${icon('ArrowRight')}</button>
+        <button class="home-now-button secondary" data-action="explore-sort" data-value="near-me"><span>${icon('MapPin')}</span><div><b>Around me</b><small>Browse nearby saved and curated places</small></div>${icon('ArrowRight')}</button>
       </div>
     </section>
 
