@@ -289,11 +289,40 @@ function windows(place,date,timeZone){
   }
   return result;
 }
-/** Accepts optional normalized [{open:'09:00',close:'18:00'}] or a caller-provided resolver. */
+/**
+ * Resolve structured access hours into planner intervals.
+ * Priority:
+ *  1. caller resolver (for date/holiday-specific logic)
+ *  2. verified_hours normalized arrays
+ *  3. places.opening_hours JSON
+ *
+ * opening_hours may contain a main interval under "regular" plus named sub-facilities
+ * such as "food_court" or "factory". A POI can request one with
+ * place.visit_context / place.access_context / place.subfacility.
+ * The main place never inherits a sub-facility's earlier closing time.
+ */
 function openIntervals(place,date,resolveHours){
-  const raw=typeof resolveHours==='function'?resolveHours(place,date):place.verified_hours;
+  let raw=typeof resolveHours==='function'?resolveHours(place,date):place.verified_hours;
+  const hours=place.opening_hours;
+  if((!Array.isArray(raw)||!raw.length)&&hours&&typeof hours==='object'){
+    if(hours.open_access===true||hours.access==='24_hours')return [{start:0,end:1440,source:'open_access'}];
+    const context=String(place.visit_context||place.access_context||place.subfacility||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+    const selected=(context&&hours[context])||hours.regular||hours.main||hours.general;
+    if(Array.isArray(selected))raw=selected;
+    else if(selected&&typeof selected==='object')raw=[selected];
+    else if((hours.open||hours.start)&&(hours.close||hours.end))raw=[hours];
+  }
   if(!Array.isArray(raw)||!raw.length)return null;
-  return raw.map(x=>({start:mins(x.open??x.start),end:mins(x.close??x.end)})).filter(x=>x.start!=null&&x.end!=null).map(x=>({...x,end:x.end<=x.start?x.end+1440:x.end}));
+  return raw.map(x=>({
+    start:mins(x.open??x.start),
+    end:mins(x.close??x.end),
+    lastAdmission:mins(x.last_admission??x.lastAdmission),
+    source:x.source||'structured_hours'
+  })).filter(x=>x.start!=null&&x.end!=null).map(x=>{
+    let end=x.end<=x.start?x.end+1440:x.end;
+    if(x.lastAdmission!=null)end=Math.min(end,x.lastAdmission);
+    return {...x,end};
+  });
 }
 function fitPlace(place,date,{timeZone='Asia/Tokyo',resolveHours,dayStart=480,dayEnd=1260}={}){
   const duration=clamp(Number(place.estimated_minutes_max||place.estimated_minutes_min||60),15,360);
