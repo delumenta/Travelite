@@ -241,6 +241,8 @@ export function assignCardsToTripDays(cards,{dates=[],bases=[],destinations=[],g
         kind='day_trip';travelMinutes=Math.max(travelMinutes,trip.oneWayMinutes*2);
       }
       // For unverified remote routes, graph time is only a provisional estimate.
+      // A fully confirmed single-stop remote route already includes both legs.
+      if(!transport.hasUnverified&&(card.items||[]).length===1&&transport.extraMinutes>0&&travelMinutes>0)travelMinutes=0;
       const required=sceneMinutes+travelMinutes;
       if(required>day.availableMinutes)eligible=false;
       return eligible?{day,required,kind,travelMinutes,transport}:null;
