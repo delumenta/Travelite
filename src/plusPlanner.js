@@ -43,7 +43,7 @@ const sceneCompatible=(a,b,maxRadiusKm)=>{
   if((A.behavior.includes('sunset_lock')&&db==='early')||(B.behavior.includes('sunset_lock')&&da==='early'))return false;
   return true;
 };
-export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanced',crowdPreference='balanced',transportChecks=[],routeSignature}={}){
+export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanced',crowdPreference='balanced'}={}){
   if(pace==='chill')maxStops=Math.min(maxStops,3);
   if(pace==='packed')maxStops=Math.max(maxStops,6);
   const remaining=[...input],cards=[];
@@ -221,7 +221,7 @@ export function assessCardTransport(card,date,checks=[],{signatureFor}={}){
  }
  return {extraMinutes,warnings,hasUnverified};
 }
-export function assignCardsToTripDays(cards,{dates=[],bases=[],destinations=[],graph={},maxDayMinutes=540,pace='balanced',crowdPreference='balanced'}={}){
+export function assignCardsToTripDays(cards,{dates=[],bases=[],destinations=[],graph={},maxDayMinutes=540,pace='balanced',crowdPreference='balanced',transportChecks=[],routeSignature}={}){
   const paceCap=pace==='chill'?420:pace==='packed'?540:480;
   maxDayMinutes=Math.min(maxDayMinutes,paceCap);
   const days=buildTripDayContexts({dates,bases,destinations,graph}).map(d=>({...d,cards:[],score:0,usedMinutes:0}));
