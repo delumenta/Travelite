@@ -1627,3 +1627,9 @@ html:not([data-theme="dark"]) .japan-journey-place{color:#403639}html:not([data-
 .plus-under{margin:0 0 16px;padding:15px;border:1px solid rgba(217,90,102,.25);border-radius:14px;background:rgba(217,90,102,.045)}
 .plus-under>b{display:block;color:var(--text);font-size:11px;letter-spacing:0}.plus-under p{margin:6px 0 0;color:var(--muted);font-size:9px;line-height:1.5}
 .plus-under-actions button{border-color:rgba(217,90,102,.28);color:#d95a66}
+
+.plus-daytrip-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.plus-daytrip-card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);text-align:left;cursor:pointer}
+.plus-daytrip-card small{font-size:7px;font-weight:900;letter-spacing:.08em;color:#d95a66}.plus-daytrip-card b{font-size:12px}.plus-daytrip-card span{font-size:8px;line-height:1.4;color:var(--muted)}
+.day-loose-label{display:block;margin-top:4px;font-size:7px;font-style:normal;font-weight:900;letter-spacing:.08em;color:#d95a66}
+@media(max-width:640px){.plus-daytrip-grid{grid-template-columns:1fr}}
