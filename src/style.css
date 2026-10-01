@@ -1588,3 +1588,10 @@ html[data-theme="dark"] .home-day-next{border-color:#382e32;color:#8d898b}html[d
 html[data-theme="dark"] .home-day-action,html[data-theme="dark"] .home-day-tool-button{border-color:#56353d;background:#24191d;color:#ef8997}
 @media(max-width:900px){.home-day-dashboard{grid-template-columns:1fr}.home-day-now{min-height:0;border-right:0;border-bottom:1px solid var(--line,#eadfdd)}.home-day-side{grid-template-columns:1fr 1fr;grid-template-rows:auto}.home-day-tool+.home-day-tool{border-top:0;border-left:1px solid var(--line,#eadfdd)}}
 @media(max-width:560px){.home-day-now{padding:17px}.home-day-side{grid-template-columns:1fr}.home-day-tool{padding:15px 16px}.home-day-tool+.home-day-tool{border-left:0;border-top:1px solid var(--line,#eadfdd)}.home-day-place{font-size:23px}}
+
+/* Compact home card: retain Travelite layout, borrow the Japan journey-card surface. */
+.home-next-card-japan{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.12);border-radius:19px;background:linear-gradient(145deg,#111920,#090f14);box-shadow:0 16px 36px rgba(0,0,0,.19)}
+html:not([data-theme="dark"]) .home-next-card-japan{border-color:#eadfdd;background:linear-gradient(145deg,#fffdfa,#fbf7f5);box-shadow:0 16px 36px rgba(73,48,55,.08)}
+.home-next-card-japan .section-head{padding-bottom:13px;border-bottom:1px solid rgba(255,255,255,.08)}
+.home-next-card-japan .home-next-stop{border-top:0;margin-top:0;padding-top:18px}
+html:not([data-theme="dark"]) .home-next-card-japan .section-head{border-color:#eadfdd}
