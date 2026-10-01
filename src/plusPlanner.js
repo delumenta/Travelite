@@ -211,25 +211,37 @@ export function flattenBalancedDays(days){return days.flatMap(day=>day.cards.fla
 export function assessTripCapacity({tripDays=0,cards=[],targetDayScore=55}={}){
   const days=Math.max(0,Number(tripDays)||0);
   if(!days)return {underSpecified:false,plannedDayEquivalents:0,openDayEquivalents:0,mode:'no_dates'};
-  const totalLoad=(cards||[]).reduce((sum,card)=>sum+clamp(Number(card?.score)||0,0,100),0);
+  const totalLoad=(cards||[]).reduce((sum,card)=>sum+Math.max(Number(card?.effortScore??card?.score??0),8),0);
   const plannedDayEquivalents=Math.min(days,totalLoad/Math.max(1,targetDayScore));
   const openDayEquivalents=Math.max(0,days-plannedDayEquivalents);
   const underSpecified=openDayEquivalents>=0.75;
-  return {
-    underSpecified,
-    plannedDayEquivalents:Number(plannedDayEquivalents.toFixed(1)),
-    openDayEquivalents:Number(openDayEquivalents.toFixed(1)),
-    mode:underSpecified?'suggest_fill':'enough_content'
-  };
+  return {underSpecified,plannedDayEquivalents:Number(plannedDayEquivalents.toFixed(1)),openDayEquivalents:Number(openDayEquivalents.toFixed(1)),mode:underSpecified?'suggest_fill':'enough_content'};
 }
 
 export function shouldDiscoverDayTrips({tripDays=0,cards=[],userKeptLoose=false}={}){
   const capacity=assessTripCapacity({tripDays,cards});
-  return {
-    ...capacity,
-    discover:capacity.underSpecified&&!userKeptLoose,
-    choices:capacity.underSpecified?['add_local_scene','explore_day_trip','keep_it_loose']:[]
-  };
+  return {...capacity,discover:capacity.underSpecified&&!userKeptLoose,choices:capacity.underSpecified?['add_local_scene','explore_day_trip','keep_it_loose']:[]};
+}
+
+/** Convert a curated scene/day-trip suggestion into a normal undated card. */
+export function sceneSuggestionToCard(suggestion,{pace='balanced',crowdPreference='balanced'}={}){
+  const items=listify(suggestion?.pois||suggestion?.places||suggestion?.items);
+  if(!items.length)return null;
+  const card=buildUndatedCards(items,{pace,crowdPreference,maxStops:Math.max(1,items.length),maxRadiusKm:9,maxSceneMinutes:540})[0];
+  return card?{...card,kind:suggestion?.kind==='day_trip'?'day_trip':'city_scene',suggestionId:suggestion?.id??null,
+    destination:suggestion?.destination||suggestion?.city||null}:null;
+}
+
+export function selectCitySceneOrDayTrip(suggestions,{type='any',baseCity='',existingCards=[]}={}){
+  const existing=new Set(existingCards.flatMap(c=>(c.items||[]).map(placeKey)));
+  const base=norm(baseCity);
+  return (suggestions||[]).filter(s=>{
+    const kind=norm(s.kind||s.type);
+    if(type!=='any'&&kind!==type)return false;
+    if(kind==='day_trip'&&base&&norm(s.baseCity||s.base_city)===base)return false;
+    const items=listify(s.pois||s.places||s.items);
+    return items.length>=2&&items.some(x=>!existing.has(placeKey(x)));
+  });
 }
 
 export function qualifyDayTripCandidate(candidate,{baseCities=[],maxMinutes=540,targetMinutes=480}={}){
@@ -243,13 +255,9 @@ export function qualifyDayTripCandidate(candidate,{baseCities=[],maxMinutes=540,
   const total=Number(candidate?.totalMinutes);
   if(!Number.isFinite(total))return {eligible:false,reason:'needs_route_time'};
   if(total>maxMinutes)return {eligible:false,reason:'over_nine_hours',totalMinutes:total};
-  return {
-    eligible:true,
-    reason:'valid_return_excursion',
-    totalMinutes:total,
-    durationBand:total<=targetMinutes?'about_eight_hours':'eight_to_nine_hours'
-  };
+  return {eligible:true,reason:'valid_return_excursion',totalMinutes:total,durationBand:total<=targetMinutes?'about_eight_hours':'eight_to_nine_hours'};
 }
+
 
 
 // Destination transport graph helpers.
