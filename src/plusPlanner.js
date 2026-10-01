@@ -33,7 +33,9 @@ const sceneCompatible=(a,b,maxRadiusKm)=>{
   if((A.behavior.includes('sunset_lock')&&db==='early')||(B.behavior.includes('sunset_lock')&&da==='early'))return false;
   return true;
 };
-export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5}={}){
+export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanced',crowdPreference='balanced'}={}){
+  if(pace==='chill')maxStops=Math.min(maxStops,3);
+  if(pace==='packed')maxStops=Math.max(maxStops,6);
   const remaining=[...input],cards=[];
   while(remaining.length){
     const seed=remaining.shift(),rows=[seed];
@@ -50,7 +52,7 @@ export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5}={}){
     const totalKm=rows.reduce((sum,row,index)=>sum+(index?distanceKm(rows[index-1],row)||0:0),0);
     const score=clamp(Math.round(rows.length*12+totalKm*8),8,100);
     const effort=score>=65?'red':score>=38?'yellow':'green';
-    cards.push({title:cardTitle(rows),items:rows,centre:centroid(rows),distanceKm:totalKm,score,effort,scene:{region:sceneOf(seed).region||null,area:sceneOf(seed).area||null,daypart:sceneOf(seed).daypart||null}});
+    cards.push({title:cardTitle(rows),items:rows,centre:centroid(rows),distanceKm:totalKm,score,effort,pace,crowdPreference,scene:{region:sceneOf(seed).region||null,area:sceneOf(seed).area||null,daypart:sceneOf(seed).daypart||null}});
   }
   return cards.sort((a,b)=>b.score-a.score).map((card,index)=>({...card,order:index+1}));
 }
@@ -189,7 +191,9 @@ export function destinationForPlace(place,destinations=[]){
   const values=[place?.city,place?.area,place?.region].filter(Boolean).map(x=>String(x).trim().toLowerCase());
   return destinations.find(d=>values.includes(String(d.name||'').trim().toLowerCase()))||null;
 }
-export function assignCardsToTripDays(cards,{dates=[],bases=[],destinations=[],graph={},maxDayMinutes=540}={}){
+export function assignCardsToTripDays(cards,{dates=[],bases=[],destinations=[],graph={},maxDayMinutes=540,pace='balanced',crowdPreference='balanced'}={}){
+  const paceCap=pace==='chill'?420:pace==='packed'?540:480;
+  maxDayMinutes=Math.min(maxDayMinutes,paceCap);
   const days=buildTripDayContexts({dates,bases,destinations,graph}).map(d=>({...d,cards:[],score:0,usedMinutes:0}));
   const cardMinutes=card=>(card.items||[]).reduce((s,p)=>s+Number(p.estimated_minutes_max||p.estimated_minutes_min||60),0)+Math.max(0,(card.items?.length||0)-1)*30;
   for(const card of [...(cards||[])].sort((a,b)=>b.score-a.score)){
