@@ -2519,11 +2519,13 @@ case 'balance-plus-cards':{
   const flat=[],warnings=[];
   for(const day of proposed){
     let order=state.schedule.filter(x=>x.schedule_date===day.date).length;
+    let dayCursor=480;
     for(const card of day.cards||[]){
       const timed=scheduleScene(card.items||[],day.date,{
-        timeZone:state.trip?.time_zone||'Asia/Tokyo',
-        dayStart:480,dayEnd:1260
+        timeZone:state.trip?.time_zone||(String(state.trip?.country||'').toLowerCase()==='japan'?'Asia/Tokyo':Intl.DateTimeFormat().resolvedOptions().timeZone),
+        dayStart:dayCursor,dayEnd:1260
       });
+      if(timed.scheduled.length)dayCursor=Math.max(...timed.scheduled.map(x=>x.end))+30;
       if(timed.unplaced.length){
         warnings.push(...timed.unplaced.map(x=>(x.place.name||x.place.title||'Place')+' ('+day.date+')'));
         continue;
