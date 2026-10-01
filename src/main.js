@@ -2530,18 +2530,18 @@ case 'balance-plus-cards':{
   for(const day of proposed){
     let order=state.schedule.filter(x=>x.schedule_date===day.date).length;
     let dayCursor=480;
-    for(const card of day.cards||[]){
+    for(const [cardIndex,card] of (day.cards||[]).entries()){
       transportWarnings.push(...(card.transportWarnings||[]).map(w=>w.name+' ('+day.date+'): '+w.reason));
       const cardItems=card.items||[];
       const confirmedFor=(p,i)=>{const check=savedTransportForPlace(p.place_id??p.id);return check&&savedCheckForRoute(check,routeSignature(day.date,cardItems[i-1]||null,p,cardItems[i+1]||null))?check:null;};
       const firstCheck=cardItems.length&&needsTransport(cardItems[0])?confirmedFor(cardItems[0],0):null;
-      if(firstCheck)dayCursor+=Number(firstCheck.inbound_minutes)||0;
+      if(firstCheck){if(cardIndex>0)dayCursor=Math.max(0,dayCursor-30);dayCursor+=Number(firstCheck.inbound_minutes)||0;}
       const timed=scheduleScene(cardItems,day.date,{
         timeZone:state.trip?.time_zone||(String(state.trip?.country||'').toLowerCase()==='japan'?'Asia/Tokyo':Intl.DateTimeFormat().resolvedOptions().timeZone),
         dayStart:dayCursor,dayEnd:1260,
         travelMinutes:(a,b)=>{const index=cardItems.indexOf(b),check=index>=0?confirmedFor(b,index):null;if(check)return Number(check.inbound_minutes);return null;}
       });
-      if(timed.scheduled.length){dayCursor=Math.max(...timed.scheduled.map(x=>x.end))+30;const last=timed.scheduled[timed.scheduled.length-1].place,idx=cardItems.indexOf(last),lastCheck=idx>=0?confirmedFor(last,idx):null;if(lastCheck)dayCursor+=Number(lastCheck.onward_minutes)||0;}
+      if(timed.scheduled.length){dayCursor=Math.max(...timed.scheduled.map(x=>x.end))+30;const last=timed.scheduled[timed.scheduled.length-1].place,idx=cardItems.indexOf(last),lastCheck=idx>=0?confirmedFor(last,idx):null;if(lastCheck&&cardIndex===(day.cards||[]).length-1)dayCursor+=Number(lastCheck.onward_minutes)||0;}
       if(timed.unplaced.length){
         warnings.push(...timed.unplaced.map(x=>(x.place.name||x.place.title||'Place')+' ('+day.date+')'));
         continue;
