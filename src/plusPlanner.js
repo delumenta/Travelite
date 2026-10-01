@@ -43,7 +43,7 @@ const sceneCompatible=(a,b,maxRadiusKm)=>{
   if((A.behavior.includes('sunset_lock')&&db==='early')||(B.behavior.includes('sunset_lock')&&da==='early'))return false;
   return true;
 };
-export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanced',crowdPreference='balanced'}={}){
+export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanced',crowdPreference='balanced',transportChecks=[],routeSignature}={}){
   if(pace==='chill')maxStops=Math.min(maxStops,3);
   if(pace==='packed')maxStops=Math.max(maxStops,6);
   const remaining=[...input],cards=[];
@@ -201,6 +201,26 @@ export function destinationForPlace(place,destinations=[]){
   const values=[place?.city,place?.area,place?.region].filter(Boolean).map(x=>String(x).trim().toLowerCase());
   return destinations.find(d=>values.includes(String(d.name||'').trim().toLowerCase()))||null;
 }
+// Count each user-supplied leg once. Unverified routes retain an explicit warning.
+export function assessCardTransport(card,date,checks=[],{signatureFor}={}){
+ const items=card.items||[],warnings=[];let extraMinutes=0,hasUnverified=false;
+ const lookup=id=>checks.find(c=>Number(c.place_id)===Number(id));
+ for(let i=0;i<items.length;i++){
+  const p=items[i],flag=p?.timing_intelligence?.constraint_profile?.transport;
+  if(!['limited_transit','special_transport','car_recommended','car_required','long_distance_access','verify_last_mile','verify_if_remote'].includes(flag))continue;
+  const previous=items[i-1]||null,next=items[i+1]||null,check=lookup(p.place_id??p.id);
+  const signature=signatureFor?.(date,previous,p,next);
+  if(!check?.confirmed||!signature||check.route_signature!==signature){
+   hasUnverified=true;warnings.push({placeId:p.place_id??p.id,name:p.name||p.title,reason:check?.confirmed?'Route changed; reconfirm journey':'Transport unverified'});
+   continue;
+  }
+  // Inbound replaces the generic 30-minute inter-stop estimate when there is a previous stop.
+  extraMinutes+=Math.max(0,Number(check.inbound_minutes)||0)-(i>0?30:0);
+  // Only the last stop needs an explicit onward/return leg; interior legs are counted inbound to their next stop.
+  if(i===items.length-1)extraMinutes+=Math.max(0,Number(check.onward_minutes)||0);
+ }
+ return {extraMinutes,warnings,hasUnverified};
+}
 export function assignCardsToTripDays(cards,{dates=[],bases=[],destinations=[],graph={},maxDayMinutes=540,pace='balanced',crowdPreference='balanced'}={}){
   const paceCap=pace==='chill'?420:pace==='packed'?540:480;
   maxDayMinutes=Math.min(maxDayMinutes,paceCap);
@@ -211,7 +231,8 @@ export function assignCardsToTripDays(cards,{dates=[],bases=[],destinations=[],g
     const candidates=days.map(day=>{
       if(!day.base)return null;
       const baseDest=destinationForBase(day.base,destinations);if(!baseDest)return null;
-      const sceneMinutes=cardMinutes(card);
+      const transport=assessCardTransport(card,day.date,transportChecks,{signatureFor:routeSignature});
+      const sceneMinutes=cardMinutes(card)+transport.extraMinutes;
       let travelMinutes=0,kind='local',eligible=true;
       for(const targetId of destinationsInCard){
         if(String(targetId)===String(baseDest.id))continue;
@@ -219,12 +240,13 @@ export function assignCardsToTripDays(cards,{dates=[],bases=[],destinations=[],g
         if(!trip.eligible){eligible=false;break;}
         kind='day_trip';travelMinutes=Math.max(travelMinutes,trip.oneWayMinutes*2);
       }
+      // For unverified remote routes, graph time is only a provisional estimate.
       const required=sceneMinutes+travelMinutes;
       if(required>day.availableMinutes)eligible=false;
-      return eligible?{day,required,kind,travelMinutes}:null;
+      return eligible?{day,required,kind,travelMinutes,transport}:null;
     }).filter(Boolean).sort((a,b)=>(a.day.usedMinutes+a.required)-(b.day.usedMinutes+b.required)||a.day.score-b.day.score);
     if(!candidates.length)continue;
-    const pick=candidates[0];pick.day.cards.push({...card,travelKind:pick.kind,travelMinutes:pick.travelMinutes});pick.day.usedMinutes+=pick.required;pick.day.score+=card.score;
+    const pick=candidates[0];pick.day.cards.push({...card,travelKind:pick.kind,travelMinutes:pick.travelMinutes,transportWarnings:pick.transport.warnings,transportExtraMinutes:pick.transport.extraMinutes});pick.day.usedMinutes+=pick.required;pick.day.score+=card.score;
   }
   return days;
 }
