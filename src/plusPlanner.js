@@ -32,11 +32,17 @@ const daypartFamily=v=>{
 const listify=v=>Array.isArray(v)?v:(v==null||v===''?[]:[v]);
 const profileOf=row=>row?.planning_profile||row?.place_planning_profile||row?.planningProfile||{};
 const relationList=(row,key)=>listify(profileOf(row)?.[key]??row?.[key]).map(norm).filter(Boolean);
-const durationOf=row=>clamp(Number(
-  row?.typical_duration_min??row?.typical_duration_minutes??
-  row?.estimated_minutes_max??row?.estimated_minutes_min??
-  profileOf(row)?.typical_duration_min??profileOf(row)?.typical_duration_minutes??60
-),15,360);
+const durationOf=row=>{
+  const constraintDuration=timingOf(row)?.constraint_profile?.duration;
+  const fullDay=timingClass(row)==='hard_full_day_access'||timingOf(row)?.hard_constraints?.full_day_anchor===true;
+  return clamp(Number(
+    (fullDay?(constraintDuration?.max_minutes??constraintDuration?.min_minutes):null)??
+    row?.typical_duration_min??row?.typical_duration_minutes??
+    row?.estimated_minutes_max??row?.estimated_minutes_min??
+    profileOf(row)?.typical_duration_min??profileOf(row)?.typical_duration_minutes??
+    constraintDuration?.max_minutes??constraintDuration?.min_minutes??60
+  ),15,540);
+};
 const minUsefulOf=row=>clamp(Number(row?.minimum_useful_time_min??profileOf(row)?.minimum_useful_time_min??Math.min(durationOf(row),45)),15,360);
 const timingClass=row=>norm(timingOf(row).timing_class||row?.timing_class);
 const hardConstraint=row=>['hard_scheduled_entry','hard_full_day_access','event_schedule_constraint'].includes(timingClass(row))||timingOf(row).hard_constraints;
@@ -373,12 +379,26 @@ export function assignCardsToTripDays(cards,{dates=[],bases=[],destinations=[],g
   const paceCap=pace==='chill'?420:pace==='packed'?540:480;
   maxDayMinutes=Math.min(maxDayMinutes,paceCap);
   const days=buildTripDayContexts({dates,bases,destinations,graph}).map(d=>({...d,cards:[],score:0,usedMinutes:0}));
-  const cardMinutes=card=>(card.items||[]).reduce((s,p)=>s+Number(p.estimated_minutes_max||p.estimated_minutes_min||60),0)+Math.max(0,(card.items?.length||0)-1)*30;
+  const cardMinutes=card=>(card.items||[]).reduce((s,p)=>s+durationOf(p),0)+Math.max(0,(card.items?.length||0)-1)*30;
+  const baseDestinationIds=[...new Set(days.map(day=>day.base&&destinationForBase(day.base,destinations)?.id).filter(x=>x!=null).map(String))];
   for(const card of [...(cards||[])].sort((a,b)=>b.score-a.score)){
     const destinationsInCard=[...new Set((card.items||[]).map(p=>destinationForPlace(p,destinations)?.id).filter(Boolean))];
+    // Qualify the scene to a base before balancing dates. Exact destination bases win;
+    // otherwise use the shortest connected transport-graph route from the trip's bases.
+    let preferredBaseDestinationId=null;
+    if(destinationsInCard.length===1){
+      const targetId=destinationsInCard[0];
+      if(baseDestinationIds.includes(String(targetId)))preferredBaseDestinationId=String(targetId);
+      else{
+        const ranked=baseDestinationIds.map(baseId=>({baseId,minutes:transportGraphMinutes(baseId,targetId,graph)}))
+          .filter(x=>x.minutes!=null).sort((a,b)=>a.minutes-b.minutes);
+        if(ranked.length)preferredBaseDestinationId=String(ranked[0].baseId);
+      }
+    }
     const candidates=days.map(day=>{
       if(!day.base)return null;
       const baseDest=destinationForBase(day.base,destinations);if(!baseDest)return null;
+      if(preferredBaseDestinationId!=null&&String(baseDest.id)!==preferredBaseDestinationId)return null;
       const transport=assessCardTransport(card,day.date,transportChecks,{signatureFor:routeSignature});
       const sceneMinutes=cardMinutes(card)+transport.extraMinutes;
       let travelMinutes=0,kind='local',eligible=true;
@@ -541,7 +561,7 @@ function windowScore(w,crowdPreference='balanced'){
   return score;
 }
 function fitPlace(place,date,{timeZone='Asia/Tokyo',resolveHours,dayStart=480,dayEnd=1260,crowdPreference='balanced'}={}){
-  const duration=clamp(Number(place.estimated_minutes_max||place.estimated_minutes_min||60),15,360);
+  const duration=durationOf(place);
   const prefs=windows(place,date,timeZone);
   const opening=openIntervals(place,date,resolveHours);
   const feasible=(opening??[{start:dayStart,end:dayEnd}]).map(x=>({start:Math.max(dayStart,x.start),end:Math.min(dayEnd,x.end),lastAdmission:x.lastAdmission})).filter(x=>x.end-x.start>=duration);
