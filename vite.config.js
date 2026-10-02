@@ -7,6 +7,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
+        test: resolve(import.meta.dirname, 'test.html'),
         review: resolve(import.meta.dirname, 'review.html'),
         kyotoreview: resolve(import.meta.dirname, 'kyotoreview.html')
       }
