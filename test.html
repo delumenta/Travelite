@@ -60,7 +60,7 @@ document.querySelectorAll('[data-date]').forEach(x=>x.onchange=()=>{let b=bases.
 document.querySelectorAll('[data-remove]').forEach(x=>x.onclick=()=>{if(bases.length<2)return; bases=bases.filter(b=>b.id!==x.dataset.remove);if(!bases.some(b=>b.id===activeBase))activeBase=bases[0].id;renderBases();renderCatalog();renderTrips()});
 $('activeCity').textContent=baseNow()?.city||'';$('stripCity').textContent=baseNow()?.city||''}
 const supportedBaseSlugs=['kyoto','osaka','tokyo','nagoya','sapporo','fukuoka','kobe','wakayama','himeji'];
-function renderBaseOptions(){const known=(db.destinations||[]).filter(d=>d.status==='active'&&supportedBaseSlugs.includes(n(d.slug||d.name))).map(d=>d.name);if(!known.some(x=>n(x)==='wakayama'))known.push('Wakayama');const unique=[...new Set(known)].sort((a,b)=>a.localeCompare(b));$('newBaseCity').innerHTML=unique.map(city=>'<option>'+safe(city)+'</option>').join('');}
+function renderBaseOptions(){const known=(db.destinations||[]).filter(d=>d.status==='active'&&supportedBaseSlugs.includes(n(d.slug||d.name))).map(d=>d.name);for(const fallback of ['Sapporo','Fukuoka','Wakayama'])if(!known.some(x=>n(x)===n(fallback)))known.push(fallback);const unique=[...new Set(known)].sort((a,b)=>a.localeCompare(b));$('newBaseCity').innerHTML=unique.map(city=>'<option>'+safe(city)+'</option>').join('');}
 function baseNow(){return bases.find(b=>b.id===activeBase)}
 function addBase(){let city=$('newBaseCity').value;if(bases.some(b=>n(b.city)===n(city)))return;let from=baseNow()?.to||$('tripStart').value,to=$('tripEnd').value;let b={id:crypto.randomUUID(),city,from,to};bases.push(b);activeBase=b.id;renderBases();renderCatalog();renderTrips()}
 function placeById(id){return db.places.find(p=>Number(p.id)===Number(id))}
