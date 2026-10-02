@@ -39,6 +39,13 @@ const SB='https://zngncasvdrrxyrkjqutj.supabase.co',KEY='sb_publishable_wUrH6t12
 const H={apikey:KEY,Authorization:'Bearer '+KEY}; let db={places:[],profiles:[],windows:[],destinations:[],anchors:[],estimates:[]};
 const $=id=>document.getElementById(id), safe=s=>String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const norm=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]/g,' ').replace(/\b(temple|shrine|taisha|ji|dera|the|of|park)\b/g,' ').replace(/\s+/g,' ').trim();
+const POI_ALIASES={
+ 'osaka-universal-studios-japan':['usj','universal studios','universal studio japan','universal studios osaka'],
+ 'izumisano-kansai-international-airport':['kix','kansai airport','kansai international'],
+ 'kyoto-fushimi-inari-taisha':['fushimi inari','fushimi inari shrine'],
+ 'kyoto-kiyomizu-dera':['kiyomizu','kiyomizudera','kiyomizu dera']
+};
+function aliasesOf(p){return [p.name,p.name_japanese,p.place_key,...(POI_ALIASES[p.place_key]||[])].filter(Boolean).map(norm).filter(Boolean)}
 async function rows(table,q){const r=await fetch(SB+'/rest/v1/'+table+'?'+q,{headers:H,method:'GET'});if(!r.ok)throw Error(table+' '+r.status);return r.json()}
 async function loadDB(){try{const a=await Promise.all([
  rows('places','select=id,place_key,name,name_japanese,city,area,region,country,latitude,longitude,opening_hours,timing_intelligence,status&status=eq.active&country=eq.Japan&limit=2000'),
@@ -49,7 +56,7 @@ catch(e){$('db').innerHTML='<span class="warn">Database read failed: '+safe(e.me
 function addCity(city='Kyoto',from=$('start').value,to=$('end').value){const d=document.createElement('div');d.className='cityrow';d.innerHTML='<div><label>City</label><select class="c">'+['Kyoto','Osaka','Nara','Nagoya','Tokyo','Kobe','Himeji','Uji','Wakayama'].map(x=>'<option>'+x+'</option>').join('')+'</select></div><div><label>From</label><input class="f" type="date"></div><div><label>To</label><input class="t" type="date"></div><button class="btn dark x" type="button">×</button>';$('cities').appendChild(d);d.querySelector('.c').value=city;d.querySelector('.f').value=from;d.querySelector('.t').value=to;d.querySelector('.x').onclick=()=>d.remove()}
 function bases(){return [...document.querySelectorAll('.cityrow')].map((r,i)=>{const city=r.querySelector('.c').value,d=db.destinations.find(x=>norm(x.name)===norm(city));return {id:i+1,city,start_date:r.querySelector('.f').value,end_date:r.querySelector('.t').value,destination_id:d?.id||null}})}
 function dates(){let a=new Date($('start').value+'T00:00:00Z'),z=new Date($('end').value+'T00:00:00Z'),o=[];while(a<=z){o.push(a.toISOString().slice(0,10));a.setUTCDate(a.getUTCDate()+1)}return o}
-function find(q){const n=norm(q);let best=null,score=0;for(const p of db.places){const x=norm(p.name);let s=x===n?100:(x.includes(n)||n.includes(x))?90:0;if(!s){const A=n.split(' '),B=x.split(' '),hit=A.filter(v=>B.includes(v)).length;s=80*hit/Math.max(A.length,B.length,1)}if(s>score){score=s;best=p}}return score>=52?best:null}
+function find(q){const n=norm(q);let best=null,score=0;for(const p of db.places){let s=0;for(const x of aliasesOf(p)){let a=x===n?110:(x.includes(n)||n.includes(x))?95:0;if(!a){const A=n.split(' '),B=x.split(' '),hit=A.filter(v=>B.includes(v)).length;a=80*hit/Math.max(A.length,B.length,1)}s=Math.max(s,a)}if(s>score){score=s;best=p}}return score>=52?best:null}
 function enrich(p){if(!p)return p;const profile=db.profiles.find(x=>Number(x.place_id)===Number(p.id)),windows=db.windows.filter(x=>Number(x.place_id)===Number(p.id));return {...p,place_id:p.id,planning_profile:profile||null,time_windows:windows,region:p.region||profile?.area_cluster||null,estimated_minutes_min:profile?.minimum_useful_time_min||60,estimated_minutes_max:profile?.typical_duration_min||60}}
 function clock(v){if(typeof v==='string')return v;const h=Math.floor(v/60)%24,m=v%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')}
 function effortLabel(x){return x==='red'?'Rough':x==='yellow'?'Moderate':'Chill'}
