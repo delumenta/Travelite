@@ -1,130 +1,88 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Travelite Test</title>
-<style>.transport-card{border-color:#c99338}.confirm{font-size:13px}.confirm input{width:auto}body{margin:0;background:#0b0c0e;color:#f5f1ed;font-family:Arial}.wrap{max-width:540px;margin:auto;padding:24px 18px}h1{font-size:30px}.muted,label{color:#aaa}label{display:block;font-size:12px;margin:12px 0 6px}input,select,textarea{width:100%;box-sizing:border-box;background:#111318;color:#fff;border:1px solid #303238;border-radius:11px;padding:13px}textarea{min-height:150px}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cityrow{display:grid;grid-template-columns:1.2fr 1fr 1fr auto;gap:7px;align-items:end;margin:8px 0}.btn{border:0;border-radius:11px;padding:13px 15px;font-weight:bold;cursor:pointer}.dark{background:#22252b;color:#fff}.red{background:#eb474b;color:#fff}.wide{width:100%;margin-top:10px}.buttons{display:flex;gap:8px;margin-top:22px}.buttons .red{flex:1}.hidden{display:none}.card{background:#15171b;border:1px solid #2b2e34;border-radius:14px;padding:14px;margin:10px 0}.meta{font-size:12px;color:#aaa;margin-top:6px}.timeitem{display:grid;grid-template-columns:58px 1fr;gap:10px;padding:10px 0;border-top:1px solid #2b2e34}.timeitem:first-of-type{border-top:0}.time{font-weight:bold;font-size:13px}.dayhead{display:flex;justify-content:space-between;gap:10px}.tag{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.08em}@media(max-width:520px){.cityrow{grid-template-columns:1fr 1fr}.citybox{grid-column:1/-1}}</style></head><body><main class="wrap">
-<div style="font-weight:bold;letter-spacing:.15em;font-size:13px">TRAVELITE · TEST</div><div id="stepText" class="muted" style="font-size:12px;margin-top:6px">TRIP · 1 OF 5</div>
-<section id="s1"><h1>Build your trip.</h1><p class="muted">Add every city where you will stay.</p><label>Country</label><select><option>Japan</option></select><div class="row"><div><label>Trip starts</label><input id="start" type="date" value="2026-10-18"></div><div><label>Trip ends</label><input id="end" type="date" value="2026-10-30"></div></div><label>Cities</label><div id="cities"></div><button id="add" type="button" class="btn dark wide">＋ Add City</button><div class="buttons"><button id="next1" class="btn red">Continue</button></div></section>
-<section id="s2" class="hidden"><h1>Add your places.</h1><textarea id="pois" placeholder="Kiyomizu-dera&#10;USJ&#10;Nara"></textarea><div class="buttons"><button class="btn dark back">Back</button><button id="next2" class="btn red">Match places</button></div></section>
-<section id="s3" class="hidden"><h1>Travelite understood this.</h1><div id="matches"></div><div class="buttons"><button class="btn dark back">Back</button><button id="next3" class="btn red">Build scenes</button></div></section>
-<section id="s4" class="hidden"><h1>Scene cards.</h1><div id="scenes"></div><div class="buttons"><button class="btn dark back">Back</button><button id="next4" class="btn red">Balance trip</button></div></section>
-<section id="s5" class="hidden"><h1>Balanced trip.</h1><div id="trip"></div><div class="buttons"><button class="btn dark back">Back</button></div></section>
-</main><script type="module">\nimport {needsTransport,renderTransportCheck,collectTransportChecks,validTransportCheck,transportStorageKey,loadTransportChecks,saveTransportChecks} from "./src/transportChecks.js";
-(function(){
-var step=1, resolved=[], places=[], transportChecks={};
-var transportKey='';
-function refreshTransportKey(){var next=transportStorageKey(el('start').value,el('end').value,cityRows());if(next!==transportKey){transportKey=next;transportChecks=loadTransportChecks(next)}}
-function readTransportFields(){refreshTransportKey();transportChecks=collectTransportChecks(el('scenes'),transportChecks);saveTransportChecks(transportKey,transportChecks)}
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Travelite Planner Test</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b0c0e;color:#f5f1ed;font-family:Arial,sans-serif}.wrap{max-width:920px;margin:auto;padding:28px 18px 70px}
+.top{display:flex;justify-content:space-between;gap:15px;align-items:center}.brand{font-weight:800;letter-spacing:.16em;font-size:13px}.readonly{font-size:11px;border:1px solid #3b6b51;color:#8bd3a9;padding:7px 10px;border-radius:999px}
+h1{font-size:34px;margin:28px 0 8px}h2{font-size:20px;margin:26px 0 8px}.muted,.meta{color:#9da0a7}.muted{line-height:1.5}.meta{font-size:12px;margin-top:6px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.three{grid-template-columns:repeat(3,1fr)}label{display:block;font-size:11px;color:#aaa;margin:12px 0 6px;text-transform:uppercase;letter-spacing:.06em}
+input,select,textarea{width:100%;background:#111318;color:#fff;border:1px solid #303238;border-radius:11px;padding:12px}textarea{min-height:140px;resize:vertical}
+.btn{border:0;border-radius:11px;padding:13px 16px;font-weight:700;cursor:pointer}.primary{background:#e9474d;color:white}.dark{background:#22252b;color:#fff}.buttons{display:flex;gap:9px;margin-top:18px}
+.card{background:#15171b;border:1px solid #2b2e34;border-radius:14px;padding:15px;margin:10px 0}.day{border-left:3px solid #555}.green{border-left-color:#62b77e}.yellow{border-left-color:#d6aa4d}.red{border-left-color:#db5a5a}
+.head{display:flex;justify-content:space-between;gap:12px}.tag{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#aaa}.stop{display:grid;grid-template-columns:62px 1fr;gap:10px;border-top:1px solid #292c31;padding:10px 0}.stop:first-of-type{margin-top:10px}.time{font-weight:700}
+.status{padding:11px 13px;border-radius:11px;background:#111318;margin:14px 0;font-size:12px}.hidden{display:none}.cityrow{display:grid;grid-template-columns:1.2fr 1fr 1fr auto;gap:8px;align-items:end;margin:8px 0}.x{padding:12px}
+.pills{display:flex;gap:7px;flex-wrap:wrap}.pill{background:#202329;border:1px solid #343840;border-radius:999px;padding:7px 10px;font-size:11px}.warn{color:#e5b85b}
+@media(max-width:650px){.grid,.three,.cityrow{grid-template-columns:1fr}.top{align-items:flex-start}.cityrow .x{width:100%}}
+</style></head>
+<body><main class="wrap">
+<div class="top"><div><div class="brand">TRAVELITE · PLANNER LAB</div><div class="meta">Real Supabase data · shared planner engine</div></div><div class="readonly">READ ONLY · NO DATABASE WRITES</div></div>
+<h1>Test #1–#7 safely.</h1><p class="muted">This page reads Travelite's Japan POIs, profiles, timing windows, destinations and transport estimates from Supabase. Your test trip stays in this browser only.</p>
+<div id="db" class="status">Connecting to Travelite data…</div>
 
-function el(id){return document.getElementById(id)}
-function show(n){step=n;for(var i=1;i<=5;i++)el('s'+i).classList.toggle('hidden',i!==n);el('stepText').textContent='TRIP · '+n+' OF 5'}
-function addCity(city,from,to){var r=document.createElement('div');r.className='cityrow';r.innerHTML='<div class="citybox"><label>City</label><select class="c"><option>Kyoto</option><option>Osaka</option><option>Nara</option><option>Nagoya</option><option>Tokyo</option><option>Kobe</option><option>Himeji</option><option>Uji</option></select></div><div><label>From</label><input class="f" type="date"></div><div><label>To</label><input class="t" type="date"></div><button type="button" class="btn dark x">×</button>';el('cities').appendChild(r);r.querySelector('.c').value=city||'Osaka';r.querySelector('.f').value=from||el('start').value;r.querySelector('.t').value=to||el('end').value;r.querySelector('.x').onclick=function(){if(document.querySelectorAll('.cityrow').length>1)r.remove()}}
-function cityRows(){return Array.prototype.map.call(document.querySelectorAll('.cityrow'),function(r){return {city:r.querySelector('.c').value,from:r.querySelector('.f').value,to:r.querySelector('.t').value}})}
-el('add').onclick=function(){var rs=document.querySelectorAll('.cityrow'),last=rs[rs.length-1];addCity('Osaka',last?last.querySelector('.t').value:el('start').value,el('end').value)};
-el('next1').onclick=function(){show(2)};
-var SB='https://zngncasvdrrxyrkjqutj.supabase.co';
-var KEY='sb_publishable_wUrH6t12z4tRKruS28LqWQ_2GG06U9m';
-function norm(s){return String(s||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]/g,' ').replace(/\\b(temple|shrine|taisha|ji|dera|the|of|park)\\b/g,' ').replace(/\\s+/g,' ').trim()}
-function safe(s){return String(s||'').replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]})}
-async function loadPlaces(){if(places.length)return;var r=await fetch(SB+'/rest/v1/places?select=id,name,name_japanese,city,area,region,country,estimated_minutes_min,estimated_minutes_max,visit_behavior,prominence,timing_intelligence,status&status=eq.active&country=eq.Japan&limit=2000',{headers:{apikey:KEY,Authorization:'Bearer '+KEY}});if(!r.ok)throw new Error('Place database '+r.status);places=await r.json()}
-function findPlace(q){var nq=norm(q),best=null,score=0;if(!nq)return null;places.forEach(function(p){var n=norm(p.name),s=0;if(!n)return;if(n===nq)s=100;else if(nq.length>=3&&n.length>=3&&(n.indexOf(nq)>=0||nq.indexOf(n)>=0))s=90;else{var a=nq.split(' '),b=n.split(' '),hit=a.filter(function(x){return b.indexOf(x)>=0}).length;s=80*hit/Math.max(a.length,b.length,1)}if(s>score){score=s;best=p}});return score>=52?best:null}
-function mins(p){var a=Number(p.estimated_minutes_min)||60,b=Number(p.estimated_minutes_max)||a;return Math.round((a+b)/2)}
-function clock(m){var h=Math.floor(m/60)%24,mm=m%60;return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0')}
-function baseFor(iso,bs){var hits=bs.filter(function(b){return b.from<=iso&&b.to>=iso});if(hits.length)return hits[hits.length-1];if(!bs.length)return null;if(iso<bs[0].from)return bs[0];if(iso>bs[bs.length-1].to)return bs[bs.length-1];return null}
-function destinationCity(p){
- var city=String(p.city||'');
- var area=String(p.area||'');
- var region=String(p.region||'');
- var all=(city+' '+area+' '+region).toLowerCase();
- if(all.indexOf('osaka')>=0||all.indexOf('minoh')>=0)return 'Osaka';
- if(all.indexOf('nara')>=0)return 'Nara';
- if(all.indexOf('uji')>=0)return 'Uji';
- if(all.indexOf('kyoto')>=0)return 'Kyoto';
- if(all.indexOf('kobe')>=0)return 'Kobe';
- if(all.indexOf('himeji')>=0)return 'Himeji';
- if(all.indexOf('nagoya')>=0)return 'Nagoya';
- return city;
+<section id="setup">
+<h2>1 · Test trip</h2>
+<div class="grid"><div><label>Trip starts</label><input id="start" type="date" value="2026-10-18"></div><div><label>Trip ends</label><input id="end" type="date" value="2026-10-23"></div></div>
+<label>Base cities</label><div id="cities"></div><button id="addCity" class="btn dark" type="button">＋ Add City</button>
+<div class="grid"><div><label>Pace</label><select id="pace"><option value="chill">Chill</option><option value="balanced" selected>Balanced</option><option value="packed">Make the most of it</option></select></div><div><label>Crowd preference</label><select id="crowds"><option value="avoid">Avoid crowds</option><option value="balanced" selected>No preference</option><option value="timing">Best time windows</option></select></div></div>
+<label>Places — one per line</label><textarea id="pois">Fushimi Inari Taisha
+Arashiyama Bamboo Grove
+Kiyomizu-dera
+Nanzen-ji
+Gion</textarea>
+<div class="buttons"><button id="run" class="btn primary">Run planner</button><button id="reset" class="btn dark">Reset test</button></div>
+</section>
+<section id="out" class="hidden"><h2>2 · Database matches</h2><div id="matches"></div><h2>3–4 · Scene cards + effort</h2><div id="cards"></div><h2>5–7 · Balanced calendar</h2><div id="days"></div></section>
+</main>
+<script type="module">
+import {buildUndatedCards,calculateDayEffort,assignCardsToTripDays,assignCardsToDates,scheduleScene,resolvePlaceHours,shouldDiscoverDayTrips} from './src/plusPlanner.js';
+const SB='https://zngncasvdrrxyrkjqutj.supabase.co',KEY='sb_publishable_wUrH6t12z4tRKruS28LqWQ_2GG06U9m';
+const H={apikey:KEY,Authorization:'Bearer '+KEY}; let db={places:[],profiles:[],windows:[],destinations:[],anchors:[],estimates:[]};
+const $=id=>document.getElementById(id), safe=s=>String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const norm=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]/g,' ').replace(/\b(temple|shrine|taisha|ji|dera|the|of|park)\b/g,' ').replace(/\s+/g,' ').trim();
+async function rows(table,q){const r=await fetch(SB+'/rest/v1/'+table+'?'+q,{headers:H,method:'GET'});if(!r.ok)throw Error(table+' '+r.status);return r.json()}
+async function loadDB(){try{const a=await Promise.all([
+ rows('places','select=id,place_key,name,name_japanese,city,area,region,country,latitude,longitude,opening_hours,timing_intelligence,status&status=eq.active&country=eq.Japan&limit=2000'),
+ rows('place_planning_profiles','select=*'),rows('place_time_windows','select=*'),rows('destinations','select=*&country=eq.Japan&status=eq.active'),
+ rows('destination_transport_anchors','select=*&active=eq.true'),rows('destination_travel_estimates','select=*&active=eq.true')
+]);db={places:a[0],profiles:a[1],windows:a[2],destinations:a[3],anchors:a[4],estimates:a[5]};$('db').textContent='Connected · '+db.places.length+' Japan POIs · '+db.profiles.length+' planning profiles · '+db.windows.length+' timing windows · '+db.destinations.length+' destinations';}
+catch(e){$('db').innerHTML='<span class="warn">Database read failed: '+safe(e.message)+'</span>'}}
+function addCity(city='Kyoto',from=$('start').value,to=$('end').value){const d=document.createElement('div');d.className='cityrow';d.innerHTML='<div><label>City</label><select class="c">'+['Kyoto','Osaka','Nara','Nagoya','Tokyo','Kobe','Himeji','Uji','Wakayama'].map(x=>'<option>'+x+'</option>').join('')+'</select></div><div><label>From</label><input class="f" type="date"></div><div><label>To</label><input class="t" type="date"></div><button class="btn dark x" type="button">×</button>';$('cities').appendChild(d);d.querySelector('.c').value=city;d.querySelector('.f').value=from;d.querySelector('.t').value=to;d.querySelector('.x').onclick=()=>d.remove()}
+function bases(){return [...document.querySelectorAll('.cityrow')].map((r,i)=>{const city=r.querySelector('.c').value,d=db.destinations.find(x=>norm(x.name)===norm(city));return {id:i+1,city,start_date:r.querySelector('.f').value,end_date:r.querySelector('.t').value,destination_id:d?.id||null}})}
+function dates(){let a=new Date($('start').value+'T00:00:00Z'),z=new Date($('end').value+'T00:00:00Z'),o=[];while(a<=z){o.push(a.toISOString().slice(0,10));a.setUTCDate(a.getUTCDate()+1)}return o}
+function find(q){const n=norm(q);let best=null,score=0;for(const p of db.places){const x=norm(p.name);let s=x===n?100:(x.includes(n)||n.includes(x))?90:0;if(!s){const A=n.split(' '),B=x.split(' '),hit=A.filter(v=>B.includes(v)).length;s=80*hit/Math.max(A.length,B.length,1)}if(s>score){score=s;best=p}}return score>=52?best:null}
+function enrich(p){if(!p)return p;const profile=db.profiles.find(x=>Number(x.place_id)===Number(p.id)),windows=db.windows.filter(x=>Number(x.place_id)===Number(p.id));return {...p,place_id:p.id,planning_profile:profile||null,time_windows:windows,region:p.region||profile?.area_cluster||null,estimated_minutes_min:profile?.minimum_useful_time_min||60,estimated_minutes_max:profile?.typical_duration_min||60}}
+function clock(v){if(typeof v==='string')return v;const h=Math.floor(v/60)%24,m=v%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')}
+function effortLabel(x){return x==='red'?'Rough':x==='yellow'?'Moderate':'Chill'}
+function cardHTML(c){return '<article class="card '+c.effort+'"><div class="head"><b>'+safe(c.title)+'</b><span class="tag">'+effortLabel(c.effort)+' · '+(c.effortScore??'?')+'/100</span></div><div class="meta">'+c.items.map(x=>safe(x.name)).join(' · ')+' · ~'+Math.round(c.totalMinutes||0)+' min</div></article>'}
+function destinationForBase(b){return db.destinations.find(d=>String(d.id)===String(b.destination_id))||db.destinations.find(d=>norm(d.name)===norm(b.city))}
+function graph(){return {anchors:db.anchors,estimates:db.estimates}}
+async function run(){
+ if(!db.places.length)return alert('Supabase data has not loaded yet.');
+ const raw=$('pois').value.split(/\n|,/).map(x=>x.trim()).filter(Boolean),matched=raw.map(q=>({q,p:find(q)}));
+ $('matches').innerHTML=matched.map(x=>x.p?'<div class="card"><b>'+safe(x.q)+' → '+safe(x.p.name)+'</b><div class="meta">'+safe(x.p.city)+' · '+safe(x.p.area||x.p.region||'')+' · '+safe(x.p.place_key||'')+'</div></div>':'<div class="card"><b>'+safe(x.q)+'</b><div class="meta warn">No confident database match · excluded</div></div>').join('');
+ const pois=matched.filter(x=>x.p).map(x=>enrich(x.p)),pace=$('pace').value,crowd=$('crowds').value;
+ let cards=buildUndatedCards(pois,{pace,crowdPreference:crowd}).map(c=>calculateDayEffort(c,{pace}));
+ $('cards').innerHTML=cards.map(cardHTML).join('')||'<div class="card">No cards.</div>';
+ const ds=dates(),bs=bases();let planned;
+ if(bs.length&&bs.some(x=>x.destination_id))planned=assignCardsToTripDays(cards,{dates:ds,bases:bs,destinations:db.destinations,graph:graph(),pace,crowdPreference:crowd});
+ else planned=assignCardsToDates(cards,ds,{pace});
+ const assigned=new Set(planned.flatMap(d=>(d.cards||[]).flatMap(c=>(c.items||[]).map(x=>x.place_id)));
+ const missing=pois.filter(p=>!assigned.has(p.place_id));
+ const capacity=shouldDiscoverDayTrips({tripDays:ds.length,cards,userKeptLoose:false});
+ let html='<div class="pills"><span class="pill">'+cards.length+' scenes</span><span class="pill">'+ds.length+' days</span><span class="pill">'+(capacity.underSpecified?'Under-specified':'Coverage okay')+'</span></div>';
+ if(missing.length)html+='<div class="status warn">Unassigned: '+missing.map(x=>safe(x.name)).join(', ')+'</div>';
+ for(const day of planned){
+   const b=bs.filter(x=>x.start_date<=day.date&&x.end_date>=day.date).slice(-1)[0];
+   let body='';
+   for(const card of day.cards||[]){
+     const timed=scheduleScene(card.items||[],day.date,{resolveHours:(p,d)=>resolvePlaceHours(p,d),crowdPreference:crowd,timeZone:'Asia/Tokyo',dayStart:480,dayEnd:pace==='chill'?900:pace==='packed'?1020:960});
+     if(timed.unplaced.length)body+='<div class="meta warn">Could not place: '+timed.unplaced.map(x=>safe(x.place.name)+' ('+safe(x.reason)+')').join(', ')+'</div>';
+     body+=(timed.scheduled||[]).map(s=>'<div class="stop"><div class="time">'+clock(s.arrival)+'</div><div><b>'+safe(s.place.name)+'</b><div class="meta">'+Math.round(s.end-s.start)+' min'+(s.matchedPreference?' · '+safe(s.matchedPreference.label):'')+(s.openingVerified?' · hours verified':' · hours unverified')+'</div></div></div>').join('');
+   }
+   const e=(day.cards||[]).reduce((n,c)=>n+(c.effortScore||0),0),lev=e>=65?'red':e>=38?'yellow':'green';
+   html+='<article class="card day '+lev+'"><div class="head"><b>'+safe(day.date)+'</b><span class="tag">'+safe(b?.city||'No base')+' · '+effortLabel(lev)+'</span></div>'+(body||'<div class="meta">Free / loose day</div>')+'</article>';
+ }
+ $('days').innerHTML=html;$('out').classList.remove('hidden');$('out').scrollIntoView({behavior:'smooth'});
 }
-var transportGraph={anchors:[],estimates:[]};
-async function sbRows(table,query){var r=await fetch(SB+'/rest/v1/'+table+'?'+query,{headers:{apikey:KEY,Authorization:'Bearer '+KEY}});if(!r.ok)throw new Error(table+' '+r.status);return r.json()}
-async function loadTransportGraph(){
- try{
-  var all=await Promise.all([
-   sbRows('destinations','select=id,name,slug,country&country=eq.Japan&status=eq.active'),
-   sbRows('destination_transport_anchors','select=id,destination_id,name,priority&active=eq.true'),
-   sbRows('destination_travel_estimates','select=from_anchor_id,to_anchor_id,typical_minutes&active=eq.true')
-  ]);
-  window.destinationRows=all[0]||[];transportGraph={anchors:all[1]||[],estimates:all[2]||[]};
- }catch(e){console.warn('transport graph unavailable',e);window.destinationRows=[];transportGraph={anchors:[],estimates:[]}}
-}
-function graphMinutes(fromId,toId){
- if(String(fromId)===String(toId))return 0;
- var starts=transportGraph.anchors.filter(function(a){return String(a.destination_id)===String(fromId)}).map(function(a){return a.id});
- var goals=transportGraph.anchors.filter(function(a){return String(a.destination_id)===String(toId)}).map(function(a){return a.id});
- if(!starts.length||!goals.length)return null;
- var dist={},q=starts.map(function(id){dist[id]=0;return [0,id]});
- while(q.length){q.sort(function(a,b){return a[0]-b[0]});var cur=q.shift(),d=cur[0],u=cur[1];if(d!==dist[u])continue;if(goals.indexOf(u)>=0)return Math.round(d);
-  transportGraph.estimates.filter(function(x){return x.from_anchor_id===u}).forEach(function(x){var nd=d+Number(x.typical_minutes||9999);if(nd<(dist[x.to_anchor_id]??Infinity)){dist[x.to_anchor_id]=nd;q.push([nd,x.to_anchor_id])}});
- } return null;
-}
-function destinationRecordForCity(city){return (window.destinationRows||[]).find(function(d){return norm(d.name)===norm(city)})||null}
-function canDayTrip(base,target){
- var b=destinationRecordForCity(base),t=destinationRecordForCity(target);
- if(!b||!t)return false;
- var m=graphMinutes(b.id,t.id);
- return m!=null && (m*2)<540;
-}
-function chooseDaysForCity(city,days){
- var exact=days.filter(function(d){return d.base&&norm(d.base.city)===norm(city)});
- if(exact.length)return exact;
- return days.filter(function(d){return d.base&&canDayTrip(d.base.city,city)});
-}
-function transferMinutesForDay(day,days){
- var i=days.indexOf(day);if(i<=0||!day.base)return 0;
- var prev=days[i-1].base;if(!prev||norm(prev.city)===norm(day.base.city))return 0;
- var a=destinationRecordForCity(prev.city),b=destinationRecordForCity(day.base.city);
- return a&&b?(graphMinutes(a.id,b.id)||0):0;
-}
-function dayTripMinutes(day){
- var targets=Array.from(new Set(day.items.map(function(p){return destinationCity(p)}).filter(function(x){return x&&norm(x)!==norm(day.base.city)})));
- if(!targets.length)return 0;
- var b=destinationRecordForCity(day.base.city);if(!b)return 0;
- return targets.reduce(function(sum,x){var t=destinationRecordForCity(x),m=t&&graphMinutes(b.id,t.id);return sum+(m?m*2:0)},0);
-}
-function buildSchedule(){
- var bs=cityRows(),a=new Date(el('start').value+'T00:00:00'),end=new Date(el('end').value+'T00:00:00'),days=[];
- while(a<=end){var iso=a.toISOString().slice(0,10);days.push({date:new Date(a),iso:iso,base:baseFor(iso,bs),items:[]});a.setDate(a.getDate()+1)}
- var matched=resolved.filter(function(r){return r.place});
- var byCity={};matched.forEach(function(r){var city=destinationCity(r.place)||'Other';(byCity[city]||(byCity[city]=[])).push(r.place)});
- Object.keys(byCity).forEach(function(city){
-   var eligible=chooseDaysForCity(city,days);
-   if(!eligible.length)return;
-   byCity[city].sort(function(x,y){return String(x.region||x.area||'').localeCompare(String(y.region||y.area||''))});
-   byCity[city].forEach(function(p){
-     var target=eligible.slice().sort(function(x,y){return x.items.reduce(function(s,z){return s+mins(z)},0)-y.items.reduce(function(s,z){return s+mins(z)},0)})[0];
-     target.items.push(p);
-   });
- });
- el('trip').innerHTML=days.map(function(d,i){
-   var title='Day '+(i+1)+' · '+d.date.toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short'});
-   if(!d.base)return '<div class="card"><div class="dayhead"><b>'+title+'</b><span class="tag">No base</span></div></div>';
-   if(!d.items.length)return '<div class="card"><div class="dayhead"><b>'+title+'</b><span class="tag">'+safe(d.base.city)+'</span></div><div class="meta">Free day · no POIs assigned</div></div>';
-   var transfer=transferMinutesForDay(d,days),t=540+transfer,body='';if(transfer)body+='<div class="meta" style="margin:8px 0 10px">Base transfer → '+safe(d.base.city)+' · ~'+transfer+' min intercity</div>';var tripTargets=Array.from(new Set(d.items.map(function(p){return destinationCity(p)}).filter(function(x){return x&&norm(x)!==norm(d.base.city)})));if(tripTargets.length){var dt=d.items.some(function(p){return needsTransport(p)})?0:dayTripMinutes(d);body+='<div class="meta" style="margin:8px 0 10px">Day trip from '+safe(d.base.city)+' → '+safe(tripTargets.join(' / '))+(dt?' · ~'+dt+' min return transport':'')+'</div>';if(dt)t+=Math.round(dt/2);}
-   d.items.forEach(function(p,j){
-     if(j>0&&!needsTransport(p))t+=30;
-     if(t>=720&&t<780){body+='<div class="timeitem"><div class="time">12:00</div><div><b>Lunch / break</b><div class="meta">60 min</div></div></div>';t=780}
-     var dur=mins(p),check=transportChecks[p.id]||{},checked=needsTransport(p)&&validTransportCheck(check);if(needsTransport(p)){if(checked){t+=Number(check.inbound);body+='<div class="timeitem"><div class="time">'+clock(t-Number(check.inbound))+'</div><div><b>Journey to '+safe(p.name)+'</b><div class="meta">'+safe(check.mode)+' from '+safe(check.origin)+' · '+Number(check.inbound)+' min (user estimate)</div></div></div>';}else{body+='<div class="meta" style="color:#e5b85b;margin:10px 0">⚠ '+safe(p.name)+': Transport unverified. Journey time not included; check before relying on this schedule.</div>';}}
-     body+='<div class="timeitem"><div class="time">'+clock(t)+'</div><div><b>'+safe(p.name)+'</b><div class="meta">'+safe(p.area||p.region||p.city)+' · ~'+dur+' min'+(p.visit_behavior?' · '+safe(p.visit_behavior):'')+'</div></div></div>';
-     t+=dur;if(checked){body+='<div class="timeitem"><div class="time">'+clock(t)+'</div><div><b>Onward / return journey</b><div class="meta">'+Number(check.outbound)+' min (user estimate)</div></div></div>';t+=Number(check.outbound)}
-   });
-   // The outbound graph leg was already included above for ordinary day trips.
-   return '<div class="card"><div class="dayhead"><b>'+title+'</b><span class="tag">'+safe(d.base.city)+'</span></div>'+body+'</div>';
- }).join('');
- show(5);
-}
-el('next2').onclick=async function(){var lines=el('pois').value.split(/\\n|,/).map(function(x){return x.trim()}).filter(Boolean);el('matches').innerHTML='<div class="card">Reading Travelite place data…</div>';show(3);try{await loadPlaces();resolved=lines.map(function(q){var p=findPlace(q);return {raw:q,place:p}});el('matches').innerHTML=resolved.length?resolved.map(function(r){return r.place?'<div class="card"><b>'+safe(r.raw)+' → '+safe(r.place.name)+'</b><div class="meta">'+safe(r.place.city)+' · '+safe(r.place.region||r.place.area||'')+' · ~'+mins(r.place)+' min</div></div>':'<div class="card"><b>'+safe(r.raw)+'</b><div class="meta">Not confidently matched — not scheduled.</div></div>'}).join(''):'<div class="card">No places entered.</div>'}catch(e){el('matches').innerHTML='<div class="card">Could not load Travelite data: '+safe(e.message)+'</div>'}};
-el('next3').onclick=function(){refreshTransportKey();var matched=resolved.filter(function(r){return r.place});el('scenes').innerHTML=matched.length?matched.map(function(r){var p=r.place;return '<div class="card"><b>'+safe(p.name)+'</b><div class="meta">'+safe(p.city)+' · '+safe(p.region||p.area||'')+' · '+mins(p)+' min</div></div>'+renderTransportCheck(p,transportChecks[p.id])}).join(''):'<div class="card">No matched POIs.</div>';show(4)};
-el('next4').onclick=function(){readTransportFields();buildSchedule()};
-Array.prototype.forEach.call(document.querySelectorAll('.back'),function(b){b.onclick=function(){show(step-1)}});
-addCity('Kyoto',el('start').value,el('end').value);
-
-loadTransportGraph();
-})();
+$('run').onclick=run;$('addCity').onclick=()=>addCity('Osaka',$('start').value,$('end').value);$('reset').onclick=()=>location.reload();addCity();loadDB();
 </script></body></html>
