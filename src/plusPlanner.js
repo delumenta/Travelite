@@ -497,7 +497,17 @@ export function resolvePlaceHours(place,date){
  const context=String(place.visit_context||place.access_context||place.subfacility||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
  const selected=(context&&h[context])||h.seasonal?.find(x=>monthInRange(x.months))||h.regular||h.main||h.general;
  if(!selected)return null;
- return Array.isArray(selected)?selected:[selected];
+ const normalizeInterval=(x)=>{
+  if(!x||typeof x!=='object')return x;
+  const open=x.open??x.start??x.gate_open??x.business_open;
+  let close=x.close??x.end??x.gate_close??x.business_close;
+  const lastAdmission=x.last_admission??x.lastAdmission;
+  // Some official records publish reception/last-admission rather than a separate
+  // closing time. Keep that usable as the conservative access boundary.
+  if(close==null&&lastAdmission!=null)close=lastAdmission;
+  return {...x,open,close,last_admission:lastAdmission};
+ };
+ return (Array.isArray(selected)?selected:[selected]).map(normalizeInterval);
 }
 function openIntervals(place,date,resolveHours){
  let raw=typeof resolveHours==='function'?resolveHours(place,date):null;
