@@ -8,6 +8,9 @@ const distanceKm=(a,b)=>{
 const centroid=rows=>{const valid=rows.filter(x=>Number.isFinite(Number(x.latitude))&&Number.isFinite(Number(x.longitude)));if(!valid.length)return {latitude:null,longitude:null};return {latitude:valid.reduce((s,x)=>s+Number(x.latitude),0)/valid.length,longitude:valid.reduce((s,x)=>s+Number(x.longitude),0)/valid.length};};
 const cardTitle=rows=>{const names=rows.map(x=>x.name||x.title).filter(Boolean);return names.length<=2?names.join(' + '):`${names[0]} + ${names.length-1} nearby`;};
 const norm=v=>String(v??'').trim().toLowerCase();
+const isAnchor=row=>row?.is_anchor===true||row?.planning_role==='anchor';
+const priorityOf=row=>row?.user_priority||((row?.planning_role==='fixed')?'fixed':'optional');
+const isFixed=row=>priorityOf(row)==='fixed';
 const timingOf=row=>row?.timing_intelligence||row?.timingIntelligence||{};
 const windowsOf=row=>Array.isArray(row?.time_windows)?row.time_windows:[];
 const hardWindowFamily=row=>{
@@ -107,16 +110,17 @@ const sceneCompatible=(a,b,maxRadiusKm,{maxMinutes=540,crowdPreference='balanced
 export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanced',crowdPreference='balanced',maxSceneMinutes=540}={}){
   if(pace==='chill')maxStops=Math.min(maxStops,3);
   if(pace==='packed')maxStops=Math.max(maxStops,6);
-  const remaining=[...input].sort((a,b)=>Number(b.planning_role==='anchor')-Number(a.planning_role==='anchor')||Number(b.planning_role==='fixed')-Number(a.planning_role==='fixed')),cards=[];
+  const remaining=[...input].sort((a,b)=>Number(isAnchor(b))-Number(isAnchor(a))||Number(isFixed(b))-Number(isFixed(a))),cards=[];
   while(remaining.length){
     const seed=remaining.shift(),rows=[seed];
     while(remaining.length){
       const centre=centroid(rows);
       let best=-1,bestScore=-Infinity;
       remaining.forEach((row,index)=>{
-        if(row.planning_role==='anchor')return;
-        const marked=row.planning_role==='fixed'&&rows.some(x=>['fixed','anchor'].includes(x.planning_role));
-        if(!marked&&rows.length>=maxStops)return;
+        const rowAnchor=isAnchor(row),rowFixed=isFixed(row),hasAnchor=rows.some(isAnchor),hasFixed=rows.some(isFixed);
+        if(rowAnchor&&!hasAnchor)return;
+        const marked=rowFixed&&(hasAnchor||hasFixed);
+        if(priorityOf(row)==='optional'&&rows.length>=maxStops)return;
         if(!rows.every(existing=>sceneCompatible(existing,row,maxRadiusKm,{maxMinutes:marked?Infinity:maxSceneMinutes,crowdPreference,rows})))return;
         const score=candidatePackScore(row,rows,centre,crowdPreference);
         if(score>bestScore){best=index;bestScore=score;}
@@ -628,7 +632,7 @@ export function scheduleScene(items,date,{timeZone='Asia/Tokyo',resolveHours,tra
 /** User priorities are separate from venue timing constraints. */
 export function isLongMarkedCard(card,{pace='balanced'}={}){
   const cap=pace==='chill'?420:pace==='packed'?540:480;
-  return (card.items||[]).some(p=>['fixed','anchor'].includes(p.planning_role))&&
+  return (card.items||[]).some(p=>isAnchor(p)||isFixed(p))&&
     ((card.totalMinutes||0)+Math.max(0,(card.items?.length||0)-1)*30>cap||calculateDayEffort(card,{pace}).effort==='red');
 }
 /** Split only on request. Prefer a nearby existing card; preserve every item. */
@@ -648,11 +652,12 @@ export function splitMarkedCard(cards,index,{pace='balanced',maxRadiusKm=2.5,max
   if(cards.length<maxCards)choices.push({card:{...source,items:[]},i:cards.length});
   for(const target of choices){
     const left=[...source.items],right=[...target.card.items];
-    // Keep the anchor (or first fixed place) on its original card.
-    const movable=left.slice(1).sort((a,b)=>(distanceKm(target.card.centre,a)??0)-(distanceKm(target.card.centre,b)??0));
+    // Keep anchors on their outing. Move nearby Must-go/supporting places only.
+    const movable=left.filter(p=>!isAnchor(p)).sort((a,b)=>Number(isFixed(b))-Number(isFixed(a))||(distanceKm(target.card.centre,a)??0)-(distanceKm(target.card.centre,b)??0));
     for(const item of movable){
       if(load(left)<=cap&&right.length>target.card.items.length)break;
-      if(load(right.concat(item))>cap||!compatible(right,item))continue;
+      if(priorityOf(item)==='optional'&&load(right.concat(item))>cap)continue;
+      if(!compatible(right,item))continue;
       left.splice(left.indexOf(item),1);right.push(item);
     }
     if(right.length===target.card.items.length)continue;
