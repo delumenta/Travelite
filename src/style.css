@@ -1638,3 +1638,6 @@ html:not([data-theme="dark"]) .japan-journey-place{color:#403639}html:not([data-
 /* Timeline cleanup: keep the time labels, remove the detached rail and ring. */
 .plan-stop .stop-rail i,
 .plan-stop .stop-rail:after{display:none !important;}
+
+.plus-priorities{display:grid;gap:12px;padding:12px 16px;margin-top:-8px;border:1px solid #dce5da;border-radius:12px}.plus-priorities>div{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.plus-priorities b{font-size:12px}.plus-priorities .plus-choice-row{flex-wrap:wrap}
+

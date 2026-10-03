@@ -107,14 +107,17 @@ const sceneCompatible=(a,b,maxRadiusKm,{maxMinutes=540,crowdPreference='balanced
 export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanced',crowdPreference='balanced',maxSceneMinutes=540}={}){
   if(pace==='chill')maxStops=Math.min(maxStops,3);
   if(pace==='packed')maxStops=Math.max(maxStops,6);
-  const remaining=[...input],cards=[];
+  const remaining=[...input].sort((a,b)=>Number(b.planning_role==='anchor')-Number(a.planning_role==='anchor')||Number(b.planning_role==='fixed')-Number(a.planning_role==='fixed')),cards=[];
   while(remaining.length){
     const seed=remaining.shift(),rows=[seed];
-    while(rows.length<maxStops&&remaining.length){
+    while(remaining.length){
       const centre=centroid(rows);
       let best=-1,bestScore=-Infinity;
       remaining.forEach((row,index)=>{
-        if(!rows.every(existing=>sceneCompatible(existing,row,maxRadiusKm,{maxMinutes:maxSceneMinutes,crowdPreference,rows})))return;
+        if(row.planning_role==='anchor')return;
+        const marked=row.planning_role==='fixed'&&rows.some(x=>['fixed','anchor'].includes(x.planning_role));
+        if(!marked&&rows.length>=maxStops)return;
+        if(!rows.every(existing=>sceneCompatible(existing,row,maxRadiusKm,{maxMinutes:marked?Infinity:maxSceneMinutes,crowdPreference,rows})))return;
         const score=candidatePackScore(row,rows,centre,crowdPreference);
         if(score>bestScore){best=index;bestScore=score;}
       });
@@ -412,7 +415,7 @@ export function assignCardsToTripDays(cards,{dates=[],bases=[],destinations=[],g
       // A fully confirmed single-stop remote route already includes both legs.
       if(!transport.hasUnverified&&(card.items||[]).length===1&&transport.extraMinutes>0&&travelMinutes>0)travelMinutes=0;
       const required=sceneMinutes+travelMinutes;
-      if(required>day.availableMinutes)eligible=false;
+      if(required>day.availableMinutes&&!(card.longDayChoice==='keep'&&kind==='local'&&!day.isTransferDay))eligible=false;
       return eligible?{day,required,kind,travelMinutes,transport}:null;
     }).filter(Boolean).sort((a,b)=>(a.day.usedMinutes+a.required)-(b.day.usedMinutes+b.required)||a.day.score-b.day.score);
     if(!candidates.length)continue;
@@ -618,4 +621,43 @@ export function scheduleScene(items,date,{timeZone='Asia/Tokyo',resolveHours,tra
   for(const item of pending)unplaced.push({place:item.place,reason:item.reason||'no_feasible_slot'});
   scheduled.sort((a,b)=>a.start-b.start);
   return {date,scheduled,unplaced,estimatedTravel:!travelMinutes,sunrise:scheduled.length?solarLocalMinutes(date,scheduled[0].place,'sunrise',timeZone):null,sunset:scheduled.length?solarLocalMinutes(date,scheduled[0].place,'sunset',timeZone):null};
+}
+
+
+
+/** User priorities are separate from venue timing constraints. */
+export function isLongMarkedCard(card,{pace='balanced'}={}){
+  const cap=pace==='chill'?420:pace==='packed'?540:480;
+  return (card.items||[]).some(p=>['fixed','anchor'].includes(p.planning_role))&&
+    ((card.totalMinutes||0)+Math.max(0,(card.items?.length||0)-1)*30>cap||calculateDayEffort(card,{pace}).effort==='red');
+}
+/** Split only on request. Prefer a nearby existing card; preserve every item. */
+export function splitMarkedCard(cards,index,{pace='balanced',maxRadiusKm=2.5,maxCards=Infinity}={}){
+  const source=cards[index];
+  if(!source||source.items.length<2)return {cards,changed:false};
+  const cap=pace==='chill'?420:pace==='packed'?540:480;
+  const load=rows=>rows.reduce((sum,p)=>sum+durationOf(p),0)+Math.max(0,rows.length-1)*30;
+  const compatible=(rows,p)=>rows.every(x=>sceneCompatible(x,p,maxRadiusKm,{maxMinutes:Infinity}));
+  const rebuild=(card,items)=>{
+    const km=items.reduce((sum,p,i)=>sum+(i?distanceKm(items[i-1],p)||0:0),0);
+    return calculateDayEffort({...card,title:cardTitle(items),items,centre:centroid(items),distanceKm:km,totalMinutes:items.reduce((sum,p)=>sum+durationOf(p),0),longDayChoice:null},{pace});
+  };
+  const choices=cards.map((card,i)=>({card,i,d:distanceKm(source.centre,card.centre)}))
+    .filter(x=>x.i!==index&&x.card.kind!=='day_trip'&&x.d!=null&&x.d<=maxRadiusKm)
+    .sort((a,b)=>a.d-b.d);
+  if(cards.length<maxCards)choices.push({card:{...source,items:[]},i:cards.length});
+  for(const target of choices){
+    const left=[...source.items],right=[...target.card.items];
+    // Keep the anchor (or first fixed place) on its original card.
+    const movable=left.slice(1).sort((a,b)=>(distanceKm(target.card.centre,a)??0)-(distanceKm(target.card.centre,b)??0));
+    for(const item of movable){
+      if(load(left)<=cap&&right.length>target.card.items.length)break;
+      if(load(right.concat(item))>cap||!compatible(right,item))continue;
+      left.splice(left.indexOf(item),1);right.push(item);
+    }
+    if(right.length===target.card.items.length)continue;
+    const result=[...cards];result[index]=rebuild(source,left);result[target.i]=rebuild(target.card,right);
+    return {cards:result,changed:true};
+  }
+  return {cards,changed:false};
 }
