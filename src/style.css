@@ -1633,3 +1633,8 @@ html:not([data-theme="dark"]) .japan-journey-place{color:#403639}html:not([data-
 .plus-daytrip-card small{font-size:7px;font-weight:900;letter-spacing:.08em;color:#d95a66}.plus-daytrip-card b{font-size:12px}.plus-daytrip-card span{font-size:8px;line-height:1.4;color:var(--muted)}
 .day-loose-label{display:block;margin-top:4px;font-size:7px;font-style:normal;font-weight:900;letter-spacing:.08em;color:#d95a66}
 @media(max-width:640px){.plus-daytrip-grid{grid-template-columns:1fr}}
+
+
+/* Timeline cleanup: keep the time labels, remove the detached rail and ring. */
+.plan-stop .stop-rail i,
+.plan-stop .stop-rail:after{display:none !important;}
