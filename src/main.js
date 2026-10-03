@@ -1664,6 +1664,7 @@ function dayCapacity(date){
  const locked=rows.some(x=>x.is_locked), full=/\\b(full day|whole day|all day|day trip|daytrip|full-day|whole-day)\\b/.test(t); const mode=locked?'locked':full?'full':'flexible';
  return {mode,label:mode==='locked'?'Locked':mode==='full'?'Full day':'Flexible',canReceive:mode==='flexible'};
 }
+function isMajorAnchor(row){const profile=state.planningProfiles.find(p=>Number(p.place_id)===Number(row.place_id));if(Number(profile?.importance||0)>=4)return true;const text=[row.title,row.location_name,profile?.importance_label,profile?.scheduling_notes].filter(Boolean).join(' ').toLowerCase();return /fushimi inari|arashiyama bamboo|kinkaku|kiyomizu|gion|nara park|todai-ji|nanz?en-ji|osaka castle|universal studios/.test(text);}
 function removalSuggestions(date){
   const rows=dayRows(date),committed=rows.filter(x=>!x.is_optional&&!x.is_locked&&String(x.item_type||'').toLowerCase()!=='accommodation');
   const geo=committed.filter(hasValidCoordinates);
@@ -1693,7 +1694,7 @@ function removalSuggestions(date){
 function balanceSuggestion(date,skipId){
   const days=dayList(state.trip),from=days.indexOf(date),sourceRows=dayRows(date);
   if(from<0||!sourceRows.length)return null;
-  const movable=sourceRows.filter(x=>!x.is_locked&&!x.is_optional&&Number(x.id)!==Number(skipId)&&String(x.item_type||'').toLowerCase()!=='accommodation'&&hasValidCoordinates(x));
+  const movable=sourceRows.filter(x=>!x.is_locked&&!x.is_optional&&!isMajorAnchor(x)&&Number(x.id)!==Number(skipId)&&String(x.item_type||'').toLowerCase()!=='accommodation'&&hasValidCoordinates(x));
   let options=[];
   for(const stop of movable){
     for(let i=0;i<days.length;i++){
