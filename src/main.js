@@ -97,6 +97,17 @@ async function browserTextPlaces(query,kind='place',maxResultCount=10){
     .filter(p=>p.name&&p.latitude!=null&&p.longitude!=null);
 }
 
+async function geocodeUserPoi(query,country='Japan'){
+  const url=new URL('https://photon.komoot.io/api/');
+  url.searchParams.set('q',`${query}, ${country}`);url.searchParams.set('limit','1');url.searchParams.set('lang','en');
+  const response=await fetch(url,{headers:{Accept:'application/json'}});
+  if(!response.ok)throw new Error('The place search is temporarily unavailable.');
+  const feature=(await response.json())?.features?.[0];
+  if(!feature?.geometry?.coordinates?.length)return null;
+  const [longitude,latitude]=feature.geometry.coordinates,props=feature.properties||{};
+  return {name:props.name||query,city:props.city||props.locality||'',area:props.district||props.county||'',address:[props.street,props.housenumber,props.city].filter(Boolean).join(' '),latitude,longitude,coordinate_source:'osm',coordinate_source_id:props.osm_id?String(props.osm_id):null};
+}
+
 const icons = { Compass, House, CalendarDays, Heart, Menu, Plus, ArrowRight, ArrowLeft, ArrowUpRight, MapPin, Clock3, Sparkles, Bookmark, Utensils, Ticket, Wallet, Search, ChevronDown, ChevronLeft, ChevronRight, X, Check, Trash2, Send, Navigation, LogOut, LoaderCircle, LockKeyhole, Mail, Plane, TrainFront, BedDouble, CircleHelp, SlidersHorizontal, ExternalLink, GripVertical, Pencil, Globe2, Leaf, Coffee, Route, CalendarPlus, CheckCircle2, MoreHorizontal, MessageCircle, Map, Copy, Sunrise, Sunset, ListFilter, UserRound, Sun, Moon };
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1664,7 +1675,7 @@ function dayCapacity(date){
  const locked=rows.some(x=>x.is_locked), full=/\\b(full day|whole day|all day|day trip|daytrip|full-day|whole-day)\\b/.test(t); const mode=locked?'locked':full?'full':'flexible';
  return {mode,label:mode==='locked'?'Locked':mode==='full'?'Full day':'Flexible',canReceive:mode==='flexible'};
 }
-function isMajorAnchor(row){const profile=state.planningProfiles.find(p=>Number(p.place_id)===Number(row.place_id));if(Number(profile?.importance||0)>=4)return true;const text=[row.title,row.location_name,profile?.importance_label,profile?.scheduling_notes].filter(Boolean).join(' ').toLowerCase();return /fushimi inari|arashiyama bamboo|kinkaku|kiyomizu|gion|nara park|todai-ji|nanz?en-ji|osaka castle|universal studios/.test(text);}
+function isMajorAnchor(row){const profile=state.planningProfiles.find(p=>Number(p.place_id)===Number(row.place_id));if(row.is_anchor===true)return true;if(Number(profile?.importance||0)>=4)return true;const text=[row.title,row.location_name,profile?.importance_label,profile?.scheduling_notes].filter(Boolean).join(' ').toLowerCase();return /fushimi inari|arashiyama bamboo|kinkaku|kiyomizu|gion|nara park|todai-ji|nanz?en-ji|osaka castle|universal studios/.test(text);}
 function removalSuggestions(date){
   const rows=dayRows(date),committed=rows.filter(x=>!x.is_optional&&!x.is_locked&&String(x.item_type||'').toLowerCase()!=='accommodation');
   const geo=committed.filter(hasValidCoordinates);
@@ -1980,10 +1991,10 @@ if(m.type==='transportCheck'){const p=state.places.find(x=>Number(x.id)===Number
 
 if(m.type==='dayBalance'){const from=m.data?.date||state.day,s=balanceSuggestion(from,m.data?.skipId),cuts=removalSuggestions(from),load=dayLoadStatus(from);return `<div class="day-balance-sheet"><div class="day-balance-warning"><b>${load.label} day</b><small>${load.mode==='driving'?'Driving day · road time is weighted lighter than walking':load.mode==='transit'?'Transit-heavy day':'Walking / sightseeing day'}</small></div><p class="modal-copy">This day is packed. You can move a stop that fits another day, or remove one. Travelite gives you the trade-off; you choose.</p>${s?`<div class="day-balance-suggestion"><small>MOVE OPTION</small><b>Move ${esc(s.stop.title)} → ${esc(fmtDate(s.targetDate,{weekday:'short',day:'numeric',month:'short'}))}</b><span>Geographically fits that day · nearest stop ~${Math.max(.1,s.nearest/1000).toFixed(1)} km · target is ${s.targetLoad.label}</span><button class="btn outline" data-action="apply-day-balance" data-id="${s.stop.id}" data-value="${s.targetDate}">Move this stop</button></div>`:''}<div class="day-remove-options">${cuts.map(x=>`<article class="day-remove-option"><small>${x.reason}</small><b>${esc(x.row.title)}</b><p>${esc(x.why)}</p><span>${esc(x.info)}</span><button class="btn outline" data-action="remove-balance-stop" data-id="${x.row.id}">Remove this stop</button></article>`).join('')}</div>${!s&&!cuts.length?'<p class="modal-copy">I could not find a sensible move or removable stop for this day.</p>':''}<button class="text-link" data-action="close-modal">Keep everything</button></div>`;}
 if(m.type==='plusStart')return `<div class="plus-start-sheet"><p class="modal-copy">Add the places you already want to visit. Travelite will group them into natural, undated day cards first.</p><form id="plus-poi-form" class="form-grid"><label class="span2">Paste or type your places<textarea name="pois" rows="6" placeholder="Fushimi Inari\nGion\nArashiyama\nNanzen-ji"></textarea></label><label class="span2">Or upload a screenshot<input name="poi_screenshot" type="file" accept="image/*" capture="environment"></label><small class="form-note span2">Travelite can read a screenshot of your saved POI list. Check the extracted places before arranging.</small><button class="btn primary full span2" type="submit">Arrange my places ${icon('ArrowRight')}</button></form></div>`;
-if(m.type==='plusCards'){const cards=state.plusCards||[],days=dayList(state.trip).length,capacity=shouldDiscoverDayTrips({tripDays:days,cards,userKeptLoose:state.plusUnderSpecifiedChoice==='loose'}),under=capacity.underSpecified,city=cards[0]?.items?.[0]?.city||state.tripBases?.[0]?.city||'this city';return `<div class="plus-cards-sheet"><p class="modal-copy">Fixed (Must go) keeps a place in your plan. Anchor starts a day card; nearby fixed places can join it. Choose each place’s role before assigning dates.</p>
+if(m.type==='plusCards'){const cards=state.plusCards||[],days=dayList(state.trip).length,capacity=shouldDiscoverDayTrips({tripDays:days,cards,userKeptLoose:state.plusUnderSpecifiedChoice==='loose'}),under=capacity.underSpecified,city=cards[0]?.items?.[0]?.city||state.tripBases?.[0]?.city||'this city';return `<div class="plus-cards-sheet"><p class="modal-copy">Choose what you definitely want to visit. Curated anchors help shape each day; your Must-go choices stay in the plan.</p>
 <div class="plus-preferences"><div><small>DAY PACE</small><div class="plus-choice-row"><button class="${state.plusPace==='chill'?'active':''}" data-action="plus-pace" data-value="chill">Chill</button><button class="${state.plusPace==='balanced'?'active':''}" data-action="plus-pace" data-value="balanced">Balanced</button><button class="${state.plusPace==='packed'?'active':''}" data-action="plus-pace" data-value="packed">Make the most of it</button></div></div><div><small>CROWD PREFERENCE</small><div class="plus-choice-row"><button class="${state.plusCrowds==='avoid'?'active':''}" data-action="plus-crowds" data-value="avoid">Avoid crowds</button><button class="${state.plusCrowds==='balanced'?'active':''}" data-action="plus-crowds" data-value="balanced">No preference</button><button class="${state.plusCrowds==='timing'?'active':''}" data-action="plus-crowds" data-value="timing">Best time windows</button></div></div></div>
 ${under?`<div class="plus-under"><b>${cards.length} scenes · ${days} days. Under-specified.</b><p>You have more trip days than meaningful scenes. Add ideas, use a free day, or deliberately leave the space open.</p><div class="plus-under-actions"><button data-action="plus-under" data-value="scene">Add a ${esc(city)} scene</button><button data-action="plus-under" data-value="daytrip">Use a free day</button><button data-action="plus-under" data-value="loose">Keep it loose</button></div>${state.plusUnderSpecifiedChoice==='daytrip'?(()=>{const trips=eligibleDayTrips().slice(0,4);return `<div class="plus-daytrip-grid">${trips.length?trips.map(x=>`<button class="plus-daytrip-card" data-action="plus-daytrip" data-id="${x.id}"><small>${esc(dayTripCommitmentLabel(x.commitment))}</small><b>${esc(x.destination_city)}</b><span>${esc(x.headline||x.why||'')}</span></button>`).join(''):'<small>No suitable day trips from this base yet.</small>'}</div>`;})():''}</div>`:''}
-<div class="plus-card-list">${cards.map((card,cardIndex)=>`<article class="plus-card-preview ${card.effort}"><div><span class="effort-dot"></span><b>${esc(card.title)}</b><small>${card.items.length} ${card.items.length===1?'place':'places'}${card.items.some(needsTransport)?' · ⚠ Transport check after dates are assigned':''} · ${card.effort==='red'?'Rough day':card.effort==='yellow'?'Not easy':'Chill day'}</small></div><strong>${card.effort.toUpperCase()}</strong></article><div class="plus-priorities">${card.items.map((item,itemIndex)=>`<div><b>${esc(item.name||item.title)}</b><div class="plus-choice-row"><button class="${item.planning_role==='fixed'?'active':''}" data-action="plus-role" data-card="${cardIndex}" data-item="${itemIndex}" data-value="fixed">Fixed (Must go)</button><button class="${item.planning_role==='anchor'?'active':''}" data-action="plus-role" data-card="${cardIndex}" data-item="${itemIndex}" data-value="anchor">Anchor</button></div></div>`).join('')}</div>${isLongMarkedCard(card,{pace:state.plusPace})?`<div class="plus-under"><b>This is a long day.</b><p>All ${card.items.length} places are kept because you marked them Must go.</p>${card.longDayChoice==='keep'?'<p>Kept as one long day.</p>':'<p><b>Would you prefer to split this across nearby days?</b></p>'}<div class="plus-choice-row"><button data-action="plus-long-keep" data-id="${cardIndex}">Keep</button><button data-action="plus-long-split" data-id="${cardIndex}">Split</button></div></div>`:''}`).join('')}</div><button class="btn primary full" data-action="balance-plus-cards">Balance into my dates ${icon('CalendarDays')}</button></div>`;}
+<div class="plus-card-list">${cards.map((card,cardIndex)=>{const fixedCount=card.items.filter(p=>p.user_priority==='fixed'||p.planning_role==='fixed').length,hasAnchor=card.items.some(p=>p.is_anchor===true||p.planning_role==='anchor');return `<article class="plus-card-preview ${card.effort}"><div><span class="effort-dot"></span><b>${esc(card.title)}</b><small>${card.items.length} ${card.items.length===1?'place':'places'}${card.items.some(needsTransport)?' · Transport check after dates are assigned':''} · ${card.effort==='red'?'Long day':card.effort==='yellow'?'Moderate day':'Chill day'}</small></div><strong>${card.effort==='red'?'LONG':card.effort==='yellow'?'MODERATE':'CHILL'}</strong></article><div class="plus-priorities">${card.items.map((item,itemIndex)=>`<div><b>${esc(item.name||item.title)}</b>${item.is_anchor?'<span class="catalog-kind">ANCHOR</span>':''}${item.is_unverified?'<span class="catalog-kind">Unverified · Your pin</span>':''}<small>Must go — I definitely want to visit this · Optional — Add it if it fits</small><div class="plus-choice-row"><button class="${item.user_priority==='fixed'||item.planning_role==='fixed'?'active':''}" data-action="plus-role" data-card="${cardIndex}" data-item="${itemIndex}" data-value="fixed">Must go</button><button class="${item.user_priority!=='fixed'&&item.planning_role!=='fixed'?'active':''}" data-action="plus-role" data-card="${cardIndex}" data-item="${itemIndex}" data-value="optional">Optional</button></div></div>`).join('')}</div>${isLongMarkedCard(card,{pace:state.plusPace})?`<div class="plus-under"><b>This is a long day.</b><p>${hasAnchor?'These places are being kept because they are part of your selected plan.':`All ${fixedCount} ${fixedCount===1?'place is':'places are'} kept because you marked them Must go.`}</p><p><b>Would you prefer to split this across two days?</b></p><div class="plus-choice-row"><button data-action="plus-long-keep" data-id="${cardIndex}">Keep as one long day</button><button data-action="plus-long-split" data-id="${cardIndex}">Split across nearby days</button></div></div>`:''}`}).join('')}</div><button class="btn primary full" data-action="balance-plus-cards">Balance into my dates ${icon('CalendarDays')}</button></div>`;}
 if(m.type==='rating'){
   const kind=m.data?.kind==='place'?'place':'food';
   const row=kind==='place'
@@ -2409,7 +2420,7 @@ if(form.id==='transport-check-form'){const placeId=Number(state.modal?.data?.pla
 if(form.id==='password-form'){let r=await sb.auth.updateUser({password:field(fd,'password')});if(r.error)throw r.error;state.modal=null;render();toast('Password updated.');return;}
 if(form.id==='auth-form'){let email=field(fd,'email'),password=field(fd,'password'),mode=state.authMode;let r=mode==='signup'?await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}}):mode==='reset'?await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}):await sb.auth.signInWithPassword({email,password});if(r.error)throw r.error;if(mode==='reset'){toast('Password reset link sent. Check your email.');state.authMode='login';render();}else if(mode==='signup'&&!r.data.session)toast('Check your email to confirm your account.');return;}
 if(form.id==='delete-trip-form'){let trip=state.trips.find(t=>t.id===state.modal?.data?.id);if(!trip||trip.owner_id!==state.user?.id)throw Error('Only the trip owner can delete it.');if(field(fd,'tripName')!==trip.name)throw Error('Type the trip name exactly to confirm.');let {data,error}=await sb.from('trips').delete().eq('id',trip.id).eq('owner_id',state.user.id).select('id');if(error)throw error;if(!data?.length)throw Error('Trip could not be deleted. Please try again.');state.trips=state.trips.filter(t=>t.id!==trip.id);state.modal=null;if(state.trip?.id===trip.id){state.trip=null;state.day=null;state.schedule=[];state.bookings=[];state.expenses=[];state.savedPlaces=[];state.savedFood=[];state.assistant=[];state.threadId=null;state.nearbyFood=[];state.scheduleExpanded=false;localStorage.removeItem(`travelite.trip.${state.user.id}`);if(state.trips.length)chooseTrip(state.trips[0]);else{state.loading=false;render();}}else render();toast('Trip deleted.');return;}
-if(form.id==='plus-poi-form'){const screenshot=fd.get('poi_screenshot');let lines=field(fd,'pois').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,30);if(screenshot&&screenshot.size){if(!screenshot.type.startsWith('image/'))throw Error('Please upload an image screenshot.');lines=await extractPoiScreenshot(screenshot);}if(!lines.length)throw Error('Add text or upload a screenshot containing places.');const resolved=[];for(const line of lines){const found=await browserTextPlaces(`${line}, ${state.trip?.country||''}`,'place',1).catch(()=>[]);resolved.push(found[0]||{name:line,address:'',latitude:null,longitude:null});}state.plusCards=buildUndatedCards(enrichPlannerPlaces(resolved.map(p=>({...p,planning_role:'fixed'}))),{pace:state.plusPace,crowdPreference:state.plusCrowds}).map(card=>calculateDayEffort(card,{pace:state.plusPace}));await savePlanningState();state.modal={type:'plusCards'};render();return;}
+if(form.id==='plus-poi-form'){const screenshot=fd.get('poi_screenshot');let lines=field(fd,'pois').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,30);if(screenshot&&screenshot.size){if(!screenshot.type.startsWith('image/'))throw Error('Please upload an image screenshot.');lines=await extractPoiScreenshot(screenshot);}if(!lines.length)throw Error('Add text or upload a screenshot containing places.');const resolved=[];for(const line of lines){const catalog=state.places.find(p=>String(p.name||'').trim().toLowerCase()===line.toLowerCase());if(catalog){const anchor=catalog.is_anchor===true;resolved.push({...catalog,place_id:catalog.id,is_unverified:false,user_priority:anchor?'fixed':'optional',priority_source:anchor?'catalog':'user'});continue;}const geo=await geocodeUserPoi(line,state.trip?.country||'Japan');if(!geo)throw Error(`Could not locate “${line}”. Add a more specific place name and try again.`);const saved=await sb.from('user_place_submissions').insert({name:line,city:geo.city||null,country:state.trip?.country||'Japan',address:geo.address||null,latitude:geo.latitude,longitude:geo.longitude,coordinate_source:'osm',coordinate_source_id:geo.coordinate_source_id,trip_id:state.trip.id,user_priority:'optional',priority_source:'user'}).select().single();if(saved.error)throw saved.error;resolved.push({...geo,...saved.data,name:line,is_unverified:true,user_priority:'optional',priority_source:'user'});}state.plusCards=buildUndatedCards(enrichPlannerPlaces(resolved),{pace:state.plusPace,crowdPreference:state.plusCrowds}).map(card=>calculateDayEffort(card,{pace:state.plusPace}));await savePlanningState();state.modal={type:'plusCards'};render();return;}
 if(form.id==='trip-form'){let data=cleanForm(fd,['name','country','start_date','end_date','description']);if(data.start_date&&data.end_date&&data.end_date<data.start_date)throw Error('End date must be after start date.');let edit=state.modal.type==='editTrip';let trip=await saveRow('trips',edit?data:{...data,owner_id:state.user.id,trip_mode:'plus'},edit?state.trip.id:null);if(edit){state.trip=trip;state.trips=state.trips.map(t=>t.id===trip.id?trip:t);state.modal=null;render();}else{state.trips.push(trip);chooseTrip(trip);}toast(edit?'Trip updated.':'New trip created.');return;}
 if(!state.trip)throw Error('Choose a trip first.');
 if(form.id==='stop-form'){let data=cleanForm(fd,['title','schedule_date','start_time','item_type','location_name','notes']);if(id){await saveRow('schedule',data,id);}else{data.trip_id=state.trip.id;data.sort_order=state.schedule.filter(x=>x.schedule_date===data.schedule_date).length+1;Object.assign(data,state.modal.data?.catalogLink||{});await saveRow('schedule',data);}state.day=data.schedule_date;state.tab='plan';toast(id?'Stop updated.':'Added to your plan.');}
@@ -2519,14 +2530,15 @@ case 'edit-booking':openModal('booking',state.bookings.find(x=>x.id===id));break
 case 'plus-start':openModal('plusStart');break;
 case 'plus-role':{
  const items=state.plusCards.flatMap(c=>c.items),item=state.plusCards[Number(el.dataset.card)]?.items[Number(el.dataset.item)];
- if(!item)break;item.planning_role=v;
+ if(!item)break;item.user_priority=v;item.planning_role=v==='fixed'?'fixed':undefined;item.priority_source='user';
+ if(item.is_unverified&&item.id){const saved=await sb.from('user_place_submissions').update({user_priority:v,priority_source:'user'}).eq('id',item.id).eq('trip_id',state.trip.id);if(saved.error)throw saved.error;}else if(item.place_id){const saved=await sb.from('trip_places').upsert({trip_id:state.trip.id,place_id:item.place_id,user_priority:v,priority_source:'user'},{onConflict:'trip_id,place_id'});if(saved.error)throw saved.error;}
  state.plusCards=buildUndatedCards(items,{pace:state.plusPace,crowdPreference:state.plusCrowds}).map(c=>calculateDayEffort(c,{pace:state.plusPace}));
  await savePlanningState();render();break;
 }
 case 'plus-long-keep':state.plusCards[id].longDayChoice='keep';render();break;
 case 'plus-long-split':{
  const result=splitMarkedCard(state.plusCards,id,{pace:state.plusPace,maxCards:dayList(state.trip).length||Infinity});
- if(!result.changed)throw Error('There is no nearby day with enough room. Add another trip day or keep this as one long day.');
+ if(!result.changed)throw Error('There is no nearby day available for a sensible split. You can keep this as one long day or add another day.');
  state.plusCards=result.cards;await savePlanningState();render();toast('Places split across nearby day cards. All marked places are kept.');break;
 }
 case 'plus-pace':state.plusPace=v;state.plusCards=(state.plusCards||[]).map(card=>calculateDayEffort(card,{pace:v}));await savePlanningState();render();break;
@@ -2545,54 +2557,30 @@ case 'balance-plus-cards':{
   const assigned=new Set(proposed.flatMap(day=>(day.cards||[]).flatMap(card=>(card.items||[]).map(p=>String(p.place_id??p.id??p.name)))));
   const omitted=enrichedCards.flatMap(c=>c.items||[]).filter(p=>!assigned.has(String(p.place_id??p.id??p.name)));
   if(omitted.length)throw Error(omitted.length+' selected places could not fit the trip dates or travel limits. Adjust your dates or pace before saving.');
-  const flat=[],warnings=[],transportWarnings=[];
+  const flat=[],transportWarnings=[];
   for(const day of proposed){
     let order=state.schedule.filter(x=>x.schedule_date===day.date).length;
-    let dayCursor=480;
-    const dayLimit=day.cards.some(card=>card.longDayChoice==='keep')?1260:480+(state.plusPace==='chill'?420:state.plusPace==='packed'?540:480);
-    for(const [cardIndex,card] of (day.cards||[]).entries()){
+    for(const card of (day.cards||[])){
       transportWarnings.push(...(card.transportWarnings||[]).map(w=>w.name+' ('+day.date+'): '+w.reason));
-      const cardItems=card.items||[];
-      const confirmedFor=(p,i)=>{const check=savedTransportForPlace(p.place_id??p.id);return check&&savedCheckForRoute(check,routeSignature(day.date,cardItems[i-1]||null,p,cardItems[i+1]||null))?check:null;};
-      const firstCheck=cardItems.length&&needsTransport(cardItems[0])?confirmedFor(cardItems[0],0):null;
-      if(firstCheck){if(cardIndex>0)dayCursor=Math.max(0,dayCursor-30);dayCursor+=Number(firstCheck.inbound_minutes)||0;}
-      const timed=scheduleScene(cardItems,day.date,{
-        resolveHours:(place,date)=>resolvePlaceHours(place,date),
-        crowdPreference:state.plusCrowds,
-        timeZone:state.trip?.time_zone||(String(state.trip?.country||'').toLowerCase()==='japan'?'Asia/Tokyo':Intl.DateTimeFormat().resolvedOptions().timeZone),
-        dayStart:dayCursor,dayEnd:dayLimit,
-        travelMinutes:(a,b)=>{const index=cardItems.indexOf(b),check=index>=0?confirmedFor(b,index):null;if(check)return Number(check.inbound_minutes);return null;}
-      });
-      if(timed.scheduled.length){dayCursor=Math.max(...timed.scheduled.map(x=>x.end))+30;const last=timed.scheduled[timed.scheduled.length-1].place,idx=cardItems.indexOf(last),lastCheck=idx>=0?confirmedFor(last,idx):null;if(lastCheck&&cardIndex===(day.cards||[]).length-1)dayCursor+=Number(lastCheck.onward_minutes)||0;}
-      if(dayCursor>dayLimit)warnings.push('Journey time exceeds your '+Math.round((dayLimit-480)/60*10)/10+'-hour day ('+day.date+')');
-      if(timed.unplaced.length){
-        warnings.push(...timed.unplaced.map(x=>(x.place.name||x.place.title||'Place')+' ('+day.date+')'));
-        continue;
-      }
-      for(const stop of timed.scheduled){
-        const item=stop.place;
-        flat.push({...item,schedule_date:day.date,sort_order:++order,start_time:stop.arrival,
-          card_title:card.title,effort_level:card.effort,travel_kind:card.travelKind||'local',
-          travel_minutes:card.travelMinutes||0,matchedPreference:stop.matchedPreference,
-          openingVerified:stop.openingVerified,transportWarning:(card.transportWarnings||[]).find(w=>Number(w.placeId)===Number(item.place_id??item.id))?.reason||null});
-      }
+      for(const item of (card.items||[]))flat.push({...item,schedule_date:day.date,sort_order:++order,start_time:item.start_time||null,
+        card_title:card.title,effort_level:card.effort,travel_kind:card.travelKind||'local',travel_minutes:card.travelMinutes||0});
     }
   }
-  if(warnings.length)throw Error('These stops could not fit their day: '+warnings.slice(0,5).join(', ')+'. No changes saved.');
-  // Preserve the user's existing stops; new POIs are appended with suggested local times.
+  // Day cards are balanced before dates are assigned, with clock times blank
+  // unless the traveller explicitly entered one.
   for(const item of flat){
-    const note=(item.openingVerified?' · Scheduled within recorded opening hours':' · Opening hours unverified')+(item.matchedPreference?' · Suggested '+item.matchedPreference.label+' (check hours and weather)':'')+(item.transportWarning?' · ⚠ '+item.transportWarning:'');
     await saveRow('schedule',{trip_id:state.trip.id,schedule_date:item.schedule_date,
-      sort_order:item.sort_order,start_time:item.start_time,title:item.name||item.title,
+      sort_order:item.sort_order,start_time:item.start_time||null,title:item.name||item.title,
       item_type:'attraction',location_name:item.name||item.title,address:item.address||null,
       latitude:item.latitude??null,longitude:item.longitude??null,
       place_id:item.place_id??(state.places.some(p=>Number(p.id)===Number(item.id))?item.id:null),
-      description:item.card_title?`Card: ${item.card_title} · ${item.effort_level}${item.travel_kind==='day_trip'?` · Day trip transport ~${item.travel_minutes} min`:''}${note}`:null,
-      is_optional:false});
+      user_submission_id:item.is_unverified?item.id:null,user_priority:item.user_priority||'optional',
+      priority_source:item.priority_source||'user',is_unverified:!!item.is_unverified,
+      is_optional:item.user_priority!=='fixed',description:item.card_title?`Card: ${item.card_title} · ${item.effort_level}`:null});
   }
   state.plusBalanced=proposed;state.plusCards=[];state.modal=null;state.tab='plan';
   await loadTripData();
-  toast(transportWarnings.length?'Day cards saved. '+transportWarnings.length+' transport checks need confirmation in Plan.':'Day cards scheduled. Confirm venue hours and any changed routes.');
+  toast(transportWarnings.length?'Day cards saved. '+transportWarnings.length+' transport checks need confirmation in Plan.':'Your day cards are on the plan. Add times only when you want to.');
   break;
 }
 case 'new-expense':state.onTheGoStop=null;openModal('expense');break;
