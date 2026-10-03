@@ -110,9 +110,13 @@ const sceneCompatible=(a,b,maxRadiusKm,{maxMinutes=540,crowdPreference='balanced
 export function buildUndatedCards(input,{maxStops=5,maxRadiusKm=2.5,pace='balanced',crowdPreference='balanced',maxSceneMinutes=540}={}){
   if(pace==='chill')maxStops=Math.min(maxStops,3);
   if(pace==='packed')maxStops=Math.max(maxStops,6);
+  const hasStructure=(input||[]).some(row=>isAnchor(row)||isFixed(row));
   const remaining=[...input].sort((a,b)=>Number(isAnchor(b))-Number(isAnchor(a))||Number(isFixed(b))-Number(isFixed(a))),cards=[];
   while(remaining.length){
     const seed=remaining.shift(),rows=[seed];
+    // Optional POIs fill a selected outing; they do not create extra days
+    // beside the traveller's anchors and Must-go places.
+    if(hasStructure&&priorityOf(seed)==='optional')continue;
     while(remaining.length){
       const centre=centroid(rows);
       let best=-1,bestScore=-Infinity;
