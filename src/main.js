@@ -2555,7 +2555,7 @@ case 'balance-plus-cards':{
     ?assignCardsToTripDays(enrichedCards,{dates,bases:state.tripBases,destinations:state.destinations,graph,pace:state.plusPace,crowdPreference:state.plusCrowds,transportChecks:state.tripTransportChecks,routeSignature})
     :assignCardsToDates(enrichedCards,dates,{pace:state.plusPace}).map(day=>({...day,cards:(day.cards||[]).map(card=>({...card,transportWarnings:(card.items||[]).filter(needsTransport).map(p=>({placeId:p.place_id??p.id,name:p.name||p.title,reason:'Transport unverified'}))}))}));
   const assigned=new Set(proposed.flatMap(day=>(day.cards||[]).flatMap(card=>(card.items||[]).map(p=>String(p.place_id??p.id??p.name)))));
-  const omitted=enrichedCards.flatMap(c=>c.items||[]).filter(p=>!assigned.has(String(p.place_id??p.id??p.name)));
+  const omitted=enrichedCards.flatMap(c=>c.items||[]).filter(p=>!assigned.has(String(p.place_id??p.id??p.name))&&(p.is_anchor===true||p.user_priority==='fixed'||p.planning_role==='fixed'||p.planning_role==='anchor'));
   if(omitted.length)throw Error(omitted.length+' selected places could not fit the trip dates or travel limits. Adjust your dates or pace before saving.');
   const flat=[],transportWarnings=[];
   for(const day of proposed){
